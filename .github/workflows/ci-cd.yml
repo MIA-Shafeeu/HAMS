@@ -51,7 +51,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to IIS
-        shell: pwsh
+        # "powershell" targets the Windows PowerShell 5.1 that ships on every Windows Server by
+        # default — "pwsh" (PowerShell 7+/Core) would need a separate install on the runner box,
+        # and Deploy-HAMS.ps1 doesn't use anything 5.1 can't already do.
+        shell: powershell
         run: ./deploy/Deploy-HAMS.ps1
         env:
           HAMS_JWT_SIGNING_KEY: ${{ secrets.PROD_JWT_SIGNING_KEY }}
