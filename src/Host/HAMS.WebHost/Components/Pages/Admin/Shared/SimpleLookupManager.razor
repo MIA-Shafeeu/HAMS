@@ -1,0 +1,58 @@
+@typeparam TLookup where TLookup : HAMS.Platform.Common.Contracts.ISimpleLookup
+
+<MudGrid Class="mb-2">
+    <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_code" Label="Code" /></MudItem>
+    <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_name" Label="Name" /></MudItem>
+    <MudItem xs="12" sm="2"><MudNumericField T="int" @bind-Value="_displayOrder" Label="Order" /></MudItem>
+    @ExtraFields
+    <MudItem xs="12" sm="3" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateClickedAsync">Create</MudButton></MudItem>
+</MudGrid>
+
+<MudTable Items="@Items" Dense="true" Hover="true">
+    <HeaderContent>
+        <MudTh>Code</MudTh>
+        <MudTh>Name</MudTh>
+        <MudTh>Order</MudTh>
+        @HeaderExtra
+        <MudTh>Active</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Code">@context.Code</MudTd>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+        @if (RowExtra is not null)
+        {
+            @RowExtra(context)
+        }
+        <MudTd DataLabel="Active">@(context.IsActive ? "Yes" : "No")</MudTd>
+        <MudTd>
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="@(context.IsActive ? Color.Error : Color.Success)" OnClick="@(() => ToggleActiveAsync(context))">
+                @(context.IsActive ? "Deactivate" : "Activate")
+            </MudButton>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TLookup> Items { get; set; } = [];
+    [Parameter, EditorRequired] public Func<string, string, int, Task> OnCreate { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<TLookup, bool, Task> OnSetActive { get; set; } = null!;
+    [Parameter] public RenderFragment? ExtraFields { get; set; }
+    [Parameter] public RenderFragment? HeaderExtra { get; set; }
+    [Parameter] public RenderFragment<TLookup>? RowExtra { get; set; }
+
+    private string _code = "";
+    private string _name = "";
+    private int _displayOrder;
+
+    private async Task CreateClickedAsync()
+    {
+        await OnCreate(_code, _name, _displayOrder);
+        _code = "";
+        _name = "";
+        _displayOrder = 0;
+    }
+
+    private Task ToggleActiveAsync(TLookup item) => OnSetActive(item, !item.IsActive);
+}

@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>7f3b2e4a-9c1d-4e6f-8a2b-5d9e1c4f7a3b</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Hangfire.SqlServer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <ProjectReference Include="..\HAMS.WebHost.Client\HAMS.WebHost.Client.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+    <PackageReference Include="MudBlazor" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Modules\HAMS.AdminIntegration\HAMS.AdminIntegration.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.AssessmentEvaluation\HAMS.AssessmentEvaluation.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.Attendance\HAMS.Attendance.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.CommunicationPortals\HAMS.CommunicationPortals.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.Fundraising\HAMS.Fundraising.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.IdentityAccess\HAMS.IdentityAccess.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.Intervention\HAMS.Intervention.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.LearningDelivery\HAMS.LearningDelivery.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.OrgCurriculum\HAMS.OrgCurriculum.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.PeopleEnrollment\HAMS.PeopleEnrollment.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.ReportingAnalyticsAudit\HAMS.ReportingAnalyticsAudit.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.TeachingTimetable\HAMS.TeachingTimetable.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Access\HAMS.Platform.Access.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Audit\HAMS.Platform.Audit.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Common\HAMS.Platform.Common.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Documents\HAMS.Platform.Documents.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Notifications\HAMS.Platform.Notifications.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Workflow\HAMS.Platform.Workflow.csproj" />
+    <ProjectReference Include="..\..\Clients\HAMS.SharedContracts\HAMS.SharedContracts.csproj" />
+  </ItemGroup>
+
+</Project>

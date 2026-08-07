@@ -1,0 +1,47 @@
+@using HAMS.PeopleEnrollment.Application
+@using PplAtoll = HAMS.PeopleEnrollment.Domain.Atoll
+@using PplIsland = HAMS.PeopleEnrollment.Domain.Island
+@inject IPeopleAdminService PeopleAdmin
+
+<MudGrid>
+    <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="Model.NameEn" Label="Name (English)" /></MudItem>
+    <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="Model.NameDv" Label="Name (Dhivehi)" /></MudItem>
+    <MudItem xs="12" sm="4"><MudDatePicker Label="Date of Birth" Date="Model.DateOfBirth" DateChanged="d => Model.DateOfBirth = d" /></MudItem>
+
+    <MudItem xs="12" sm="3">
+        <MudSelect T="Guid" Value="Model.AtollId" ValueChanged="OnAtollChangedAsync" Label="Atoll" Dense="true">
+            @foreach (var atoll in Atolls) { <MudSelectItem T="Guid" Value="@atoll.Id">@atoll.NameEn</MudSelectItem> }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="3">
+        <MudSelect T="Guid" @bind-Value="Model.IslandId" Label="Island" Dense="true">
+            @foreach (var island in _islands) { <MudSelectItem T="Guid" Value="@island.Id">@island.NameEn</MudSelectItem> }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="Model.RoadEn" Label="Road (English)" /></MudItem>
+    <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="Model.RoadDv" Label="Road (Dhivehi)" /></MudItem>
+
+    <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="Model.HouseNameEn" Label="House Name (English)" /></MudItem>
+    <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="Model.HouseNameDv" Label="House Name (Dhivehi)" /></MudItem>
+    <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="Model.BuildingEn" Label="Building EN (optional)" /></MudItem>
+    <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="Model.BuildingDv" Label="Building DV (optional)" /></MudItem>
+    <MudItem xs="12" sm="1"><MudTextField T="string" @bind-Value="Model.Floor" Label="Floor" /></MudItem>
+    <MudItem xs="12" sm="1"><MudTextField T="string" @bind-Value="Model.Apartment" Label="Apt." /></MudItem>
+
+    <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="Model.PhoneNumber" Label="Phone (optional)" /></MudItem>
+    <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="Model.Email" Label="Email (optional)" /></MudItem>
+</MudGrid>
+
+@code {
+    [Parameter, EditorRequired] public HAMS.WebHost.Components.Pages.Admin.Shared.PersonFormModel Model { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<PplAtoll> Atolls { get; set; } = [];
+
+    private IReadOnlyList<PplIsland> _islands = [];
+
+    private async Task OnAtollChangedAsync(Guid atollId)
+    {
+        Model.AtollId = atollId;
+        Model.IslandId = Guid.Empty;
+        _islands = atollId == Guid.Empty ? [] : await PeopleAdmin.GetIslandsAsync(atollId);
+    }
+}

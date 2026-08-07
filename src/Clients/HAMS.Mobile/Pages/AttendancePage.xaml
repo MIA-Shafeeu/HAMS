@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="HAMS.Mobile.Pages.AttendancePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Mark Attendance">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="16" RowSpacing="12">
+
+        <Label Grid.Row="0" x:Name="ClassNameLabel" FontSize="20" FontAttributes="Bold" />
+
+        <DatePicker Grid.Row="1" x:Name="AttendanceDatePicker" DateSelected="OnDateSelected" />
+
+        <ActivityIndicator Grid.Row="2" x:Name="BusyIndicator" IsRunning="False" IsVisible="False" />
+
+        <ScrollView Grid.Row="2" x:Name="RosterScrollView">
+            <VerticalStackLayout x:Name="RosterStack" Spacing="4" />
+        </ScrollView>
+
+        <Button Grid.Row="3" x:Name="SubmitButton" Text="Submit Attendance" Clicked="OnSubmitClicked" />
+
+    </Grid>
+
+</ContentPage>

@@ -1,0 +1,64 @@
+@page "/student/login"
+@layout PortalLayout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<MudPaper Class="pa-6" Style="max-width: 420px">
+    <MudText Typo="Typo.h5" Class="mb-4">Student Sign In</MudText>
+
+    <MudTextField T="string" @bind-Value="_admissionNumber" Label="Admission Number" Immediate="true" Disabled="_busy" />
+    <MudTextField T="string" @bind-Value="_pin" Label="PIN" InputType="InputType.Password" Immediate="true" Disabled="_busy" Class="mt-2" />
+    <MudButton Class="mt-4" Variant="Variant.Filled" Color="Color.Primary" OnClick="LoginAsync" Disabled="_busy">
+        Sign In
+    </MudButton>
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
+    }
+</MudPaper>
+
+@code {
+    [Inject] private HttpClient Http { get; set; } = null!;
+    [Inject] private TokenStorage TokenStorage { get; set; } = null!;
+    [Inject] private PortalAuthenticationStateProvider AuthStateProvider { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+
+    private string _admissionNumber = "";
+    private string _pin = "";
+    private string? _error;
+    private bool _busy;
+
+    private async Task LoginAsync()
+    {
+        _error = null;
+        _busy = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                "/api/v1/auth/student/login",
+                new StudentLoginDto(_admissionNumber, _pin, "Web Portal"),
+                PortalJson.Options);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _error = "Invalid admission number or PIN.";
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<AuthResultDto>(PortalJson.Options);
+            if (result is null || !result.Succeeded || result.AccessToken is null || result.RefreshToken is null || result.AccessTokenExpiresAtUtc is null)
+            {
+                _error = result?.Error ?? "Sign-in failed.";
+                return;
+            }
+
+            await TokenStorage.SaveAsync(result.AccessToken, result.RefreshToken, result.AccessTokenExpiresAtUtc.Value);
+            AuthStateProvider.NotifyAuthenticationStateChanged();
+            Nav.NavigateTo("/portal", forceLoad: false);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

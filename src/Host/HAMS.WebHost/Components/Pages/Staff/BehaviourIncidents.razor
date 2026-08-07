@@ -1,0 +1,358 @@
+@page "/behaviour-incidents"
+@using HAMS.WebHost.Components.Account
+@attribute [Authorize(Policy = StaffPolicy.Name)]
+@rendermode InteractiveServer
+@using HAMS.IdentityAccess.Application.Jwt
+@using HAMS.Intervention.Application
+@using HAMS.OrgCurriculum.Application
+@using HAMS.PeopleEnrollment.Application
+@using HAMS.Platform.Access.Domain
+@using HAMS.Platform.Workflow.Domain
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject IOrgStructureLookup OrgLookup
+@inject IStudentEnrollmentService EnrollmentService
+@inject IBehaviourCategoryLookup CategoryLookup
+@inject IBehaviourIncidentService IncidentService
+@inject ISnackbar Snackbar
+
+<PageTitle>Behaviour Incidents — HAMS</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Behaviour &amp; Pastoral</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedAsync" Label="School" Dense="true">
+                @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedAsync" Label="Academic year" Dense="true" Disabled="@(_academicYears.Count == 0)">
+                @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" Value="_selectedClassId" ValueChanged="OnClassChangedAsync" Label="Class" Dense="true" Disabled="@(_classes.Count == 0)">
+                @foreach (var classOption in _classes) { <MudSelectItem T="Guid" Value="@classOption.Id">@classOption.Name</MudSelectItem> }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" Value="_selectedStudentId" ValueChanged="OnStudentChangedAsync" Label="Student" Dense="true" Disabled="@(_roster.Count == 0)">
+                @foreach (var student in _roster) { <MudSelectItem T="Guid" Value="@student.StudentPersonId">@student.NameEn</MudSelectItem> }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_selectedStudentId == Guid.Empty)
+{
+    <MudAlert Severity="Severity.Info">Choose a school, academic year, class and student to continue.</MudAlert>
+}
+else
+{
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Record New Incident</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="Guid" @bind-Value="_newCategoryId" Label="Category" Dense="true">
+                    @foreach (var category in _categories)
+                    {
+                        <MudSelectItem T="Guid" Value="@category.Id">@category.Name @(category.IsPositive ? "(+)" : "")</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="string" @bind-Value="_newConfidentialityTierCode" Label="Confidentiality tier" Dense="true">
+                    <MudSelectItem T="string" Value="@ConfidentialityTierCodes.Restricted">Restricted</MudSelectItem>
+                    <MudSelectItem T="string" Value="@ConfidentialityTierCodes.Safeguarding">Safeguarding</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudDatePicker Label="Occurred date" Date="_newOccurredDate" DateChanged="d => _newOccurredDate = d" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_newDescription" Label="Description" Lines="3" />
+            </MudItem>
+        </MudGrid>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="RecordIncidentAsync" Disabled="_saving">
+            Record Incident
+        </MudButton>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Incident History</MudText>
+        @if (_incidents.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No behaviour incidents recorded for this student.</MudText>
+        }
+        else
+        {
+            <MudTable Items="@_incidents" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Date</MudTh>
+                    <MudTh>Category</MudTh>
+                    <MudTh>Description</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Date">@context.OccurredDate.ToString("yyyy-MM-dd")</MudTd>
+                    <MudTd DataLabel="Category">@context.CategoryName</MudTd>
+                    <MudTd DataLabel="Description">@context.Description</MudTd>
+                    <MudTd DataLabel="Status"><MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip></MudTd>
+                    <MudTd DataLabel="Actions">
+                        @if (context.Status == WorkflowStatus.Draft || context.Status == WorkflowStatus.Returned)
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SubmitAsync(context.Id))">Submit</MudButton>
+                        }
+                        else if (context.Status == WorkflowStatus.Submitted)
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => BeginReviewAsync(context.Id))">Begin Review</MudButton>
+                        }
+                        else if (context.Status == WorkflowStatus.UnderReview)
+                        {
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success" OnClick="@(() => ApproveAsync(context.Id))">Approve</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RejectAsync(context.Id))">Reject</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ReturnAsync(context.Id))">Return</MudButton>
+                            </MudStack>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudPaper>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private Guid? _currentPersonId;
+
+    private IReadOnlyList<SchoolOption> _schools = [];
+    private IReadOnlyList<AcademicYearOption> _academicYears = [];
+    private IReadOnlyList<ClassOption> _classes = [];
+    private IReadOnlyList<ClassRosterEntry> _roster = [];
+    private IReadOnlyList<BehaviourCategoryOption> _categories = [];
+
+    private Guid _selectedSchoolId, _selectedAcademicYearId, _selectedClassId, _selectedStudentId;
+
+    private Guid _newCategoryId;
+    private string _newConfidentialityTierCode = ConfidentialityTierCodes.Restricted;
+    private DateTime? _newOccurredDate = DateTime.Today;
+    private string _newDescription = "";
+
+    private List<IncidentRow> _incidents = [];
+    private bool _loading = true;
+    private bool _saving;
+
+    private sealed class IncidentRow(Guid id, string categoryName, string description, DateOnly occurredDate, WorkflowStatus status)
+    {
+        public Guid Id { get; } = id;
+        public string CategoryName { get; } = categoryName;
+        public string Description { get; } = description;
+        public DateOnly OccurredDate { get; } = occurredDate;
+        public WorkflowStatus Status { get; } = status;
+    }
+
+    private static Color StatusColor(WorkflowStatus status) => status switch
+    {
+        WorkflowStatus.Approved => Color.Success,
+        WorkflowStatus.Rejected => Color.Error,
+        WorkflowStatus.Returned => Color.Warning,
+        _ => Color.Default,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            var user = (await AuthState).User;
+            if (Guid.TryParse(user.FindFirstValue(HamsClaimTypes.PersonId), out var personId))
+            {
+                _currentPersonId = personId;
+            }
+        }
+
+        try
+        {
+            _schools = await OrgLookup.GetSchoolsAsync();
+            _categories = await CategoryLookup.GetAllAsync();
+            if (_categories.Count > 0)
+            {
+                _newCategoryId = _categories[0].Id;
+            }
+
+            if (_schools.Count > 0)
+            {
+                await OnSchoolChangedAsync(_schools[0].Id);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Could not load setup data.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnSchoolChangedAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _academicYears = await OrgLookup.GetAcademicYearsAsync(schoolId);
+        _classes = [];
+        _roster = [];
+        _incidents = [];
+        _selectedStudentId = Guid.Empty;
+
+        if (_academicYears.Count > 0)
+        {
+            await OnAcademicYearChangedAsync(_academicYears[0].Id);
+        }
+    }
+
+    private async Task OnAcademicYearChangedAsync(Guid academicYearId)
+    {
+        _selectedAcademicYearId = academicYearId;
+        _classes = await OrgLookup.GetClassesAsync(academicYearId);
+        _roster = [];
+        _incidents = [];
+        _selectedStudentId = Guid.Empty;
+
+        if (_classes.Count > 0)
+        {
+            await OnClassChangedAsync(_classes[0].Id);
+        }
+    }
+
+    private async Task OnClassChangedAsync(Guid classId)
+    {
+        _selectedClassId = classId;
+        _loading = true;
+        try
+        {
+            _roster = await EnrollmentService.GetActiveRosterForClassAsync(classId, DateOnly.FromDateTime(DateTime.Today));
+            if (_roster.Count > 0)
+            {
+                await OnStudentChangedAsync(_roster[0].StudentPersonId);
+            }
+            else
+            {
+                _selectedStudentId = Guid.Empty;
+                _incidents = [];
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnStudentChangedAsync(Guid studentPersonId)
+    {
+        _selectedStudentId = studentPersonId;
+        await LoadIncidentsAsync();
+    }
+
+    private async Task LoadIncidentsAsync()
+    {
+        if (_selectedStudentId == Guid.Empty)
+        {
+            return;
+        }
+
+        try
+        {
+            var incidents = await IncidentService.GetForStudentAsync(_selectedStudentId);
+            var rows = new List<IncidentRow>();
+            foreach (var incident in incidents)
+            {
+                var category = await CategoryLookup.GetAsync(incident.BehaviourCategoryId);
+                rows.Add(new IncidentRow(incident.Id, category?.Name ?? "(unknown)", incident.Description, incident.OccurredDate, incident.Status));
+            }
+
+            _incidents = rows;
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Could not load incident history.", Severity.Error);
+        }
+    }
+
+    private async Task RecordIncidentAsync()
+    {
+        if (_currentPersonId is not { } recordedBy || _newOccurredDate is not { } occurredDate)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_newDescription))
+        {
+            Snackbar.Add("A description is required.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            await IncidentService.RecordAsync(
+                _selectedStudentId, _newCategoryId, null, _selectedAcademicYearId, _newDescription,
+                _newConfidentialityTierCode, recordedBy, DateOnly.FromDateTime(occurredDate));
+
+            _newDescription = "";
+            Snackbar.Add("Incident recorded.", Severity.Success);
+            await LoadIncidentsAsync();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SubmitAsync(Guid id) => await RunTransitionAsync(() => IncidentService.SubmitAsync(id));
+
+    private async Task BeginReviewAsync(Guid id)
+    {
+        if (_currentPersonId is not { } reviewedBy) return;
+        await RunTransitionAsync(() => IncidentService.BeginReviewAsync(id, reviewedBy));
+    }
+
+    private async Task ApproveAsync(Guid id)
+    {
+        if (_currentPersonId is not { } reviewedBy) return;
+        await RunTransitionAsync(() => IncidentService.ApproveAsync(id, reviewedBy, null, null));
+    }
+
+    private async Task RejectAsync(Guid id)
+    {
+        if (_currentPersonId is not { } reviewedBy) return;
+        await RunTransitionAsync(() => IncidentService.RejectAsync(id, reviewedBy, null));
+    }
+
+    private async Task ReturnAsync(Guid id)
+    {
+        if (_currentPersonId is not { } reviewedBy) return;
+        await RunTransitionAsync(() => IncidentService.ReturnAsync(id, reviewedBy, null));
+    }
+
+    private async Task RunTransitionAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+            await LoadIncidentsAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

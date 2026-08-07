@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Common\HAMS.Platform.Common.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Access\HAMS.Platform.Access.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Audit\HAMS.Platform.Audit.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Workflow\HAMS.Platform.Workflow.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Documents\HAMS.Platform.Documents.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Notifications\HAMS.Platform.Notifications.csproj" />
+    <ProjectReference Include="..\..\Clients\HAMS.SharedContracts\HAMS.SharedContracts.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.PeopleEnrollment\HAMS.PeopleEnrollment.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.Attendance\HAMS.Attendance.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.AssessmentEvaluation\HAMS.AssessmentEvaluation.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.Intervention\HAMS.Intervention.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.LearningDelivery\HAMS.LearningDelivery.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.ReportingAnalyticsAudit\HAMS.ReportingAnalyticsAudit.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="HAMS.CommunicationPortals.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

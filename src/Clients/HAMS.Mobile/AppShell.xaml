@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="HAMS.Mobile.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:pages="clr-namespace:HAMS.Mobile.Pages"
+    Title="HAMS"
+    FlyoutBehavior="Disabled">
+
+    <!-- Login is the sole visible ShellContent — Mfa/Timetable/Attendance are registered as
+         detached routes in AppShell.xaml.cs and navigated to via GoToAsync, since this is a
+         linear staff sign-in -> daily-workflow flow, not a tabbed/flyout app. -->
+    <ShellContent
+        Title="Sign In"
+        ContentTemplate="{DataTemplate pages:LoginPage}"
+        Route="LoginPage" />
+
+</Shell>

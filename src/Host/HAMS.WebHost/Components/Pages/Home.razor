@@ -1,0 +1,14 @@
+@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var isAuthenticated = AuthState is not null && (await AuthState).User.Identity?.IsAuthenticated == true;
+        Navigation.NavigateTo(isAuthenticated ? "/dashboard" : "/account/login", forceLoad: true);
+    }
+}

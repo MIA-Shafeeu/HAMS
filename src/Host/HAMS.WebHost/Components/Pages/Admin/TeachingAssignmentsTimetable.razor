@@ -1,0 +1,464 @@
+@page "/admin/teaching-assignments-timetable"
+@using HAMS.WebHost.Components.Account
+@attribute [Authorize(Policy = SystemOrSchoolAdminPolicy.Name)]
+@rendermode InteractiveServer
+@using HAMS.OrgCurriculum.Application
+@using HAMS.PeopleEnrollment.Application
+@using HAMS.TeachingTimetable.Application
+@using HAMS.TeachingTimetable.Domain
+@using OrgSchool = HAMS.OrgCurriculum.Domain.School
+@using OrgAcademicYear = HAMS.OrgCurriculum.Domain.AcademicYear
+@using OrgClass = HAMS.OrgCurriculum.Domain.Class
+@using CurrSubject = HAMS.OrgCurriculum.Domain.Subject
+@inject IOrgAdminService OrgAdmin
+@inject ICurriculumAdminService CurriculumAdmin
+@inject IPeopleAdminService PeopleAdmin
+@inject ISubjectTeachingAssignmentService SubjectTeachingAssignments
+@inject IClassTeacherAssignmentService ClassTeacherAssignments
+@inject ILeadingTeacherAssignmentService LeadingTeacherAssignments
+@inject ISubstitutionService Substitutions
+@inject IPeriodAdminService PeriodAdmin
+@inject ITimetableService TimetableService
+@inject ISnackbar Snackbar
+
+<PageTitle>Teaching Assignments &amp; Timetable — HAMS</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">System Administration — Teaching Assignments &amp; Timetable</MudText>
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12" sm="4">
+        <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedAsync" Label="School" Dense="true">
+            @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedAsync" Label="Academic Year" Dense="true">
+            @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@if (_selectedAcademicYearId != Guid.Empty)
+{
+    <MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true">
+
+        <MudTabPanel Text="Subject Teaching">
+            <MudSelect T="Guid" Value="_selectedClassId" ValueChanged="OnClassChangedForSubjectTeachingAsync" Label="Class" Dense="true" Class="mb-4">
+                @foreach (var cls in _classes) { <MudSelectItem T="Guid" Value="@cls.Id">@cls.Name</MudSelectItem> }
+            </MudSelect>
+
+            @if (_selectedClassId != Guid.Empty)
+            {
+                <MudTable Items="@_subjectTeachingAssignments" Dense="true" Hover="true" Class="mb-4">
+                    <HeaderContent><MudTh>Staff</MudTh><MudTh>Subject</MudTh><MudTh>From</MudTh><MudTh>To</MudTh><MudTh></MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Staff">@StaffName(context.StaffPersonId)</MudTd>
+                        <MudTd DataLabel="Subject">@SubjectName(context.SubjectId)</MudTd>
+                        <MudTd DataLabel="From">@context.EffectiveFrom</MudTd>
+                        <MudTd DataLabel="To">@context.EffectiveTo</MudTd>
+                        <MudTd>
+                            @if (context.EffectiveTo is null)
+                            {
+                                <MudStack Row="true" Spacing="1">
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => EndSubjectTeachingAsync(context.Id))">End (today)</MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary" OnClick="@(() => SelectSubstitutionTargetAsync(context.Id))">Substitute</MudButton>
+                                </MudStack>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="3">
+                        <MudSelect T="Guid" @bind-Value="_newSubjectTeachingStaffId" Label="Staff" Dense="true">
+                            @foreach (var staff in _staff) { <MudSelectItem T="Guid" Value="@staff.PersonId">@staff.NameEn</MudSelectItem> }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudSelect T="Guid" @bind-Value="_newSubjectTeachingSubjectId" Label="Subject" Dense="true">
+                            @foreach (var subject in _subjects) { <MudSelectItem T="Guid" Value="@subject.Id">@subject.Name</MudSelectItem> }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="3"><MudDatePicker Label="Effective From" Date="_newSubjectTeachingEffectiveFrom" DateChanged="d => _newSubjectTeachingEffectiveFrom = d" /></MudItem>
+                    <MudItem xs="12" sm="3" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AssignSubjectTeachingAsync">Assign</MudButton></MudItem>
+                </MudGrid>
+
+                @if (_substitutionTargetAssignmentId != Guid.Empty)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-2">Create a single-day substitution for @StaffName(_subjectTeachingAssignments.Single(a => a.Id == _substitutionTargetAssignmentId).StaffPersonId)'s assignment.</MudAlert>
+                    <MudGrid Class="mb-4">
+                        <MudItem xs="12" sm="3">
+                            <MudSelect T="Guid" @bind-Value="_substituteStaffId" Label="Substitute Staff" Dense="true">
+                                @foreach (var staff in _staff) { <MudSelectItem T="Guid" Value="@staff.PersonId">@staff.NameEn</MudSelectItem> }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="3"><MudDatePicker Label="Substitution Date" Date="_substitutionDate" DateChanged="d => _substitutionDate = d" /></MudItem>
+                        <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_substitutionReason" Label="Reason (optional)" /></MudItem>
+                        <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="CreateSubstitutionAsync">Create</MudButton></MudItem>
+                    </MudGrid>
+                }
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Class Teacher">
+            <MudSelect T="Guid" Value="_selectedClassId" ValueChanged="OnClassChangedForClassTeacherAsync" Label="Class" Dense="true" Class="mb-4">
+                @foreach (var cls in _classes) { <MudSelectItem T="Guid" Value="@cls.Id">@cls.Name</MudSelectItem> }
+            </MudSelect>
+
+            @if (_selectedClassId != Guid.Empty)
+            {
+                <MudTable Items="@_classTeacherAssignments" Dense="true" Hover="true" Class="mb-4">
+                    <HeaderContent><MudTh>Staff</MudTh><MudTh>From</MudTh><MudTh>To</MudTh><MudTh></MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Staff">@StaffName(context.StaffPersonId)</MudTd>
+                        <MudTd DataLabel="From">@context.EffectiveFrom</MudTd>
+                        <MudTd DataLabel="To">@context.EffectiveTo</MudTd>
+                        <MudTd>
+                            @if (context.EffectiveTo is null)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => EndClassTeacherAsync(context.Id))">End (today)</MudButton>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="Guid" @bind-Value="_newClassTeacherStaffId" Label="Staff" Dense="true">
+                            @foreach (var staff in _staff) { <MudSelectItem T="Guid" Value="@staff.PersonId">@staff.NameEn</MudSelectItem> }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4"><MudDatePicker Label="Effective From" Date="_newClassTeacherEffectiveFrom" DateChanged="d => _newClassTeacherEffectiveFrom = d" /></MudItem>
+                    <MudItem xs="12" sm="4" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AssignClassTeacherAsync">Assign</MudButton></MudItem>
+                </MudGrid>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Leading Teacher">
+            <MudSelect T="Guid" Value="_selectedSubjectId" ValueChanged="OnSubjectChangedForLeadingTeacherAsync" Label="Subject" Dense="true" Class="mb-4">
+                @foreach (var subject in _subjects) { <MudSelectItem T="Guid" Value="@subject.Id">@subject.Name</MudSelectItem> }
+            </MudSelect>
+
+            @if (_selectedSubjectId != Guid.Empty)
+            {
+                <MudTable Items="@_leadingTeacherAssignments" Dense="true" Hover="true" Class="mb-4">
+                    <HeaderContent><MudTh>Staff</MudTh><MudTh>From</MudTh><MudTh>To</MudTh><MudTh></MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Staff">@StaffName(context.StaffPersonId)</MudTd>
+                        <MudTd DataLabel="From">@context.EffectiveFrom</MudTd>
+                        <MudTd DataLabel="To">@context.EffectiveTo</MudTd>
+                        <MudTd>
+                            @if (context.EffectiveTo is null)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => EndLeadingTeacherAsync(context.Id))">End (today)</MudButton>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="4">
+                        <MudSelect T="Guid" @bind-Value="_newLeadingTeacherStaffId" Label="Staff" Dense="true">
+                            @foreach (var staff in _staff) { <MudSelectItem T="Guid" Value="@staff.PersonId">@staff.NameEn</MudSelectItem> }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4"><MudDatePicker Label="Effective From" Date="_newLeadingTeacherEffectiveFrom" DateChanged="d => _newLeadingTeacherEffectiveFrom = d" /></MudItem>
+                    <MudItem xs="12" sm="4" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AssignLeadingTeacherAsync">Assign</MudButton></MudItem>
+                </MudGrid>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Periods">
+            <MudTable Items="@_periods" Dense="true" Hover="true" Class="mb-4">
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Start</MudTh><MudTh>End</MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.Code</MudTd>
+                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                    <MudTd DataLabel="Start">@context.StartTime</MudTd>
+                    <MudTd DataLabel="End">@context.EndTime</MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudGrid>
+                <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="_newPeriodCode" Label="Code" /></MudItem>
+                <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newPeriodName" Label="Name" /></MudItem>
+                <MudItem xs="12" sm="2"><MudTextField T="TimeOnly?" @bind-Value="_newPeriodStart" Label="Start" InputType="InputType.Time" /></MudItem>
+                <MudItem xs="12" sm="2"><MudTextField T="TimeOnly?" @bind-Value="_newPeriodEnd" Label="End" InputType="InputType.Time" /></MudItem>
+                <MudItem xs="12" sm="1"><MudNumericField T="int" @bind-Value="_newPeriodDisplayOrder" Label="Order" /></MudItem>
+                <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreatePeriodAsync">Create</MudButton></MudItem>
+            </MudGrid>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Timetable">
+            <MudSelect T="Guid" Value="_selectedClassId" ValueChanged="OnClassChangedForTimetableAsync" Label="Class" Dense="true" Class="mb-4">
+                @foreach (var cls in _classes) { <MudSelectItem T="Guid" Value="@cls.Id">@cls.Name</MudSelectItem> }
+            </MudSelect>
+
+            @if (_selectedClassId != Guid.Empty)
+            {
+                <MudTable Items="@_timetableEntries" Dense="true" Hover="true" Class="mb-4">
+                    <HeaderContent><MudTh>Day</MudTh><MudTh>Period</MudTh><MudTh>Subject</MudTh><MudTh>Staff</MudTh><MudTh></MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Day">@context.DayOfWeek</MudTd>
+                        <MudTd DataLabel="Period">@(_periods.SingleOrDefault(p => p.Id == context.PeriodId)?.Name ?? context.PeriodId.ToString())</MudTd>
+                        <MudTd DataLabel="Subject">@SubjectName(context.SubjectId)</MudTd>
+                        <MudTd DataLabel="Staff">@(_subjectTeachingAssignments.SingleOrDefault(a => a.Id == context.TeachingAssignmentId) is { } a ? StaffName(a.StaffPersonId) : "—")</MudTd>
+                        <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RemoveTimetableEntryAsync(context.Id))">Remove</MudButton></MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <MudGrid>
+                    <MudItem xs="12" sm="2">
+                        <MudSelect T="DayOfWeek" @bind-Value="_newEntryDayOfWeek" Label="Day" Dense="true">
+                            @foreach (var day in Enum.GetValues<DayOfWeek>()) { <MudSelectItem T="DayOfWeek" Value="@day">@day</MudSelectItem> }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="2">
+                        <MudSelect T="Guid" @bind-Value="_newEntryPeriodId" Label="Period" Dense="true">
+                            @foreach (var period in _periods) { <MudSelectItem T="Guid" Value="@period.Id">@period.Name</MudSelectItem> }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudSelect T="Guid" @bind-Value="_newEntryTeachingAssignmentId" Label="Subject Teaching Assignment" Dense="true">
+                            @foreach (var a in _subjectTeachingAssignments.Where(a => a.EffectiveTo is null)) { <MudSelectItem T="Guid" Value="@a.Id">@SubjectName(a.SubjectId) — @StaffName(a.StaffPersonId)</MudSelectItem> }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="3" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ScheduleTimetableEntryAsync">Schedule</MudButton></MudItem>
+                </MudGrid>
+            }
+        </MudTabPanel>
+
+    </MudTabs>
+}
+
+@code {
+    private IReadOnlyList<OrgSchool> _schools = [];
+    private IReadOnlyList<OrgAcademicYear> _academicYears = [];
+    private IReadOnlyList<OrgClass> _classes = [];
+    private IReadOnlyList<CurrSubject> _subjects = [];
+    private IReadOnlyList<HAMS.PeopleEnrollment.Application.StaffProfileSummary> _staff = [];
+    private IReadOnlyList<Period> _periods = [];
+
+    private Guid _selectedSchoolId;
+    private Guid _selectedAcademicYearId;
+    private Guid _selectedClassId;
+    private Guid _selectedSubjectId;
+
+    private IReadOnlyList<SubjectTeachingAssignment> _subjectTeachingAssignments = [];
+    private Guid _newSubjectTeachingStaffId;
+    private Guid _newSubjectTeachingSubjectId;
+    private DateTime? _newSubjectTeachingEffectiveFrom;
+
+    private Guid _substitutionTargetAssignmentId;
+    private Guid _substituteStaffId;
+    private DateTime? _substitutionDate;
+    private string? _substitutionReason;
+
+    private IReadOnlyList<ClassTeacherAssignment> _classTeacherAssignments = [];
+    private Guid _newClassTeacherStaffId;
+    private DateTime? _newClassTeacherEffectiveFrom;
+
+    private IReadOnlyList<LeadingTeacherAssignment> _leadingTeacherAssignments = [];
+    private Guid _newLeadingTeacherStaffId;
+    private DateTime? _newLeadingTeacherEffectiveFrom;
+
+    private string _newPeriodCode = "";
+    private string _newPeriodName = "";
+    private TimeOnly? _newPeriodStart;
+    private TimeOnly? _newPeriodEnd;
+    private int _newPeriodDisplayOrder;
+
+    private IReadOnlyList<TimetableEntry> _timetableEntries = [];
+    private DayOfWeek _newEntryDayOfWeek = DayOfWeek.Sunday;
+    private Guid _newEntryPeriodId;
+    private Guid _newEntryTeachingAssignmentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _schools = await OrgAdmin.GetSchoolsAsync();
+        _staff = await PeopleAdmin.GetStaffProfilesAsync();
+    }
+
+    private string StaffName(Guid personId) => _staff.SingleOrDefault(s => s.PersonId == personId)?.NameEn ?? personId.ToString();
+    private string SubjectName(Guid subjectId) => _subjects.SingleOrDefault(s => s.Id == subjectId)?.Name ?? subjectId.ToString();
+
+    private async Task OnSchoolChangedAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _selectedAcademicYearId = Guid.Empty;
+        _selectedClassId = Guid.Empty;
+        _selectedSubjectId = Guid.Empty;
+        _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
+        _subjects = await CurriculumAdmin.GetSubjectsAsync(schoolId);
+        _periods = await PeriodAdmin.GetPeriodsAsync(schoolId);
+        _classes = [];
+    }
+
+    private async Task OnAcademicYearChangedAsync(Guid academicYearId)
+    {
+        _selectedAcademicYearId = academicYearId;
+        _selectedClassId = Guid.Empty;
+        _classes = await OrgAdmin.GetClassesAsync(academicYearId);
+    }
+
+    private async Task OnClassChangedForSubjectTeachingAsync(Guid classId)
+    {
+        _selectedClassId = classId;
+        _substitutionTargetAssignmentId = Guid.Empty;
+        _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(classId, _selectedAcademicYearId);
+    }
+
+    private async Task AssignSubjectTeachingAsync()
+    {
+        if (_newSubjectTeachingStaffId == Guid.Empty || _newSubjectTeachingSubjectId == Guid.Empty || _newSubjectTeachingEffectiveFrom is null)
+        {
+            Snackbar.Add("Select staff, subject and an effective date.", Severity.Warning);
+            return;
+        }
+
+        await SubjectTeachingAssignments.AssignAsync(
+            _newSubjectTeachingStaffId, _newSubjectTeachingSubjectId, _selectedClassId, _selectedAcademicYearId, _selectedSchoolId,
+            DateOnly.FromDateTime(_newSubjectTeachingEffectiveFrom.Value), null);
+
+        _newSubjectTeachingStaffId = Guid.Empty; _newSubjectTeachingSubjectId = Guid.Empty; _newSubjectTeachingEffectiveFrom = null;
+        _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(_selectedClassId, _selectedAcademicYearId);
+        Snackbar.Add("Subject teaching assignment created.", Severity.Success);
+    }
+
+    private async Task EndSubjectTeachingAsync(Guid assignmentId)
+    {
+        await SubjectTeachingAssignments.EndAsync(assignmentId, DateOnly.FromDateTime(DateTime.Today));
+        _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(_selectedClassId, _selectedAcademicYearId);
+    }
+
+    private void SelectSubstitutionTargetAsync(Guid assignmentId)
+    {
+        _substitutionTargetAssignmentId = assignmentId;
+        _substituteStaffId = Guid.Empty; _substitutionDate = null; _substitutionReason = null;
+    }
+
+    private async Task CreateSubstitutionAsync()
+    {
+        if (_substituteStaffId == Guid.Empty || _substitutionDate is null)
+        {
+            Snackbar.Add("Select a substitute staff member and date.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            await Substitutions.CreateSubstitutionAsync(
+                _substitutionTargetAssignmentId, _substituteStaffId, DateOnly.FromDateTime(_substitutionDate.Value), _selectedSchoolId, _substitutionReason);
+            _substitutionTargetAssignmentId = Guid.Empty;
+            _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(_selectedClassId, _selectedAcademicYearId);
+            Snackbar.Add("Substitution created.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task OnClassChangedForClassTeacherAsync(Guid classId)
+    {
+        _selectedClassId = classId;
+        _classTeacherAssignments = await ClassTeacherAssignments.GetAssignmentsForClassAsync(classId, _selectedAcademicYearId);
+    }
+
+    private async Task AssignClassTeacherAsync()
+    {
+        if (_newClassTeacherStaffId == Guid.Empty || _newClassTeacherEffectiveFrom is null)
+        {
+            Snackbar.Add("Select staff and an effective date.", Severity.Warning);
+            return;
+        }
+
+        await ClassTeacherAssignments.AssignAsync(_newClassTeacherStaffId, _selectedClassId, _selectedAcademicYearId, _selectedSchoolId, DateOnly.FromDateTime(_newClassTeacherEffectiveFrom.Value), null);
+        _newClassTeacherStaffId = Guid.Empty; _newClassTeacherEffectiveFrom = null;
+        _classTeacherAssignments = await ClassTeacherAssignments.GetAssignmentsForClassAsync(_selectedClassId, _selectedAcademicYearId);
+        Snackbar.Add("Class teacher assignment created.", Severity.Success);
+    }
+
+    private async Task EndClassTeacherAsync(Guid assignmentId)
+    {
+        await ClassTeacherAssignments.EndAsync(assignmentId, DateOnly.FromDateTime(DateTime.Today));
+        _classTeacherAssignments = await ClassTeacherAssignments.GetAssignmentsForClassAsync(_selectedClassId, _selectedAcademicYearId);
+    }
+
+    private async Task OnSubjectChangedForLeadingTeacherAsync(Guid subjectId)
+    {
+        _selectedSubjectId = subjectId;
+        _leadingTeacherAssignments = await LeadingTeacherAssignments.GetAssignmentsForSubjectAsync(subjectId, _selectedAcademicYearId);
+    }
+
+    private async Task AssignLeadingTeacherAsync()
+    {
+        if (_newLeadingTeacherStaffId == Guid.Empty || _newLeadingTeacherEffectiveFrom is null)
+        {
+            Snackbar.Add("Select staff and an effective date.", Severity.Warning);
+            return;
+        }
+
+        await LeadingTeacherAssignments.AssignAsync(_newLeadingTeacherStaffId, _selectedSubjectId, _selectedAcademicYearId, _selectedSchoolId, DateOnly.FromDateTime(_newLeadingTeacherEffectiveFrom.Value), null);
+        _newLeadingTeacherStaffId = Guid.Empty; _newLeadingTeacherEffectiveFrom = null;
+        _leadingTeacherAssignments = await LeadingTeacherAssignments.GetAssignmentsForSubjectAsync(_selectedSubjectId, _selectedAcademicYearId);
+        Snackbar.Add("Leading teacher assignment created.", Severity.Success);
+    }
+
+    private async Task EndLeadingTeacherAsync(Guid assignmentId)
+    {
+        await LeadingTeacherAssignments.EndAsync(assignmentId, DateOnly.FromDateTime(DateTime.Today));
+        _leadingTeacherAssignments = await LeadingTeacherAssignments.GetAssignmentsForSubjectAsync(_selectedSubjectId, _selectedAcademicYearId);
+    }
+
+    private async Task CreatePeriodAsync()
+    {
+        if (_newPeriodStart is null || _newPeriodEnd is null)
+        {
+            Snackbar.Add("Set a start and end time.", Severity.Warning);
+            return;
+        }
+
+        await PeriodAdmin.CreatePeriodAsync(_selectedSchoolId, _newPeriodCode, _newPeriodName, _newPeriodStart.Value, _newPeriodEnd.Value, _newPeriodDisplayOrder);
+        _newPeriodCode = ""; _newPeriodName = ""; _newPeriodStart = null; _newPeriodEnd = null; _newPeriodDisplayOrder = 0;
+        _periods = await PeriodAdmin.GetPeriodsAsync(_selectedSchoolId);
+        Snackbar.Add("Period created.", Severity.Success);
+    }
+
+    private async Task OnClassChangedForTimetableAsync(Guid classId)
+    {
+        _selectedClassId = classId;
+        _timetableEntries = await TimetableService.GetEntriesForClassAsync(classId, _selectedAcademicYearId);
+        _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(classId, _selectedAcademicYearId);
+    }
+
+    private async Task ScheduleTimetableEntryAsync()
+    {
+        if (_newEntryPeriodId == Guid.Empty || _newEntryTeachingAssignmentId == Guid.Empty)
+        {
+            Snackbar.Add("Select a period and a subject teaching assignment.", Severity.Warning);
+            return;
+        }
+
+        var assignment = _subjectTeachingAssignments.Single(a => a.Id == _newEntryTeachingAssignmentId);
+
+        try
+        {
+            await TimetableService.ScheduleAsync(
+                _selectedSchoolId, _selectedClassId, assignment.SubjectId, _newEntryTeachingAssignmentId, _selectedAcademicYearId,
+                _newEntryDayOfWeek, _newEntryPeriodId);
+            _newEntryPeriodId = Guid.Empty; _newEntryTeachingAssignmentId = Guid.Empty;
+            _timetableEntries = await TimetableService.GetEntriesForClassAsync(_selectedClassId, _selectedAcademicYearId);
+            Snackbar.Add("Timetable entry scheduled.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task RemoveTimetableEntryAsync(Guid timetableEntryId)
+    {
+        await TimetableService.RemoveAsync(timetableEntryId);
+        _timetableEntries = await TimetableService.GetEntriesForClassAsync(_selectedClassId, _selectedAcademicYearId);
+    }
+}

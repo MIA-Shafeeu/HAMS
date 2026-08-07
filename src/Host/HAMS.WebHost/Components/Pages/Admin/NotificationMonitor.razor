@@ -1,0 +1,99 @@
+@page "/admin/notifications"
+@using HAMS.WebHost.Components.Account
+@attribute [Authorize(Policy = SystemOrSchoolAdminPolicy.Name)]
+@rendermode InteractiveServer
+@using HAMS.Platform.Notifications.Application
+@using HAMS.Platform.Notifications.Domain
+@inject INotificationAdminService NotificationAdmin
+@inject ISnackbar Snackbar
+
+<PageTitle>Notification Outbox — HAMS</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Notification Outbox Monitor</MudText>
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12" sm="4">
+        <MudSelect T="NotificationDeliveryStatus?" Value="_statusFilter" ValueChanged="OnStatusFilterChangedAsync" Label="Status">
+            <MudSelectItem T="NotificationDeliveryStatus?" Value="@((NotificationDeliveryStatus?)null)">All</MudSelectItem>
+            <MudSelectItem T="NotificationDeliveryStatus?" Value="@((NotificationDeliveryStatus?)NotificationDeliveryStatus.Pending)">Pending</MudSelectItem>
+            <MudSelectItem T="NotificationDeliveryStatus?" Value="@((NotificationDeliveryStatus?)NotificationDeliveryStatus.Sent)">Sent</MudSelectItem>
+            <MudSelectItem T="NotificationDeliveryStatus?" Value="@((NotificationDeliveryStatus?)NotificationDeliveryStatus.Failed)">Failed</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="2" Class="d-flex align-end">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RefreshAsync">Refresh</MudButton>
+    </MudItem>
+</MudGrid>
+
+<MudTable Items="@_entries" Dense="true" Hover="true">
+    <HeaderContent>
+        <MudTh>Channel</MudTh>
+        <MudTh>Recipient</MudTh>
+        <MudTh>Subject</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Attempts</MudTh>
+        <MudTh>Last Error</MudTh>
+        <MudTh>Created</MudTh>
+        <MudTh>Sent</MudTh>
+        <MudTh></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Channel">@context.ChannelCode</MudTd>
+        <MudTd DataLabel="Recipient">@context.Recipient</MudTd>
+        <MudTd DataLabel="Subject">@context.Subject</MudTd>
+        <MudTd DataLabel="Status">
+            <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Attempts">@context.AttemptCount</MudTd>
+        <MudTd DataLabel="Last Error">@context.LastError</MudTd>
+        <MudTd DataLabel="Created">@context.CreatedAtUtc.LocalDateTime.ToString("g")</MudTd>
+        <MudTd DataLabel="Sent">@(context.SentAtUtc?.LocalDateTime.ToString("g") ?? "—")</MudTd>
+        <MudTd>
+            @if (context.Status == NotificationDeliveryStatus.Failed)
+            {
+                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Warning" OnClick="@(() => RetryAsync(context.Id))">
+                    Retry
+                </MudButton>
+            }
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private IReadOnlyList<NotificationOutboxSummary> _entries = [];
+    private NotificationDeliveryStatus? _statusFilter;
+
+    protected override Task OnInitializedAsync() => RefreshAsync();
+
+    private async Task OnStatusFilterChangedAsync(NotificationDeliveryStatus? status)
+    {
+        _statusFilter = status;
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        _entries = await NotificationAdmin.GetEntriesAsync(_statusFilter);
+    }
+
+    private async Task RetryAsync(Guid entryId)
+    {
+        try
+        {
+            await NotificationAdmin.RetryAsync(entryId);
+            Snackbar.Add("Notification re-queued for delivery.", Severity.Success);
+            await RefreshAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private static Color StatusColor(NotificationDeliveryStatus status) => status switch
+    {
+        NotificationDeliveryStatus.Sent => Color.Success,
+        NotificationDeliveryStatus.Failed => Color.Error,
+        _ => Color.Default,
+    };
+}

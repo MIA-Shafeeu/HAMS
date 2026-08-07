@@ -1,0 +1,54 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudText Typo="Typo.h6">HAMS Portal</MudText>
+        <MudText Typo="Typo.body2" Class="ml-2">Hirilandhoo Academic Management System</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudButton Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Logout" OnClick="LogoutAsync">
+                    Sign out
+                </MudButton>
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Medium" Class="my-6 px-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    [Inject] private TokenStorage TokenStorage { get; set; } = null!;
+    [Inject] private PortalAuthenticationStateProvider AuthStateProvider { get; set; } = null!;
+    [Inject] private IHttpClientFactory HttpClientFactory { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+
+    private async Task LogoutAsync()
+    {
+        var refreshToken = await TokenStorage.GetRefreshTokenAsync();
+        if (!string.IsNullOrEmpty(refreshToken))
+        {
+            var client = HttpClientFactory.CreateClient("HAMS.Api.Refresh");
+            try
+            {
+                await client.PostAsJsonAsync("/api/v1/auth/logout", new RefreshRequestDto(refreshToken), PortalJson.Options);
+            }
+            catch (HttpRequestException)
+            {
+                // Best-effort server-side revocation — clear the local session regardless.
+            }
+        }
+
+        await TokenStorage.ClearAsync();
+        AuthStateProvider.NotifyAuthenticationStateChanged();
+        Nav.NavigateTo("/portal", forceLoad: false);
+    }
+}

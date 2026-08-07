@@ -1,0 +1,377 @@
+@page "/homework"
+@using HAMS.WebHost.Components.Account
+@attribute [Authorize(Policy = StaffPolicy.Name)]
+@rendermode InteractiveServer
+@using HAMS.IdentityAccess.Application.Jwt
+@using HAMS.LearningDelivery.Application
+@using HomeworkEntity = HAMS.LearningDelivery.Domain.Homework
+@using HAMS.OrgCurriculum.Application
+@using HAMS.PeopleEnrollment.Application
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject IOrgStructureLookup OrgLookup
+@inject IStudentEnrollmentService EnrollmentService
+@inject IHomeworkService HomeworkService
+@inject IHomeworkSubmissionService SubmissionService
+@inject ISnackbar Snackbar
+
+<PageTitle>Homework — HAMS</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Homework</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedAsync" Label="School" Dense="true">
+                @foreach (var school in _schools)
+                {
+                    <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedAsync" Label="Academic year" Dense="true" Disabled="@(_academicYears.Count == 0)">
+                @foreach (var year in _academicYears)
+                {
+                    <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" Value="_selectedClassId" ValueChanged="OnClassChangedAsync" Label="Class" Dense="true" Disabled="@(_classes.Count == 0)">
+                @foreach (var classOption in _classes)
+                {
+                    <MudSelectItem T="Guid" Value="@classOption.Id">@classOption.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" @bind-Value="_newSubjectId" Label="Subject" Dense="true" Disabled="@(_subjects.Count == 0)">
+                @foreach (var subject in _subjects)
+                {
+                    <MudSelectItem T="Guid" Value="@subject.Id">@subject.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_selectedClassId == Guid.Empty)
+{
+    <MudAlert Severity="Severity.Info">Choose a school, academic year and class to continue.</MudAlert>
+}
+else
+{
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Assign New Homework</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_newTitleEn" Label="Title (English)" /></MudItem>
+            <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_newTitleDv" Label="Title (Dhivehi)" /></MudItem>
+            <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_newInstructionsEn" Label="Instructions (English)" Lines="3" /></MudItem>
+            <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_newInstructionsDv" Label="Instructions (Dhivehi)" Lines="3" /></MudItem>
+            <MudItem xs="12" sm="4"><MudDatePicker Label="Assigned date" Date="_newAssignedDate" DateChanged="d => _newAssignedDate = d" /></MudItem>
+            <MudItem xs="12" sm="4"><MudDatePicker Label="Due date" Date="_newDueDate" DateChanged="d => _newDueDate = d" /></MudItem>
+            <MudItem xs="12" sm="4"><MudNumericField T="int?" @bind-Value="_newMaxScore" Label="Max score (optional)" /></MudItem>
+        </MudGrid>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="CreateHomeworkAsync" Disabled="_saving">
+            Assign Homework
+        </MudButton>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Assigned Homework</MudText>
+        @if (_homeworkItems.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No homework assigned to this class yet.</MudText>
+        }
+        else
+        {
+            <MudTable Items="@_homeworkItems" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Title</MudTh>
+                    <MudTh>Assigned</MudTh>
+                    <MudTh>Due</MudTh>
+                    <MudTh>Max Score</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Title">@context.TitleEn</MudTd>
+                    <MudTd DataLabel="Assigned">@context.AssignedDate.ToString("yyyy-MM-dd")</MudTd>
+                    <MudTd DataLabel="Due">@context.DueDate.ToString("yyyy-MM-dd")</MudTd>
+                    <MudTd DataLabel="Max Score">@(context.MaxScore?.ToString() ?? "—")</MudTd>
+                    <MudTd>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectHomeworkAsync(context.Id))">
+                            View Submissions
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudPaper>
+
+    @if (_selectedHomeworkId is { } homeworkId)
+    {
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-2">Submissions</MudText>
+            @if (_submissionRows.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">No student in this class has submitted yet.</MudText>
+            }
+            else
+            {
+                <MudTable Items="@_submissionRows" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Student</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Submitted</MudTh>
+                        <MudTh>Score</MudTh>
+                        <MudTh>Feedback</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Student">@context.StudentName</MudTd>
+                        <MudTd DataLabel="Status">@context.Status</MudTd>
+                        <MudTd DataLabel="Submitted">@context.SubmittedAtUtc.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                        <MudTd DataLabel="Score">
+                            <MudNumericField T="int?" @bind-Value="context.Score" Margin="Margin.Dense" />
+                        </MudTd>
+                        <MudTd DataLabel="Feedback">
+                            <MudTextField T="string" @bind-Value="context.Feedback" Margin="Margin.Dense" />
+                        </MudTd>
+                        <MudTd>
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => GradeSubmissionAsync(context))">
+                                Save Grade
+                            </MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudPaper>
+    }
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private Guid? _currentPersonId;
+
+    private IReadOnlyList<SchoolOption> _schools = [];
+    private IReadOnlyList<AcademicYearOption> _academicYears = [];
+    private IReadOnlyList<ClassOption> _classes = [];
+    private IReadOnlyList<SubjectOption> _subjects = [];
+
+    private Guid _selectedSchoolId;
+    private Guid _selectedAcademicYearId;
+    private Guid _selectedClassId;
+    private Guid _newSubjectId;
+
+    private List<HomeworkEntity> _homeworkItems = [];
+    private Guid? _selectedHomeworkId;
+    private List<SubmissionRow> _submissionRows = [];
+    private Dictionary<Guid, string> _rosterNamesByStudentId = [];
+
+    private string _newTitleEn = "";
+    private string _newTitleDv = "";
+    private string _newInstructionsEn = "";
+    private string _newInstructionsDv = "";
+    private DateTime? _newAssignedDate = DateTime.Today;
+    private DateTime? _newDueDate = DateTime.Today.AddDays(7);
+    private int? _newMaxScore;
+
+    private bool _loading = true;
+    private bool _saving;
+
+    private sealed class SubmissionRow(Guid submissionId, string studentName, string status, DateTimeOffset submittedAtUtc, int? score, string? feedback)
+    {
+        public Guid SubmissionId { get; } = submissionId;
+        public string StudentName { get; } = studentName;
+        public string Status { get; } = status;
+        public DateTimeOffset SubmittedAtUtc { get; } = submittedAtUtc;
+        public int? Score { get; set; } = score;
+        public string? Feedback { get; set; } = feedback;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            var user = (await AuthState).User;
+            if (Guid.TryParse(user.FindFirstValue(HamsClaimTypes.PersonId), out var personId))
+            {
+                _currentPersonId = personId;
+            }
+        }
+
+        try
+        {
+            _schools = await OrgLookup.GetSchoolsAsync();
+            if (_schools.Count > 0)
+            {
+                await OnSchoolChangedAsync(_schools[0].Id);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Could not load homework setup data.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnSchoolChangedAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _selectedAcademicYearId = Guid.Empty;
+        _selectedClassId = Guid.Empty;
+        _classes = [];
+        _homeworkItems = [];
+        _selectedHomeworkId = null;
+
+        _academicYears = await OrgLookup.GetAcademicYearsAsync(schoolId);
+        _subjects = await OrgLookup.GetSubjectsAsync(schoolId);
+        if (_subjects.Count > 0)
+        {
+            _newSubjectId = _subjects[0].Id;
+        }
+
+        if (_academicYears.Count > 0)
+        {
+            await OnAcademicYearChangedAsync(_academicYears[0].Id);
+        }
+    }
+
+    private async Task OnAcademicYearChangedAsync(Guid academicYearId)
+    {
+        _selectedAcademicYearId = academicYearId;
+        _selectedClassId = Guid.Empty;
+        _homeworkItems = [];
+        _selectedHomeworkId = null;
+
+        _classes = await OrgLookup.GetClassesAsync(academicYearId);
+        if (_classes.Count > 0)
+        {
+            await OnClassChangedAsync(_classes[0].Id);
+        }
+    }
+
+    private async Task OnClassChangedAsync(Guid classId)
+    {
+        _selectedClassId = classId;
+        _selectedHomeworkId = null;
+        await LoadRosterAndHomeworkAsync();
+    }
+
+    private async Task LoadRosterAndHomeworkAsync()
+    {
+        if (_selectedClassId == Guid.Empty)
+        {
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            var roster = await EnrollmentService.GetActiveRosterForClassAsync(_selectedClassId, DateOnly.FromDateTime(DateTime.Today));
+            _rosterNamesByStudentId = roster.ToDictionary(r => r.StudentPersonId, r => r.NameEn);
+
+            var homework = await HomeworkService.ListForClassAsync(_selectedClassId);
+            _homeworkItems = homework.ToList();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Could not load homework for this class.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CreateHomeworkAsync()
+    {
+        if (_currentPersonId is not { } assignedBy || _newAssignedDate is not { } assigned || _newDueDate is not { } due)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_newTitleEn) || string.IsNullOrWhiteSpace(_newTitleDv)
+            || string.IsNullOrWhiteSpace(_newInstructionsEn) || string.IsNullOrWhiteSpace(_newInstructionsDv))
+        {
+            Snackbar.Add("Title and instructions are required in both languages.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            await HomeworkService.CreateAsync(
+                _selectedClassId, _newSubjectId, null, _newTitleEn, _newTitleDv, _newInstructionsEn, _newInstructionsDv,
+                DateOnly.FromDateTime(assigned), DateOnly.FromDateTime(due), _newMaxScore, assignedBy);
+
+            _newTitleEn = "";
+            _newTitleDv = "";
+            _newInstructionsEn = "";
+            _newInstructionsDv = "";
+            _newMaxScore = null;
+
+            Snackbar.Add("Homework assigned.", Severity.Success);
+            await LoadRosterAndHomeworkAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SelectHomeworkAsync(Guid homeworkId)
+    {
+        _selectedHomeworkId = homeworkId;
+        try
+        {
+            var submissions = await SubmissionService.ListForHomeworkAsync(homeworkId);
+            _submissionRows = submissions
+                .Select(s => new SubmissionRow(
+                    s.Id,
+                    _rosterNamesByStudentId.TryGetValue(s.StudentPersonId, out var name) ? name : "(not in current roster)",
+                    s.Status.ToString(), s.SubmittedAtUtc, s.Score, s.FeedbackText))
+                .ToList();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Could not load submissions.", Severity.Error);
+        }
+    }
+
+    private async Task GradeSubmissionAsync(SubmissionRow row)
+    {
+        if (_currentPersonId is not { } gradedBy)
+        {
+            return;
+        }
+
+        try
+        {
+            await SubmissionService.GradeAsync(row.SubmissionId, row.Score, row.Feedback, gradedBy);
+            Snackbar.Add("Grade saved.", Severity.Success);
+            if (_selectedHomeworkId is { } homeworkId)
+            {
+                await SelectHomeworkAsync(homeworkId);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

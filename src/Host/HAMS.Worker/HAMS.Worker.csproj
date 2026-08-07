@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-HAMS.Worker-22e026a4-fe72-4f9a-89d1-073b2246ee48</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Hangfire.SqlServer" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Modules\HAMS.AdminIntegration\HAMS.AdminIntegration.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.AssessmentEvaluation\HAMS.AssessmentEvaluation.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.Attendance\HAMS.Attendance.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.CommunicationPortals\HAMS.CommunicationPortals.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.Fundraising\HAMS.Fundraising.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.IdentityAccess\HAMS.IdentityAccess.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.Intervention\HAMS.Intervention.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.LearningDelivery\HAMS.LearningDelivery.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.OrgCurriculum\HAMS.OrgCurriculum.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.PeopleEnrollment\HAMS.PeopleEnrollment.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.ReportingAnalyticsAudit\HAMS.ReportingAnalyticsAudit.csproj" />
+    <ProjectReference Include="..\..\Modules\HAMS.TeachingTimetable\HAMS.TeachingTimetable.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Access\HAMS.Platform.Access.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Audit\HAMS.Platform.Audit.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Common\HAMS.Platform.Common.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Documents\HAMS.Platform.Documents.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Notifications\HAMS.Platform.Notifications.csproj" />
+    <ProjectReference Include="..\..\Platform\HAMS.Platform.Workflow\HAMS.Platform.Workflow.csproj" />
+  </ItemGroup>
+</Project>

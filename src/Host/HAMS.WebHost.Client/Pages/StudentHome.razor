@@ -1,0 +1,224 @@
+@page "/portal/student"
+@layout PortalLayout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<MudText Typo="Typo.h5" Class="mb-4">My Portal</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudTabs Elevation="1" Rounded="true">
+        <MudTabPanel Text="Results">
+            @if (_results.Count == 0)
+            {
+                <MudText Class="pa-4">No results recorded yet.</MudText>
+            }
+            else
+            {
+                <MudTable Items="@_results" Dense="true" Class="mt-2">
+                    <HeaderContent><MudTh>Subject</MudTh><MudTh>Overall %</MudTh><MudTh>Recorded</MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@_subjectNames.GetValueOrDefault(context.SubjectId, "—")</MudTd>
+                        <MudTd>@(context.OverallPercentage?.ToString("0.0") ?? "—")</MudTd>
+                        <MudTd>@context.RecordedAtUtc.LocalDateTime.ToString("d")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Attendance">
+            <MudText Typo="Typo.body2" Class="mb-2">Last 30 days</MudText>
+            @if (_attendance.Count == 0)
+            {
+                <MudText Class="pa-4">No attendance records in this range.</MudText>
+            }
+            else
+            {
+                <MudTable Items="@_attendance" Dense="true">
+                    <HeaderContent><MudTh>Date</MudTh><MudTh>Status</MudTh><MudTh>Notes</MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Date.ToString("d")</MudTd>
+                        <MudTd>@context.AttendanceStatusCode</MudTd>
+                        <MudTd>@context.Notes</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Homework">
+            <MudSelect T="Guid" Value="_academicYearId" ValueChanged="OnAcademicYearChangedAsync" Label="Academic Year" Class="mb-2" Style="max-width:300px">
+                @foreach (var year in _academicYears)
+                {
+                    <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem>
+                }
+            </MudSelect>
+            @if (_homework.Count == 0)
+            {
+                <MudText Class="pa-4">No homework recorded for this academic year.</MudText>
+            }
+            else
+            {
+                @foreach (var homework in _homework)
+                {
+                    <MudCard Class="mb-3">
+                        <MudCardContent>
+                            <MudText Typo="Typo.subtitle1">@_subjectNames.GetValueOrDefault(homework.SubjectId, "—") — @homework.TitleEn</MudText>
+                            <MudText Typo="Typo.body2" Class="mb-2">@homework.InstructionsEn</MudText>
+                            <MudText Typo="Typo.caption">Due @homework.DueDate.ToString("d")</MudText>
+
+                            @if (_submitted.Contains(homework.Id))
+                            {
+                                <MudAlert Severity="Severity.Success" Class="mt-2" Dense="true">Submitted.</MudAlert>
+                            }
+                            else
+                            {
+                                <MudTextField T="string" @bind-Value="_submissionText[homework.Id]" Label="Your answer" Lines="2" Class="mt-2" />
+                                <MudButton Class="mt-2" Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                           OnClick="@(() => SubmitHomeworkAsync(homework.Id))">
+                                    Submit
+                                </MudButton>
+                            }
+                        </MudCardContent>
+                    </MudCard>
+                }
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Report Cards">
+            @if (_reportCards.Count == 0)
+            {
+                <MudText Class="pa-4">No published report cards yet.</MudText>
+            }
+            else
+            {
+                <MudTable Items="@_reportCards" Dense="true" Class="mt-2">
+                    <HeaderContent><MudTh>Prepared</MudTh><MudTh>Next Steps</MudTh><MudTh></MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.PreparedAtUtc.LocalDateTime.ToString("d")</MudTd>
+                        <MudTd>@context.NextStepsEn</MudTd>
+                        <MudTd>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => DownloadReportCardAsync(context.Id))">PDF</MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
+}
+
+@code {
+    [Inject] private HttpClient Http { get; set; } = null!;
+    [Inject] private PortalAuthenticationStateProvider AuthStateProvider { get; set; } = null!;
+    [Inject] private PortalReferenceDataCache ReferenceData { get; set; } = null!;
+    [Inject] private FileDownloader FileDownloader { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+
+    private List<KeyStageEvaluationDto> _results = [];
+    private List<AttendanceRecordSummaryDto> _attendance = [];
+    private List<StudentHomeworkDto> _homework = [];
+    private List<ReportCardDto> _reportCards = [];
+    private IReadOnlyList<AcademicYearRef> _academicYears = [];
+    private Dictionary<Guid, string> _subjectNames = [];
+    private Dictionary<Guid, string> _submissionText = [];
+    private HashSet<Guid> _submitted = [];
+    private Guid _academicYearId;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthStateProvider.HasClaimAsync(HamsClaimTypes.IsStudent, "true"))
+        {
+            Nav.NavigateTo("/student/login", forceLoad: false);
+            return;
+        }
+
+        try
+        {
+            _results = await Http.GetFromJsonAsync<List<KeyStageEvaluationDto>>("/api/v1/portal/student/results", PortalJson.Options) ?? [];
+            foreach (var evaluation in _results)
+            {
+                if (!_subjectNames.ContainsKey(evaluation.SubjectId))
+                {
+                    _subjectNames[evaluation.SubjectId] = await ReferenceData.GetSubjectNameAsync(evaluation.SubjectId);
+                }
+            }
+
+            var toDate = DateOnly.FromDateTime(DateTime.Now);
+            var fromDate = toDate.AddDays(-30);
+            _attendance = await Http.GetFromJsonAsync<List<AttendanceRecordSummaryDto>>(
+                $"/api/v1/portal/student/attendance?fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}", PortalJson.Options) ?? [];
+
+            _reportCards = await Http.GetFromJsonAsync<List<ReportCardDto>>("/api/v1/portal/student/report-cards", PortalJson.Options) ?? [];
+
+            _academicYears = await ReferenceData.GetAcademicYearsAsync();
+            if (_academicYears.Count > 0)
+            {
+                _academicYearId = _academicYears[^1].Id;
+                await LoadHomeworkAsync();
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _error = "Could not load your portal information. Please try again later.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnAcademicYearChangedAsync(Guid academicYearId)
+    {
+        _academicYearId = academicYearId;
+        await LoadHomeworkAsync();
+    }
+
+    private async Task LoadHomeworkAsync()
+    {
+        if (_academicYearId == Guid.Empty)
+        {
+            return;
+        }
+
+        _homework = await Http.GetFromJsonAsync<List<StudentHomeworkDto>>(
+            $"/api/v1/portal/student/homework?academicYearId={_academicYearId}", PortalJson.Options) ?? [];
+
+        foreach (var homework in _homework)
+        {
+            _submissionText.TryAdd(homework.Id, "");
+            if (!_subjectNames.ContainsKey(homework.SubjectId))
+            {
+                _subjectNames[homework.SubjectId] = await ReferenceData.GetSubjectNameAsync(homework.SubjectId);
+            }
+        }
+    }
+
+    private async Task SubmitHomeworkAsync(Guid homeworkId)
+    {
+        var text = _submissionText.GetValueOrDefault(homeworkId, "");
+        var response = await Http.PostAsJsonAsync(
+            $"/api/v1/portal/student/homework/{homeworkId}/submissions",
+            new SubmitHomeworkDto(text, null),
+            PortalJson.Options);
+
+        if (response.IsSuccessStatusCode)
+        {
+            _submitted.Add(homeworkId);
+        }
+    }
+
+    private async Task DownloadReportCardAsync(Guid reportCardId)
+    {
+        var bytes = await Http.GetByteArrayAsync($"/api/v1/portal/student/report-cards/{reportCardId}/pdf");
+        await FileDownloader.DownloadAsync("report-card.pdf", "application/pdf", bytes);
+    }
+}

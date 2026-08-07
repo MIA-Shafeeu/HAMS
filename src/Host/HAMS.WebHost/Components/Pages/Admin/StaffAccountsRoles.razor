@@ -1,0 +1,228 @@
+@page "/admin/staff-accounts-roles"
+@using HAMS.WebHost.Components.Account
+@attribute [Authorize(Policy = SystemOrSchoolAdminPolicy.Name)]
+@rendermode InteractiveServer
+@using HAMS.IdentityAccess.Application.Auth
+@using HAMS.IdentityAccess.Domain
+@using HAMS.OrgCurriculum.Application
+@using HAMS.PeopleEnrollment.Application
+@using HAMS.Platform.Access
+@using AccessRole = HAMS.Platform.Access.Domain.Role
+@using AccessPersonRoleAssignment = HAMS.Platform.Access.Domain.PersonRoleAssignment
+@using OrgSchool = HAMS.OrgCurriculum.Domain.School
+@inject IPeopleAdminService PeopleAdmin
+@inject IStaffAccountService StaffAccounts
+@inject IPersonRoleAssignmentService RoleAssignments
+@inject IOrgAdminService OrgAdmin
+@inject ISnackbar Snackbar
+
+<PageTitle>Staff Accounts &amp; Roles — HAMS</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">System Administration — Staff Accounts &amp; Roles</MudText>
+
+<MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true">
+
+    <MudTabPanel Text="Staff Accounts">
+        <MudTable Items="@_staff" Dense="true" Hover="true" Class="mb-4">
+            <HeaderContent><MudTh>Name</MudTh><MudTh>Employee No.</MudTh><MudTh>Username</MudTh><MudTh>Status</MudTh><MudTh></MudTh></HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.NameEn</MudTd>
+                <MudTd DataLabel="Employee No.">@context.EmployeeNumber</MudTd>
+                <MudTd DataLabel="Username">@(_accountsByPersonId.GetValueOrDefault(context.PersonId)?.UserName ?? "—")</MudTd>
+                <MudTd DataLabel="Status">@(_accountsByPersonId.GetValueOrDefault(context.PersonId)?.Status.ToString() ?? "No account")</MudTd>
+                <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectStaffAsync(context.PersonId))">Manage</MudButton></MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        @if (_selectedStaffPersonId != Guid.Empty)
+        {
+            var account = _accountsByPersonId.GetValueOrDefault(_selectedStaffPersonId);
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.h6" Class="mb-2">@_staff.SingleOrDefault(s => s.PersonId == _selectedStaffPersonId)?.NameEn</MudText>
+
+            @if (account is null)
+            {
+                <MudText Typo="Typo.body2" Class="mb-2">No login account exists yet for this staff member.</MudText>
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newAccountUserName" Label="Username" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newAccountEmail" Label="Email (optional)" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newAccountPassword" Label="Initial Password" InputType="InputType.Password" /></MudItem>
+                    <MudItem xs="12" sm="3" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAccountAsync">Create Account</MudButton></MudItem>
+                </MudGrid>
+            }
+            else
+            {
+                <MudGrid Class="mb-2">
+                    <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_resetPassword" Label="New Password" InputType="InputType.Password" /></MudItem>
+                    <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetPasswordAsync">Reset Password</MudButton></MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudSelect T="AccountStatus" Value="account.Status" ValueChanged="SetAccountStatusAsync" Label="Account Status" Dense="true">
+                            <MudSelectItem T="AccountStatus" Value="AccountStatus.Active">Active</MudSelectItem>
+                            <MudSelectItem T="AccountStatus" Value="AccountStatus.Suspended">Suspended</MudSelectItem>
+                            <MudSelectItem T="AccountStatus" Value="AccountStatus.Disabled">Disabled</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+            }
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Roles">
+        <MudSelect T="Guid" Value="_selectedRolesPersonId" ValueChanged="OnRolesPersonChangedAsync" Label="Staff Member" Dense="true" Class="mb-4">
+            @foreach (var staff in _staff) { <MudSelectItem T="Guid" Value="@staff.PersonId">@staff.NameEn</MudSelectItem> }
+        </MudSelect>
+
+        @if (_selectedRolesPersonId != Guid.Empty)
+        {
+            <MudTable Items="@_assignments" Dense="true" Hover="true" Class="mb-3">
+                <HeaderContent><MudTh>Role</MudTh><MudTh>School</MudTh><MudTh>From</MudTh><MudTh>To</MudTh><MudTh></MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Role">@(_roles.SingleOrDefault(r => r.Id == context.RoleId)?.Name ?? context.RoleId.ToString())</MudTd>
+                    <MudTd DataLabel="School">@(context.SchoolId is null ? "All Schools" : (_schools.SingleOrDefault(s => s.Id == context.SchoolId)?.Name ?? context.SchoolId.ToString()))</MudTd>
+                    <MudTd DataLabel="From">@context.EffectiveFrom</MudTd>
+                    <MudTd DataLabel="To">@context.EffectiveTo</MudTd>
+                    <MudTd>
+                        @if (context.EffectiveTo is null)
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RevokeRoleAsync(context.Id))">Revoke (today)</MudButton>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="Guid" @bind-Value="_newRoleId" Label="Role" Dense="true">
+                        @foreach (var role in _roles) { <MudSelectItem T="Guid" Value="@role.Id">@role.Name</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="Guid" @bind-Value="_newRoleSchoolId" Label="School (blank = all)" Dense="true">
+                        <MudSelectItem T="Guid" Value="Guid.Empty">All Schools</MudSelectItem>
+                        @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3"><MudDatePicker Label="Effective From" Date="_newRoleEffectiveFrom" DateChanged="d => _newRoleEffectiveFrom = d" /></MudItem>
+                <MudItem xs="12" sm="3" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AssignRoleAsync">Assign Role</MudButton></MudItem>
+            </MudGrid>
+        }
+    </MudTabPanel>
+
+</MudTabs>
+
+@code {
+    private IReadOnlyList<StaffProfileSummary> _staff = [];
+    private Dictionary<Guid, StaffAccountSummary> _accountsByPersonId = [];
+    private IReadOnlyList<AccessRole> _roles = [];
+    private IReadOnlyList<OrgSchool> _schools = [];
+
+    private Guid _selectedStaffPersonId;
+    private string _newAccountUserName = "";
+    private string? _newAccountEmail;
+    private string _newAccountPassword = "";
+    private string _resetPassword = "";
+
+    private Guid _selectedRolesPersonId;
+    private IReadOnlyList<AccessPersonRoleAssignment> _assignments = [];
+    private Guid _newRoleId;
+    private Guid _newRoleSchoolId;
+    private DateTime? _newRoleEffectiveFrom;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _staff = await PeopleAdmin.GetStaffProfilesAsync();
+        _roles = await RoleAssignments.GetRolesAsync();
+        _schools = await OrgAdmin.GetSchoolsAsync();
+        await RefreshAccountsAsync();
+    }
+
+    private async Task RefreshAccountsAsync()
+    {
+        var accounts = await StaffAccounts.GetAccountsAsync();
+        _accountsByPersonId = accounts.ToDictionary(a => a.PersonId);
+    }
+
+    private void SelectStaffAsync(Guid staffPersonId)
+    {
+        _selectedStaffPersonId = staffPersonId;
+        _newAccountUserName = ""; _newAccountEmail = null; _newAccountPassword = ""; _resetPassword = "";
+    }
+
+    private async Task CreateAccountAsync()
+    {
+        try
+        {
+            await StaffAccounts.CreateAccountAsync(_selectedStaffPersonId, _newAccountUserName, _newAccountEmail, _newAccountPassword);
+            await RefreshAccountsAsync();
+            Snackbar.Add("Staff account created.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ResetPasswordAsync()
+    {
+        var account = _accountsByPersonId.GetValueOrDefault(_selectedStaffPersonId);
+        if (account is null) return;
+
+        try
+        {
+            await StaffAccounts.ResetPasswordAsync(account.UserId, _resetPassword);
+            _resetPassword = "";
+            Snackbar.Add("Password reset.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task SetAccountStatusAsync(AccountStatus status)
+    {
+        var account = _accountsByPersonId.GetValueOrDefault(_selectedStaffPersonId);
+        if (account is null) return;
+
+        await StaffAccounts.SetAccountStatusAsync(account.UserId, status);
+        await RefreshAccountsAsync();
+        Snackbar.Add($"Account status set to {status}.", Severity.Success);
+    }
+
+    private async Task OnRolesPersonChangedAsync(Guid personId)
+    {
+        _selectedRolesPersonId = personId;
+        _assignments = await RoleAssignments.GetAssignmentsForPersonAsync(personId);
+    }
+
+    private async Task AssignRoleAsync()
+    {
+        if (_newRoleId == Guid.Empty || _newRoleEffectiveFrom is null)
+        {
+            Snackbar.Add("Select a role and an effective date.", Severity.Warning);
+            return;
+        }
+
+        var roleCode = _roles.Single(r => r.Id == _newRoleId).Code;
+        var schoolId = _newRoleSchoolId == Guid.Empty ? (Guid?)null : _newRoleSchoolId;
+
+        try
+        {
+            await RoleAssignments.AssignRoleAsync(_selectedRolesPersonId, roleCode, schoolId, DateOnly.FromDateTime(_newRoleEffectiveFrom.Value), null);
+            _newRoleId = Guid.Empty; _newRoleSchoolId = Guid.Empty; _newRoleEffectiveFrom = null;
+            _assignments = await RoleAssignments.GetAssignmentsForPersonAsync(_selectedRolesPersonId);
+            Snackbar.Add("Role assigned.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task RevokeRoleAsync(Guid assignmentId)
+    {
+        await RoleAssignments.RevokeRoleAsync(assignmentId, DateOnly.FromDateTime(DateTime.Today));
+        _assignments = await RoleAssignments.GetAssignmentsForPersonAsync(_selectedRolesPersonId);
+        Snackbar.Add("Role revoked.", Severity.Success);
+    }
+}

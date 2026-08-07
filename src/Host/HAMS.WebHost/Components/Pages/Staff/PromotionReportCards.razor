@@ -1,0 +1,400 @@
+@page "/promotion-report-cards"
+@using HAMS.WebHost.Components.Account
+@attribute [Authorize(Policy = StaffPolicy.Name)]
+@rendermode InteractiveServer
+@using HAMS.AssessmentEvaluation.Application
+@using HAMS.IdentityAccess.Application.Jwt
+@using HAMS.OrgCurriculum.Application
+@using HAMS.PeopleEnrollment.Application
+@using HAMS.Platform.Access
+@using HAMS.Platform.Common.Contracts
+@using HAMS.Platform.Workflow.Domain
+@using HAMS.ReportingAnalyticsAudit.Application
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using OrgSchool = HAMS.OrgCurriculum.Domain.School
+@using OrgAcademicYear = HAMS.OrgCurriculum.Domain.AcademicYear
+@using OrgGrade = HAMS.OrgCurriculum.Domain.Grade
+@inject IOrgAdminService OrgAdmin
+@inject IAssessmentConfigAdminService AssessmentConfig
+@inject IPromotionService PromotionService
+@inject IReportCardService ReportCardService
+@inject IRoleMembershipQuery RoleMembershipQuery
+@inject IClock Clock
+@inject ISnackbar Snackbar
+
+<PageTitle>Promotion &amp; Report Cards — HAMS</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Promotion &amp; Report Card Authoring</MudText>
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12" sm="3">
+        <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedAsync" Label="School" Dense="true">
+            @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="3">
+        <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedAsync" Label="Academic Year" Dense="true">
+            @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="3">
+        <MudSelect T="Guid" Value="_selectedGradeId" ValueChanged="OnGradeChangedAsync" Label="Grade" Dense="true">
+            @foreach (var grade in _grades) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="3">
+        <MudSelect T="Guid" Value="_selectedEvaluationPeriodId" ValueChanged="OnEvaluationPeriodChangedAsync" Label="Evaluation Period" Dense="true">
+            @foreach (var period in _evaluationPeriods) { <MudSelectItem T="Guid" Value="@period.Id">@period.Name</MudSelectItem> }
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@if (_selectedGradeId != Guid.Empty)
+{
+    <MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true">
+
+        <MudTabPanel Text="Promotion Decisions">
+            <MudText Typo="Typo.h6" Class="mb-2">Students Needing a Decision</MudText>
+            <MudTable Items="@_studentsNeedingDecision" Dense="true" Hover="true" Class="mb-4">
+                <HeaderContent><MudTh>Name</MudTh><MudTh>Admission No.</MudTh><MudTh></MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Name">@context.NameEn</MudTd>
+                    <MudTd DataLabel="Admission No.">@context.AdmissionNumber</MudTd>
+                    <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectStudentForDecisionAsync(context.StudentPersonId))">Review</MudButton></MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            @if (_selectedDecisionStudentId != Guid.Empty)
+            {
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.h6" Class="mb-2">Eligibility — @_studentsNeedingDecision.SingleOrDefault(s => s.StudentPersonId == _selectedDecisionStudentId)?.NameEn</MudText>
+
+                @if (_eligibility is not null)
+                {
+                    <MudAlert Severity="@(_eligibility.MeetsThreshold ? Severity.Success : Severity.Warning)" Class="mb-2">
+                        @(_eligibility.MeetsThreshold ? "Meets" : "Does not meet") the promotion threshold — cleared @_eligibility.SubjectsCleared of @_eligibility.TotalSubjectsEvaluated evaluated subjects.
+                        @if (_eligibility.SubjectIdsNotCleared.Count > 0)
+                        {
+                            <div>Not cleared: @string.Join(", ", _eligibility.SubjectIdsNotCleared)</div>
+                        }
+                    </MudAlert>
+                }
+                else if (_eligibilityError is not null)
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-2">@_eligibilityError</MudAlert>
+                }
+
+                <MudGrid Class="mb-2">
+                    <MudItem xs="6" sm="2"><MudCheckBox T="bool" @bind-Value="_decisionPromoted" Label="Promoted" /></MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudSelect T="Guid" @bind-Value="_decisionNextGradeId" Label="Next Grade (optional)" Dense="true" Clearable="true">
+                            @foreach (var grade in _grades) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="3"><MudDatePicker Label="Decision Date" Date="_decisionDate" DateChanged="d => _decisionDate = d" /></MudItem>
+                    <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_decisionNotes" Label="Notes (optional)" /></MudItem>
+                </MudGrid>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RecordDecisionAsync" Class="mb-4">Record Decision</MudButton>
+
+                <MudText Typo="Typo.h6" Class="mb-2">Past Decisions</MudText>
+                <MudTable Items="@_pastDecisions" Dense="true" Hover="true">
+                    <HeaderContent><MudTh>Date</MudTh><MudTh>Promoted</MudTh><MudTh>Notes</MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Date">@context.DecisionDate</MudTd>
+                        <MudTd DataLabel="Promoted">@(context.Promoted ? "Yes" : "No")</MudTd>
+                        <MudTd DataLabel="Notes">@context.Notes</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Report Cards">
+            @if (_selectedEvaluationPeriodId == Guid.Empty)
+            {
+                <MudAlert Severity="Severity.Info">Select an evaluation period above.</MudAlert>
+            }
+            else
+            {
+                <MudText Typo="Typo.h6" Class="mb-2">Students Needing a Report Card</MudText>
+                <MudTable Items="@_studentsNeedingReportCard" Dense="true" Hover="true" Class="mb-4">
+                    <HeaderContent><MudTh>Name</MudTh><MudTh>Admission No.</MudTh><MudTh></MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Name">@context.NameEn</MudTd>
+                        <MudTd DataLabel="Admission No.">@context.AdmissionNumber</MudTd>
+                        <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectStudentForReportCardAsync(context.StudentPersonId))">Prepare</MudButton></MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                @if (_selectedReportCardStudentId != Guid.Empty && _preparedReportCardId is null)
+                {
+                    <MudDivider Class="my-4" />
+                    <MudText Typo="Typo.h6" Class="mb-2">Prepare Report Card — @_studentsNeedingReportCard.SingleOrDefault(s => s.StudentPersonId == _selectedReportCardStudentId)?.NameEn</MudText>
+                    <MudGrid Class="mb-2">
+                        <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_narrativeEn" Label="Narrative (English)" Lines="3" /></MudItem>
+                        <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_narrativeDv" Label="Narrative (Dhivehi)" Lines="3" /></MudItem>
+                        <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_nextStepsEn" Label="Next Steps (English)" Lines="3" /></MudItem>
+                        <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_nextStepsDv" Label="Next Steps (Dhivehi)" Lines="3" /></MudItem>
+                    </MudGrid>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PrepareReportCardAsync">Prepare</MudButton>
+                }
+
+                @if (_preparedReportCardId is { } reportCardId)
+                {
+                    <MudDivider Class="my-4" />
+                    <MudText Typo="Typo.h6" Class="mb-2">Report Card Workflow — @_preparedStatus</MudText>
+                    <MudStack Row="true" Spacing="2" Class="mb-4">
+                        @if (_preparedStatus is WorkflowStatus.Draft or WorkflowStatus.Returned)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => SubmitReportCardAsync(reportCardId))">Submit</MudButton>
+                        }
+                        @if (_preparedStatus == WorkflowStatus.Submitted)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => BeginReviewReportCardAsync(reportCardId))">Begin Review</MudButton>
+                        }
+                        @if (_preparedStatus == WorkflowStatus.UnderReview)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="@(() => ApproveReportCardAsync(reportCardId))">Approve</MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="@(() => RejectReportCardAsync(reportCardId))">Reject</MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@(() => ReturnReportCardAsync(reportCardId))">Return</MudButton>
+                        }
+                        @if (_preparedStatus == WorkflowStatus.Approved)
+                        {
+                            <MudAlert Severity="Severity.Success">Published.</MudAlert>
+                        }
+                    </MudStack>
+                }
+            }
+        </MudTabPanel>
+
+    </MudTabs>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private Guid? _currentPersonId;
+    private bool _isAdmin;
+
+    private IReadOnlyList<OrgSchool> _schools = [];
+    private IReadOnlyList<OrgAcademicYear> _academicYears = [];
+    private IReadOnlyList<OrgGrade> _grades = [];
+    private IReadOnlyList<HAMS.AssessmentEvaluation.Domain.EvaluationPeriod> _evaluationPeriods = [];
+
+    private Guid _selectedSchoolId;
+    private Guid _selectedAcademicYearId;
+    private Guid _selectedGradeId;
+    private Guid _selectedEvaluationPeriodId;
+
+    private IReadOnlyList<ClassRosterEntry> _studentsNeedingDecision = [];
+    private Guid _selectedDecisionStudentId;
+    private PromotionEligibilityResult? _eligibility;
+    private string? _eligibilityError;
+    private IReadOnlyList<HAMS.AssessmentEvaluation.Domain.PromotionDecision> _pastDecisions = [];
+    private bool _decisionPromoted;
+    private Guid _decisionNextGradeId;
+    private DateTime? _decisionDate;
+    private string? _decisionNotes;
+
+    private IReadOnlyList<ClassRosterEntry> _studentsNeedingReportCard = [];
+    private Guid _selectedReportCardStudentId;
+    private string _narrativeEn = "";
+    private string _narrativeDv = "";
+    private string _nextStepsEn = "";
+    private string _nextStepsDv = "";
+    private Guid? _preparedReportCardId;
+    private WorkflowStatus _preparedStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            var user = (await AuthState).User;
+            if (Guid.TryParse(user.FindFirstValue(HamsClaimTypes.PersonId), out var personId))
+            {
+                _currentPersonId = personId;
+                _isAdmin = await RoleMembershipQuery.IsSystemOrSchoolAdminAsync(personId, Clock.TodayUtc);
+            }
+        }
+
+        _schools = await OrgAdmin.GetSchoolsAsync();
+    }
+
+    private async Task OnSchoolChangedAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _selectedAcademicYearId = Guid.Empty;
+        _selectedGradeId = Guid.Empty;
+        _selectedEvaluationPeriodId = Guid.Empty;
+        _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
+        _grades = await OrgAdmin.GetGradesAsync(schoolId);
+        _evaluationPeriods = [];
+        ResetWorklists();
+    }
+
+    private async Task OnAcademicYearChangedAsync(Guid academicYearId)
+    {
+        _selectedAcademicYearId = academicYearId;
+        _selectedEvaluationPeriodId = Guid.Empty;
+        _evaluationPeriods = await AssessmentConfig.GetEvaluationPeriodsAsync(academicYearId);
+        await RefreshWorklistsAsync();
+    }
+
+    private async Task OnGradeChangedAsync(Guid gradeId)
+    {
+        _selectedGradeId = gradeId;
+        await RefreshWorklistsAsync();
+    }
+
+    private async Task OnEvaluationPeriodChangedAsync(Guid evaluationPeriodId)
+    {
+        _selectedEvaluationPeriodId = evaluationPeriodId;
+        await RefreshWorklistsAsync();
+    }
+
+    private void ResetWorklists()
+    {
+        _studentsNeedingDecision = [];
+        _studentsNeedingReportCard = [];
+        _selectedDecisionStudentId = Guid.Empty;
+        _selectedReportCardStudentId = Guid.Empty;
+        _preparedReportCardId = null;
+    }
+
+    private async Task RefreshWorklistsAsync()
+    {
+        if (_selectedGradeId == Guid.Empty || _selectedAcademicYearId == Guid.Empty)
+        {
+            ResetWorklists();
+            return;
+        }
+
+        var today = Clock.TodayUtc;
+        _studentsNeedingDecision = await PromotionService.GetStudentsNeedingDecisionAsync(_selectedGradeId, _selectedAcademicYearId, today);
+
+        _studentsNeedingReportCard = _selectedEvaluationPeriodId == Guid.Empty
+            ? []
+            : await ReportCardService.GetStudentsNeedingReportCardAsync(_selectedGradeId, _selectedAcademicYearId, _selectedEvaluationPeriodId, today);
+    }
+
+    private async Task SelectStudentForDecisionAsync(Guid studentPersonId)
+    {
+        _selectedDecisionStudentId = studentPersonId;
+        _eligibility = null;
+        _eligibilityError = null;
+        _decisionPromoted = false;
+        _decisionNextGradeId = Guid.Empty;
+        _decisionDate = null;
+        _decisionNotes = null;
+
+        _pastDecisions = await PromotionService.GetDecisionsForStudentAsync(studentPersonId);
+
+        if (_selectedEvaluationPeriodId != Guid.Empty)
+        {
+            try
+            {
+                _eligibility = await PromotionService.EvaluateEligibilityAsync(studentPersonId, _selectedAcademicYearId, _selectedEvaluationPeriodId, Clock.TodayUtc);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _eligibilityError = ex.Message;
+            }
+        }
+        else
+        {
+            _eligibilityError = "Select an evaluation period above to check eligibility.";
+        }
+    }
+
+    private async Task RecordDecisionAsync()
+    {
+        if (_currentPersonId is not { } decidedBy || _decisionDate is null)
+        {
+            Snackbar.Add("Set a decision date.", Severity.Warning);
+            return;
+        }
+
+        if (!_isAdmin)
+        {
+            Snackbar.Add("Only a System or School Administrator may record a promotion decision.", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            await PromotionService.RecordDecisionAsync(
+                _selectedDecisionStudentId, _selectedAcademicYearId, _decisionPromoted,
+                _decisionNextGradeId == Guid.Empty ? null : _decisionNextGradeId, decidedBy, DateOnly.FromDateTime(_decisionDate.Value), _decisionNotes);
+
+            _selectedDecisionStudentId = Guid.Empty;
+            await RefreshWorklistsAsync();
+            Snackbar.Add("Promotion decision recorded.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private void SelectStudentForReportCardAsync(Guid studentPersonId)
+    {
+        _selectedReportCardStudentId = studentPersonId;
+        _preparedReportCardId = null;
+        _narrativeEn = ""; _narrativeDv = ""; _nextStepsEn = ""; _nextStepsDv = "";
+    }
+
+    private async Task PrepareReportCardAsync()
+    {
+        if (_currentPersonId is not { } preparedBy)
+        {
+            Snackbar.Add("Could not resolve the current staff member.", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            var request = new PrepareReportCardRequest(
+                _selectedReportCardStudentId, _selectedAcademicYearId, _selectedEvaluationPeriodId,
+                _narrativeEn, _narrativeDv, _nextStepsEn, _nextStepsDv, preparedBy);
+            _preparedReportCardId = await ReportCardService.PrepareAsync(request);
+            _preparedStatus = WorkflowStatus.Draft;
+            await RefreshWorklistsAsync();
+            Snackbar.Add("Report card prepared as Draft.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task SubmitReportCardAsync(Guid reportCardId)
+    {
+        await ReportCardService.SubmitAsync(reportCardId);
+        _preparedStatus = WorkflowStatus.Submitted;
+    }
+
+    private async Task BeginReviewReportCardAsync(Guid reportCardId)
+    {
+        await ReportCardService.BeginReviewAsync(reportCardId);
+        _preparedStatus = WorkflowStatus.UnderReview;
+    }
+
+    private async Task ApproveReportCardAsync(Guid reportCardId)
+    {
+        await ReportCardService.ApproveAsync(reportCardId);
+        _preparedStatus = WorkflowStatus.Approved;
+    }
+
+    private async Task RejectReportCardAsync(Guid reportCardId)
+    {
+        await ReportCardService.RejectAsync(reportCardId);
+        _preparedStatus = WorkflowStatus.Rejected;
+    }
+
+    private async Task ReturnReportCardAsync(Guid reportCardId)
+    {
+        await ReportCardService.ReturnAsync(reportCardId);
+        _preparedStatus = WorkflowStatus.Returned;
+    }
+}

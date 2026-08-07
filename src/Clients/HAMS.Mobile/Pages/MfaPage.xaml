@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="HAMS.Mobile.Pages.MfaPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Verification Code">
+
+    <VerticalStackLayout Padding="24" Spacing="16" VerticalOptions="Center">
+
+        <Label Text="Enter the 6-digit code from your authenticator app." HorizontalTextAlignment="Center" />
+
+        <Entry x:Name="CodeEntry" Placeholder="123456" Keyboard="Numeric" MaxLength="6" HorizontalTextAlignment="Center" />
+
+        <Button x:Name="VerifyButton" Text="Verify" Clicked="OnVerifyClicked" Margin="0,16,0,0" />
+
+        <ActivityIndicator x:Name="BusyIndicator" IsRunning="False" IsVisible="False" />
+
+        <Label x:Name="ErrorLabel" TextColor="Red" IsVisible="False" HorizontalTextAlignment="Center" />
+
+    </VerticalStackLayout>
+
+</ContentPage>

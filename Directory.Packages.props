@@ -1,0 +1,67 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Without this, CPM only pins versions for *directly* referenced packages — a transitive
+         dependency (like Hangfire.Core's floor-pinned Newtonsoft.Json, below) would still
+         resolve to whatever old, vulnerable floor version the dependency graph's lowest
+         constraint allows. -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Versions below were pinned to whatever `dotnet new`/`dotnet add package` resolved
+         at scaffold time, so they're accurate for this SDK, not hand-guessed. -->
+    <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.24" />
+    <PackageVersion Include="Hangfire.SqlServer" Version="1.8.24" />
+    <!-- Pinned explicitly: Hangfire.Core transitively floors on Newtonsoft.Json 11.0.1, which
+         has a known high-severity vulnerability (GHSA-5crp-9r3c-p9vr). -->
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.10" />
+    <!-- Needed by HAMS.WebHost.Client: AuthenticationStateProvider/AuthorizeView (custom bearer-token
+         auth, Phase C1) and IHttpClientFactory (named HttpClient + DelegatingHandler pipeline). -->
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.10" />
+    <!-- HAMS.Mobile (Phase 14): $(MauiVersion) is set by the installed MAUI workload's own SDK
+         props, resolved before Directory.Packages.props is evaluated — the standard way to keep
+         Microsoft.Maui.Controls under Central Package Management without hand-pinning a version
+         that would drift from whatever workload version is actually installed. -->
+    <PackageVersion Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.10" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageVersion>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <!-- MudBlazor: MIT-licensed, self-contained CSS+JS (no CDN — matters for the plan's own
+         intermittent-island-connectivity constraint), the most widely adopted component library for
+         exactly this use case (internal admin/dashboard tooling) — chosen for Phase 12, the first
+         phase with any real Blazor UI. -->
+    <PackageVersion Include="MudBlazor" Version="9.7.0" />
+    <!-- ClosedXML: MIT-licensed .xlsx writer, same risk-avoidance reasoning as Phase 11's
+         PdfSharpCore-over-QuestPDF choice — EPPlus's non-commercial-use license isn't safe to
+         unilaterally judge as compliant for a government deployment. CSV needs no library (the
+         format is simple enough to hand-roll correctly with proper quoting). -->
+    <PackageVersion Include="ClosedXML" Version="0.105.1" />
+    <!-- MIT-licensed, no revenue/org-type-conditional terms (unlike some alternatives) — the safe
+         choice for a real government deployment where a licensing judgment call isn't ours to make. -->
+    <PackageVersion Include="PdfSharpCore" Version="1.3.67" />
+    <!-- Pinned explicitly: PdfSharpCore 1.3.67 transitively floors on SixLabors.ImageSharp 1.0.4,
+         which has multiple known high/moderate-severity vulnerabilities with no 1.x patch released —
+         fixed only from 2.x onward. Confirmed PdfSharpCore's actual PDF rendering still works
+         correctly against this newer major version: a unit test asserts the rendered bytes carry a
+         real %PDF- header (HAMS.ReportingAnalyticsAudit.Tests/ReportCardServiceTests.cs), and a
+         live report card was prepared/approved and downloaded as a valid, openable PDF through the
+         real running app (Phase 11). -->
+    <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+</Project>

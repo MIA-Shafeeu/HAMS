@@ -1,0 +1,51 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Clients/">
+    <Project Path="src/Clients/HAMS.Mobile/HAMS.Mobile.csproj" />
+    <Project Path="src/Clients/HAMS.SharedContracts/HAMS.SharedContracts.csproj" />
+  </Folder>
+  <Folder Name="/src/Host/">
+    <Project Path="src/Host/HAMS.WebHost.Client/HAMS.WebHost.Client.csproj" />
+    <Project Path="src/Host/HAMS.WebHost/HAMS.WebHost.csproj" />
+    <Project Path="src/Host/HAMS.Worker/HAMS.Worker.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/HAMS.AdminIntegration/HAMS.AdminIntegration.csproj" />
+    <Project Path="src/Modules/HAMS.AssessmentEvaluation/HAMS.AssessmentEvaluation.csproj" />
+    <Project Path="src/Modules/HAMS.Attendance/HAMS.Attendance.csproj" />
+    <Project Path="src/Modules/HAMS.CommunicationPortals/HAMS.CommunicationPortals.csproj" />
+    <Project Path="src/Modules/HAMS.Fundraising/HAMS.Fundraising.csproj" />
+    <Project Path="src/Modules/HAMS.IdentityAccess/HAMS.IdentityAccess.csproj" />
+    <Project Path="src/Modules/HAMS.Intervention/HAMS.Intervention.csproj" />
+    <Project Path="src/Modules/HAMS.LearningDelivery/HAMS.LearningDelivery.csproj" />
+    <Project Path="src/Modules/HAMS.OrgCurriculum/HAMS.OrgCurriculum.csproj" />
+    <Project Path="src/Modules/HAMS.PeopleEnrollment/HAMS.PeopleEnrollment.csproj" />
+    <Project Path="src/Modules/HAMS.ReportingAnalyticsAudit/HAMS.ReportingAnalyticsAudit.csproj" />
+    <Project Path="src/Modules/HAMS.TeachingTimetable/HAMS.TeachingTimetable.csproj" />
+  </Folder>
+  <Folder Name="/src/Platform/">
+    <Project Path="src/Platform/HAMS.Platform.Access/HAMS.Platform.Access.csproj" />
+    <Project Path="src/Platform/HAMS.Platform.Audit/HAMS.Platform.Audit.csproj" />
+    <Project Path="src/Platform/HAMS.Platform.Common/HAMS.Platform.Common.csproj" />
+    <Project Path="src/Platform/HAMS.Platform.Documents/HAMS.Platform.Documents.csproj" />
+    <Project Path="src/Platform/HAMS.Platform.Notifications/HAMS.Platform.Notifications.csproj" />
+    <Project Path="src/Platform/HAMS.Platform.Workflow/HAMS.Platform.Workflow.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HAMS.AssessmentEvaluation.Tests/HAMS.AssessmentEvaluation.Tests.csproj" />
+    <Project Path="tests/HAMS.Attendance.Tests/HAMS.Attendance.Tests.csproj" />
+    <Project Path="tests/HAMS.CommunicationPortals.Tests/HAMS.CommunicationPortals.Tests.csproj" />
+    <Project Path="tests/HAMS.IdentityAccess.Tests/HAMS.IdentityAccess.Tests.csproj" />
+    <Project Path="tests/HAMS.Intervention.Tests/HAMS.Intervention.Tests.csproj" />
+    <Project Path="tests/HAMS.LearningDelivery.Tests/HAMS.LearningDelivery.Tests.csproj" />
+    <Project Path="tests/HAMS.OrgCurriculum.Tests/HAMS.OrgCurriculum.Tests.csproj" />
+    <Project Path="tests/HAMS.PeopleEnrollment.Tests/HAMS.PeopleEnrollment.Tests.csproj" />
+    <Project Path="tests/HAMS.Platform.Access.Tests/HAMS.Platform.Access.Tests.csproj" />
+    <Project Path="tests/HAMS.Platform.Audit.Tests/HAMS.Platform.Audit.Tests.csproj" />
+    <Project Path="tests/HAMS.Platform.Common.Tests/HAMS.Platform.Common.Tests.csproj" />
+    <Project Path="tests/HAMS.Platform.Notifications.Tests/HAMS.Platform.Notifications.Tests.csproj" />
+    <Project Path="tests/HAMS.Platform.Workflow.Tests/HAMS.Platform.Workflow.Tests.csproj" />
+    <Project Path="tests/HAMS.ReportingAnalyticsAudit.Tests/HAMS.ReportingAnalyticsAudit.Tests.csproj" />
+    <Project Path="tests/HAMS.TeachingTimetable.Tests/HAMS.TeachingTimetable.Tests.csproj" />
+  </Folder>
+</Solution>

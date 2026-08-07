@@ -1,0 +1,35 @@
+@using HAMS.WebHost.Components.Account
+
+<Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Client._Imports).Assembly }" NotFoundPage="typeof(Pages.NotFound)">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized Context="authState">
+                @* Authenticated-but-forbidden must NOT redirect to login — that's just an
+                   authenticated user hitting the login page again, which sends them straight back
+                   here (an infinite loop). Only a genuinely anonymous visitor gets sent to sign in. *@
+                @if (authState.User.Identity?.IsAuthenticated == true)
+                {
+                    <div class="account-page">
+                        <div class="account-card">
+                            <div class="account-brand">
+                                <span class="account-brand-mark">HAMS</span>
+                                <span class="account-brand-sub">Hirilandhoo Academic Management System</span>
+                            </div>
+                            <h1 class="account-title">Access denied</h1>
+                            <p class="account-subtitle">Your account doesn't have permission to view this page.</p>
+                            <a class="account-link" href="/">Back to home</a>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <RedirectToLogin />
+                }
+            </NotAuthorized>
+            <Authorizing>
+                <div class="account-page"><p>Checking access…</p></div>
+            </Authorizing>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>

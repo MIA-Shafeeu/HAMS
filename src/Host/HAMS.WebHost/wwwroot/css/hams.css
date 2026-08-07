@@ -1,0 +1,171 @@
+:root {
+    --hams-primary: #1E3A5F;
+    --hams-primary-dark: #152943;
+    --hams-accent: #0F766E;
+    --hams-bg: #F4F6F8;
+    --hams-surface: #FFFFFF;
+    --hams-text: #1F2937;
+    --hams-text-muted: #5B6472;
+    --hams-border: #E2E5E9;
+    --hams-error-bg: #FDECEC;
+    --hams-error-border: #F3B4B4;
+    --hams-error-text: #B91C1C;
+}
+
+/* ---- Static account pages (Login / MFA) — deliberately plain HTML, not MudBlazor, since these
+   pages render without interactivity; styled by hand to match the MudBlazor theme's palette so the
+   whole app reads as one consistent product. ---- */
+
+.account-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(160deg, var(--hams-primary) 0%, var(--hams-primary-dark) 45%, #0B1B2E 100%);
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding: 2rem 1rem;
+}
+
+.account-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--hams-surface);
+    border-radius: 12px;
+    box-shadow: 0 20px 45px rgba(11, 27, 46, 0.35);
+    padding: 2.25rem 2rem 2rem;
+}
+
+.account-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.account-brand-mark {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--hams-primary);
+}
+
+.account-brand-sub {
+    font-size: 0.8rem;
+    color: var(--hams-text-muted);
+    margin-top: 0.15rem;
+}
+
+.account-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--hams-text);
+    margin: 0 0 0.25rem;
+    text-align: center;
+}
+
+.account-subtitle {
+    font-size: 0.875rem;
+    color: var(--hams-text-muted);
+    text-align: center;
+    margin: 0 0 1.25rem;
+}
+
+.account-alert {
+    background: var(--hams-error-bg);
+    border: 1px solid var(--hams-error-border);
+    color: var(--hams-error-text);
+    border-radius: 8px;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.account-field {
+    margin-bottom: 1.1rem;
+}
+
+.account-field label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--hams-text);
+    margin-bottom: 0.3rem;
+}
+
+.account-field input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--hams-border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: var(--hams-text);
+    background: var(--hams-surface);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.account-field input:focus {
+    outline: none;
+    border-color: var(--hams-primary);
+    box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
+}
+
+.account-field .validation-message {
+    color: var(--hams-error-text);
+    font-size: 0.78rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.account-submit {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    background: var(--hams-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    margin-top: 0.25rem;
+}
+
+.account-submit:hover {
+    background: var(--hams-primary-dark);
+}
+
+.account-link {
+    display: inline-block;
+    margin-top: 0.75rem;
+    color: var(--hams-primary);
+    font-size: 0.875rem;
+    text-decoration: none;
+}
+
+.account-link:hover {
+    text-decoration: underline;
+}
+
+/* ---- Admin shell polish ---- */
+
+.hams-appbar-subtitle {
+    opacity: 0.85;
+}
+
+@media (max-width: 600px) {
+    .hams-appbar-subtitle {
+        display: none;
+    }
+}
+
+.hams-stat-card {
+    height: 100%;
+}
+
+.hams-stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+}

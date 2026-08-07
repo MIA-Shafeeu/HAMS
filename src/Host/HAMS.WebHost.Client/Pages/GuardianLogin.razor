@@ -1,0 +1,103 @@
+@page "/guardian/login"
+@layout PortalLayout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<MudPaper Class="pa-6" Style="max-width: 420px">
+    <MudText Typo="Typo.h5" Class="mb-4">Guardian Sign In</MudText>
+
+    @if (_challengeId is null)
+    {
+        <MudTextField T="string" @bind-Value="_phoneNumber" Label="Phone Number" Immediate="true" Disabled="_busy" />
+        <MudButton Class="mt-4" Variant="Variant.Filled" Color="Color.Primary" OnClick="RequestOtpAsync" Disabled="_busy">
+            Request Code
+        </MudButton>
+    }
+    else
+    {
+        <MudText Class="mb-2">Enter the code sent to @_phoneNumber.</MudText>
+        <MudTextField T="string" @bind-Value="_code" Label="Verification Code" Immediate="true" Disabled="_busy" />
+        <MudButton Class="mt-4" Variant="Variant.Filled" Color="Color.Primary" OnClick="VerifyOtpAsync" Disabled="_busy">
+            Verify
+        </MudButton>
+    }
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
+    }
+</MudPaper>
+
+@code {
+    [Inject] private HttpClient Http { get; set; } = null!;
+    [Inject] private TokenStorage TokenStorage { get; set; } = null!;
+    [Inject] private PortalAuthenticationStateProvider AuthStateProvider { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+
+    private string _phoneNumber = "";
+    private string _code = "";
+    private Guid? _challengeId;
+    private string? _error;
+    private bool _busy;
+
+    private async Task RequestOtpAsync()
+    {
+        _error = null;
+        _busy = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/v1/auth/guardian/otp/request", new RequestGuardianOtpDto(_phoneNumber), PortalJson.Options);
+            var result = await response.Content.ReadFromJsonAsync<OtpRequestResultDto>(PortalJson.Options);
+
+            if (!response.IsSuccessStatusCode || result is null || !result.Succeeded || result.ChallengeId is null)
+            {
+                _error = result?.Error ?? "Could not send a verification code.";
+                return;
+            }
+
+            _challengeId = result.ChallengeId;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task VerifyOtpAsync()
+    {
+        if (_challengeId is null)
+        {
+            return;
+        }
+
+        _error = null;
+        _busy = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                "/api/v1/auth/guardian/otp/verify",
+                new VerifyGuardianOtpDto(_challengeId.Value, _code, "Web Portal"),
+                PortalJson.Options);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _error = "Invalid or expired code.";
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<AuthResultDto>(PortalJson.Options);
+            if (result is null || !result.Succeeded || result.AccessToken is null || result.RefreshToken is null || result.AccessTokenExpiresAtUtc is null)
+            {
+                _error = result?.Error ?? "Sign-in failed.";
+                return;
+            }
+
+            await TokenStorage.SaveAsync(result.AccessToken, result.RefreshToken, result.AccessTokenExpiresAtUtc.Value);
+            AuthStateProvider.NotifyAuthenticationStateChanged();
+            Nav.NavigateTo("/portal", forceLoad: false);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

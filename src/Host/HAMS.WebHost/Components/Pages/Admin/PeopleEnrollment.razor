@@ -1,0 +1,506 @@
+@page "/admin/people-enrollment"
+@using HAMS.WebHost.Components.Account
+@attribute [Authorize(Policy = SystemOrSchoolAdminPolicy.Name)]
+@rendermode InteractiveServer
+@using HAMS.OrgCurriculum.Application
+@using HAMS.PeopleEnrollment.Application
+@using HAMS.PeopleEnrollment.Domain
+@using HAMS.WebHost.Components.Pages.Admin.Shared
+@using PplAtoll = HAMS.PeopleEnrollment.Domain.Atoll
+@using PplIsland = HAMS.PeopleEnrollment.Domain.Island
+@using OrgSchool = HAMS.OrgCurriculum.Domain.School
+@using OrgAcademicYear = HAMS.OrgCurriculum.Domain.AcademicYear
+@using OrgGrade = HAMS.OrgCurriculum.Domain.Grade
+@using OrgClass = HAMS.OrgCurriculum.Domain.Class
+@inject IPeopleAdminService PeopleAdmin
+@inject IStudentEnrollmentService EnrollmentService
+@inject IGuardianRelationshipService GuardianRelationshipService
+@inject IOrgAdminService OrgAdmin
+@inject ISnackbar Snackbar
+
+<PageTitle>People &amp; Enrollment — HAMS</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">System Administration — People &amp; Enrollment</MudText>
+
+<MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true">
+
+    <MudTabPanel Text="Atolls &amp; Islands">
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="_newAtollCode" Label="Code" /></MudItem>
+            <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newAtollNameEn" Label="Name (English)" /></MudItem>
+            <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newAtollNameDv" Label="Name (Dhivehi)" /></MudItem>
+            <MudItem xs="12" sm="2"><MudNumericField T="int" @bind-Value="_newAtollDisplayOrder" Label="Order" /></MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAtollAsync">Create</MudButton></MudItem>
+        </MudGrid>
+        <MudTable Items="@_atolls" Dense="true" Hover="true" Class="mb-4">
+            <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Code">@context.Code</MudTd>
+                <MudTd DataLabel="Name">@context.NameEn</MudTd>
+                <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectAtollAsync(context.Id))">Manage Islands</MudButton></MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        @if (_selectedAtollId != Guid.Empty)
+        {
+            <MudText Typo="Typo.h6" Class="mb-2">Islands — @_atolls.SingleOrDefault(a => a.Id == _selectedAtollId)?.NameEn</MudText>
+            <MudTable Items="@_islands" Dense="true" Hover="true" Class="mb-3">
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh></HeaderContent>
+                <RowTemplate><MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.NameEn</MudTd></RowTemplate>
+            </MudTable>
+            <MudGrid>
+                <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="_newIslandCode" Label="Code" /></MudItem>
+                <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newIslandNameEn" Label="Name (English)" /></MudItem>
+                <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newIslandNameDv" Label="Name (Dhivehi)" /></MudItem>
+                <MudItem xs="12" sm="2"><MudNumericField T="int" @bind-Value="_newIslandDisplayOrder" Label="Order" /></MudItem>
+                <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateIslandAsync">Add</MudButton></MudItem>
+            </MudGrid>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Students">
+        <MudText Typo="Typo.h6" Class="mb-2">Create Student</MudText>
+        <PersonFieldsEditor Model="_studentPersonForm" Atolls="_atolls" />
+        <MudGrid Class="my-2">
+            <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_newAdmissionNumber" Label="Admission Number" /></MudItem>
+            <MudItem xs="12" sm="4"><MudDatePicker Label="Admission Date" Date="_newAdmissionDate" DateChanged="d => _newAdmissionDate = d" /></MudItem>
+            <MudItem xs="12" sm="4" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateStudentAsync">Create Student</MudButton></MudItem>
+        </MudGrid>
+
+        <MudTable Items="@_students" Dense="true" Hover="true" Class="my-4">
+            <HeaderContent><MudTh>Name</MudTh><MudTh>Admission No.</MudTh><MudTh>Admitted</MudTh><MudTh></MudTh></HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.NameEn</MudTd>
+                <MudTd DataLabel="Admission No.">@context.AdmissionNumber</MudTd>
+                <MudTd DataLabel="Admitted">@context.AdmissionDate</MudTd>
+                <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectStudentAsync(context.PersonId))">Manage</MudButton></MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        @if (_selectedStudentPersonId != Guid.Empty)
+        {
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.h6" Class="mb-2">Enrollment — @_students.SingleOrDefault(s => s.PersonId == _selectedStudentPersonId)?.NameEn</MudText>
+            <MudTable Items="@_enrollments" Dense="true" Hover="true" Class="mb-3">
+                <HeaderContent><MudTh>Grade</MudTh><MudTh>Class</MudTh><MudTh>From</MudTh><MudTh>To</MudTh><MudTh></MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Grade">@(_grades.SingleOrDefault(g => g.Id == context.GradeId)?.Name ?? context.GradeId.ToString())</MudTd>
+                    <MudTd DataLabel="Class">@(_classes.SingleOrDefault(c => c.Id == context.ClassId)?.Name ?? context.ClassId.ToString())</MudTd>
+                    <MudTd DataLabel="From">@context.EffectiveFrom</MudTd>
+                    <MudTd DataLabel="To">@context.EffectiveTo</MudTd>
+                    <MudTd>
+                        @if (context.EffectiveTo is null)
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => EndEnrollmentAsync(context.Id))">End (today)</MudButton>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="2">
+                    <MudSelect T="Guid" Value="_enrollSchoolId" ValueChanged="OnEnrollSchoolChangedAsync" Label="School" Dense="true">
+                        @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudSelect T="Guid" @bind-Value="_enrollAcademicYearId" Label="Academic Year" Dense="true">
+                        @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudSelect T="Guid" @bind-Value="_enrollGradeId" Label="Grade" Dense="true">
+                        @foreach (var grade in _grades) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="2">
+                    <MudSelect T="Guid" @bind-Value="_enrollClassId" Label="Class" Dense="true">
+                        @foreach (var cls in _classes) { <MudSelectItem T="Guid" Value="@cls.Id">@cls.Name</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="2"><MudDatePicker Label="Effective From" Date="_enrollEffectiveFrom" DateChanged="d => _enrollEffectiveFrom = d" /></MudItem>
+                <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="EnrollAsync">Enroll</MudButton></MudItem>
+            </MudGrid>
+
+            <MudText Typo="Typo.h6" Class="mb-2">Guardian Relationships</MudText>
+            <MudTable Items="@_guardianRelationships" Dense="true" Hover="true" Class="mb-3">
+                <HeaderContent><MudTh>Guardian</MudTh><MudTh>Type</MudTh><MudTh>Legal Auth.</MudTh><MudTh>Status</MudTh><MudTh></MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Guardian">@(_guardians.SingleOrDefault(g => g.PersonId == context.GuardianPersonId)?.NameEn ?? context.GuardianPersonId.ToString())</MudTd>
+                    <MudTd DataLabel="Type">@(_relationshipTypes.SingleOrDefault(t => t.Id == context.RelationshipTypeId)?.Name ?? context.RelationshipTypeId.ToString())</MudTd>
+                    <MudTd DataLabel="Legal Auth.">@(context.HasLegalAuthority ? "Yes" : "No")</MudTd>
+                    <MudTd DataLabel="Status">@context.VerificationStatus</MudTd>
+                    <MudTd>
+                        <MudStack Row="true" Spacing="1">
+                            @if (context.VerificationStatus == GuardianVerificationStatus.Pending)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="@(() => VerifyRelationshipAsync(context.Id))">Verify</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RejectRelationshipAsync(context.Id))">Reject</MudButton>
+                            }
+                            @if (context.EffectiveTo is null)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => CloseRelationshipAsync(context.Id))">Close (today)</MudButton>
+                            }
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            <MudGrid Class="mb-2">
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="Guid" @bind-Value="_newRelGuardianPersonId" Label="Guardian" Dense="true">
+                        @foreach (var guardian in _guardians) { <MudSelectItem T="Guid" Value="@guardian.PersonId">@guardian.NameEn</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="Guid" @bind-Value="_newRelTypeId" Label="Relationship Type" Dense="true">
+                        @foreach (var type in _relationshipTypes) { <MudSelectItem T="Guid" Value="@type.Id">@type.Name</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3"><MudDatePicker Label="Effective From" Date="_newRelEffectiveFrom" DateChanged="d => _newRelEffectiveFrom = d" /></MudItem>
+                <MudItem xs="12" sm="3" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="EstablishRelationshipAsync">Establish</MudButton></MudItem>
+            </MudGrid>
+            <MudGrid Class="mb-4">
+                <MudItem xs="6" sm="2"><MudCheckBox T="bool" @bind-Value="_newRelHasLegalAuthority" Label="Legal Authority" /></MudItem>
+                <MudItem xs="6" sm="2"><MudCheckBox T="bool" @bind-Value="_newRelCanViewAcademic" Label="View Academic" /></MudItem>
+                <MudItem xs="6" sm="2"><MudCheckBox T="bool" @bind-Value="_newRelCanViewAttendance" Label="View Attendance" /></MudItem>
+                <MudItem xs="6" sm="2"><MudCheckBox T="bool" @bind-Value="_newRelCanViewBehaviour" Label="View Behaviour" /></MudItem>
+                <MudItem xs="6" sm="2"><MudCheckBox T="bool" @bind-Value="_newRelCanViewIntervention" Label="View Intervention" /></MudItem>
+                <MudItem xs="6" sm="2"><MudCheckBox T="bool" @bind-Value="_newRelCanReceiveNotifications" Label="Notifications" /></MudItem>
+            </MudGrid>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Staff">
+        <MudText Typo="Typo.h6" Class="mb-2">Create Staff Member</MudText>
+        <PersonFieldsEditor Model="_staffPersonForm" Atolls="_atolls" />
+        <MudGrid Class="my-2">
+            <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newEmployeeNumber" Label="Employee Number" /></MudItem>
+            <MudItem xs="12" sm="3"><MudDatePicker Label="Hire Date" Date="_newHireDate" DateChanged="d => _newHireDate = d" /></MudItem>
+            <MudItem xs="12" sm="3">
+                <MudSelect T="Guid" @bind-Value="_newEmploymentStatusId" Label="Employment Status" Dense="true">
+                    @foreach (var status in _employmentStatuses) { <MudSelectItem T="Guid" Value="@status.Id">@status.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateStaffAsync">Create Staff</MudButton></MudItem>
+        </MudGrid>
+
+        <MudTable Items="@_staff" Dense="true" Hover="true" Class="my-4">
+            <HeaderContent><MudTh>Name</MudTh><MudTh>Employee No.</MudTh><MudTh>Hired</MudTh><MudTh>Status</MudTh><MudTh></MudTh></HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.NameEn</MudTd>
+                <MudTd DataLabel="Employee No.">@context.EmployeeNumber</MudTd>
+                <MudTd DataLabel="Hired">@context.HireDate</MudTd>
+                <MudTd DataLabel="Status">@(_employmentStatuses.SingleOrDefault(s => s.Id == context.EmploymentStatusId)?.Name)</MudTd>
+                <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectStaffAsync(context.PersonId, context.Id))">Manage Qualifications</MudButton></MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        @if (_selectedStaffPersonId != Guid.Empty)
+        {
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.h6" Class="mb-2">Qualifications — @_staff.SingleOrDefault(s => s.PersonId == _selectedStaffPersonId)?.NameEn</MudText>
+            <MudTable Items="@_qualifications" Dense="true" Hover="true" Class="mb-3">
+                <HeaderContent><MudTh>Title</MudTh><MudTh>Institution</MudTh><MudTh>Year</MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Title">@context.Title</MudTd>
+                    <MudTd DataLabel="Institution">@context.AwardingInstitution</MudTd>
+                    <MudTd DataLabel="Year">@context.YearAwarded</MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudGrid>
+                <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_newQualificationTitle" Label="Title" /></MudItem>
+                <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_newQualificationInstitution" Label="Awarding Institution (optional)" /></MudItem>
+                <MudItem xs="12" sm="2"><MudNumericField T="int?" @bind-Value="_newQualificationYear" Label="Year (optional)" /></MudItem>
+                <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddQualificationAsync">Add</MudButton></MudItem>
+            </MudGrid>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Guardians">
+        <MudText Typo="Typo.h6" Class="mb-2">Create Guardian</MudText>
+        <PersonFieldsEditor Model="_guardianPersonForm" Atolls="_atolls" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateGuardianAsync" Class="my-2">Create Guardian</MudButton>
+
+        <MudTable Items="@_guardians" Dense="true" Hover="true" Class="my-4">
+            <HeaderContent><MudTh>Name</MudTh></HeaderContent>
+            <RowTemplate><MudTd DataLabel="Name">@context.NameEn</MudTd></RowTemplate>
+        </MudTable>
+    </MudTabPanel>
+
+</MudTabs>
+
+@code {
+    private IReadOnlyList<PplAtoll> _atolls = [];
+    private IReadOnlyList<PplIsland> _islands = [];
+    private Guid _selectedAtollId;
+
+    private string _newAtollCode = "";
+    private string _newAtollNameEn = "";
+    private string? _newAtollNameDv;
+    private int _newAtollDisplayOrder;
+
+    private string _newIslandCode = "";
+    private string _newIslandNameEn = "";
+    private string? _newIslandNameDv;
+    private int _newIslandDisplayOrder;
+
+    private IReadOnlyList<StudentProfileSummary> _students = [];
+    private IReadOnlyList<StaffProfileSummary> _staff = [];
+    private IReadOnlyList<GuardianProfileSummary> _guardians = [];
+    private IReadOnlyList<EmploymentStatus> _employmentStatuses = [];
+    private IReadOnlyList<RelationshipType> _relationshipTypes = [];
+
+    private PersonFormModel _studentPersonForm = new();
+    private PersonFormModel _staffPersonForm = new();
+    private PersonFormModel _guardianPersonForm = new();
+
+    private string _newAdmissionNumber = "";
+    private DateTime? _newAdmissionDate;
+
+    private string _newEmployeeNumber = "";
+    private DateTime? _newHireDate;
+    private Guid _newEmploymentStatusId;
+
+    private Guid _selectedStudentPersonId;
+    private IReadOnlyList<StudentEnrollment> _enrollments = [];
+    private IReadOnlyList<GuardianStudentRelationship> _guardianRelationships = [];
+
+    private IReadOnlyList<OrgSchool> _schools = [];
+    private IReadOnlyList<OrgAcademicYear> _academicYears = [];
+    private IReadOnlyList<OrgGrade> _grades = [];
+    private IReadOnlyList<OrgClass> _classes = [];
+    private Guid _enrollSchoolId;
+    private Guid _enrollAcademicYearId;
+    private Guid _enrollGradeId;
+    private Guid _enrollClassId;
+    private DateTime? _enrollEffectiveFrom;
+
+    private Guid _newRelGuardianPersonId;
+    private Guid _newRelTypeId;
+    private DateTime? _newRelEffectiveFrom;
+    private bool _newRelHasLegalAuthority;
+    private bool _newRelCanViewAcademic;
+    private bool _newRelCanViewAttendance;
+    private bool _newRelCanViewBehaviour;
+    private bool _newRelCanViewIntervention;
+    private bool _newRelCanReceiveNotifications;
+
+    private Guid _selectedStaffPersonId;
+    private Guid _selectedStaffProfileId;
+    private IReadOnlyList<StaffQualification> _qualifications = [];
+    private string _newQualificationTitle = "";
+    private string? _newQualificationInstitution;
+    private int? _newQualificationYear;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _atolls = await PeopleAdmin.GetAtollsAsync();
+        _students = await PeopleAdmin.GetStudentProfilesAsync();
+        _staff = await PeopleAdmin.GetStaffProfilesAsync();
+        _guardians = await PeopleAdmin.GetGuardianProfilesAsync();
+        _employmentStatuses = await PeopleAdmin.GetEmploymentStatusesAsync();
+        _relationshipTypes = await PeopleAdmin.GetRelationshipTypesAsync();
+        _schools = await OrgAdmin.GetSchoolsAsync();
+    }
+
+    private async Task CreateAtollAsync()
+    {
+        await PeopleAdmin.CreateAtollAsync(_newAtollCode, _newAtollNameEn, _newAtollNameDv, _newAtollDisplayOrder);
+        _newAtollCode = ""; _newAtollNameEn = ""; _newAtollNameDv = null; _newAtollDisplayOrder = 0;
+        _atolls = await PeopleAdmin.GetAtollsAsync();
+        Snackbar.Add("Atoll created.", Severity.Success);
+    }
+
+    private async Task SelectAtollAsync(Guid atollId)
+    {
+        _selectedAtollId = atollId;
+        _islands = await PeopleAdmin.GetIslandsAsync(atollId);
+    }
+
+    private async Task CreateIslandAsync()
+    {
+        await PeopleAdmin.CreateIslandAsync(_selectedAtollId, _newIslandCode, _newIslandNameEn, _newIslandNameDv, _newIslandDisplayOrder);
+        _newIslandCode = ""; _newIslandNameEn = ""; _newIslandNameDv = null; _newIslandDisplayOrder = 0;
+        _islands = await PeopleAdmin.GetIslandsAsync(_selectedAtollId);
+        Snackbar.Add("Island created.", Severity.Success);
+    }
+
+    private async Task CreateStudentAsync()
+    {
+        if (_newAdmissionDate is null) { Snackbar.Add("Set an admission date.", Severity.Warning); return; }
+
+        var personId = await PeopleAdmin.CreatePersonAsync(
+            _studentPersonForm.NameEn, _studentPersonForm.NameDv,
+            _studentPersonForm.DateOfBirth is { } dob ? DateOnly.FromDateTime(dob) : default,
+            _studentPersonForm.ToAddress(), _studentPersonForm.PhoneNumber, _studentPersonForm.Email);
+        await PeopleAdmin.CreateStudentProfileAsync(personId, _newAdmissionNumber, DateOnly.FromDateTime(_newAdmissionDate.Value));
+
+        _studentPersonForm = new();
+        _newAdmissionNumber = ""; _newAdmissionDate = null;
+        _students = await PeopleAdmin.GetStudentProfilesAsync();
+        Snackbar.Add("Student created.", Severity.Success);
+    }
+
+    private async Task SelectStudentAsync(Guid studentPersonId)
+    {
+        _selectedStudentPersonId = studentPersonId;
+        _enrollments = await PeopleAdmin.GetEnrollmentsForStudentAsync(studentPersonId);
+        _guardianRelationships = await PeopleAdmin.GetGuardianRelationshipsForStudentAsync(studentPersonId);
+    }
+
+    private async Task OnEnrollSchoolChangedAsync(Guid schoolId)
+    {
+        _enrollSchoolId = schoolId;
+        _enrollAcademicYearId = Guid.Empty;
+        _enrollGradeId = Guid.Empty;
+        _enrollClassId = Guid.Empty;
+        _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
+        _grades = await OrgAdmin.GetGradesAsync(schoolId);
+        _classes = [];
+    }
+
+    private async Task EnrollAsync()
+    {
+        if (_enrollAcademicYearId == Guid.Empty || _enrollGradeId == Guid.Empty || _enrollClassId == Guid.Empty || _enrollEffectiveFrom is null)
+        {
+            Snackbar.Add("Select an academic year, grade, class and effective date.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            await EnrollmentService.EnrollAsync(_selectedStudentPersonId, _enrollGradeId, _enrollClassId, _enrollAcademicYearId, DateOnly.FromDateTime(_enrollEffectiveFrom.Value));
+            _enrollments = await PeopleAdmin.GetEnrollmentsForStudentAsync(_selectedStudentPersonId);
+            Snackbar.Add("Student enrolled.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task EndEnrollmentAsync(Guid enrollmentId)
+    {
+        try
+        {
+            await EnrollmentService.EndEnrollmentAsync(enrollmentId, DateOnly.FromDateTime(DateTime.Today));
+            _enrollments = await PeopleAdmin.GetEnrollmentsForStudentAsync(_selectedStudentPersonId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task EstablishRelationshipAsync()
+    {
+        if (_newRelGuardianPersonId == Guid.Empty || _newRelTypeId == Guid.Empty || _newRelEffectiveFrom is null)
+        {
+            Snackbar.Add("Select a guardian, relationship type and effective date.", Severity.Warning);
+            return;
+        }
+
+        var request = new EstablishGuardianRelationshipRequest(
+            _newRelGuardianPersonId, _selectedStudentPersonId, _newRelTypeId, _newRelHasLegalAuthority,
+            _newRelCanViewAcademic, _newRelCanViewAttendance, _newRelCanViewBehaviour, _newRelCanViewIntervention,
+            _newRelCanReceiveNotifications, null, DateOnly.FromDateTime(_newRelEffectiveFrom.Value));
+
+        await GuardianRelationshipService.EstablishAsync(request);
+
+        _newRelGuardianPersonId = Guid.Empty; _newRelTypeId = Guid.Empty; _newRelEffectiveFrom = null;
+        _newRelHasLegalAuthority = false; _newRelCanViewAcademic = false; _newRelCanViewAttendance = false;
+        _newRelCanViewBehaviour = false; _newRelCanViewIntervention = false; _newRelCanReceiveNotifications = false;
+
+        _guardianRelationships = await PeopleAdmin.GetGuardianRelationshipsForStudentAsync(_selectedStudentPersonId);
+        Snackbar.Add("Guardian relationship established.", Severity.Success);
+    }
+
+    private async Task VerifyRelationshipAsync(Guid relationshipId)
+    {
+        try
+        {
+            await GuardianRelationshipService.VerifyAsync(relationshipId);
+            _guardianRelationships = await PeopleAdmin.GetGuardianRelationshipsForStudentAsync(_selectedStudentPersonId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task RejectRelationshipAsync(Guid relationshipId)
+    {
+        try
+        {
+            await GuardianRelationshipService.RejectAsync(relationshipId);
+            _guardianRelationships = await PeopleAdmin.GetGuardianRelationshipsForStudentAsync(_selectedStudentPersonId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task CloseRelationshipAsync(Guid relationshipId)
+    {
+        await GuardianRelationshipService.CloseAsync(relationshipId, DateOnly.FromDateTime(DateTime.Today));
+        _guardianRelationships = await PeopleAdmin.GetGuardianRelationshipsForStudentAsync(_selectedStudentPersonId);
+    }
+
+    private async Task CreateStaffAsync()
+    {
+        if (_newHireDate is null || _newEmploymentStatusId == Guid.Empty)
+        {
+            Snackbar.Add("Set a hire date and employment status.", Severity.Warning);
+            return;
+        }
+
+        var employmentStatusCode = _employmentStatuses.Single(s => s.Id == _newEmploymentStatusId).Code;
+        var personId = await PeopleAdmin.CreatePersonAsync(
+            _staffPersonForm.NameEn, _staffPersonForm.NameDv,
+            _staffPersonForm.DateOfBirth is { } dob ? DateOnly.FromDateTime(dob) : default,
+            _staffPersonForm.ToAddress(), _staffPersonForm.PhoneNumber, _staffPersonForm.Email);
+
+        try
+        {
+            await PeopleAdmin.CreateStaffProfileAsync(personId, _newEmployeeNumber, DateOnly.FromDateTime(_newHireDate.Value), employmentStatusCode);
+            _staffPersonForm = new();
+            _newEmployeeNumber = ""; _newHireDate = null; _newEmploymentStatusId = Guid.Empty;
+            _staff = await PeopleAdmin.GetStaffProfilesAsync();
+            Snackbar.Add("Staff member created.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task SelectStaffAsync(Guid staffPersonId, Guid staffProfileId)
+    {
+        _selectedStaffPersonId = staffPersonId;
+        _selectedStaffProfileId = staffProfileId;
+        _qualifications = await PeopleAdmin.GetStaffQualificationsAsync(_selectedStaffProfileId);
+    }
+
+    private async Task AddQualificationAsync()
+    {
+        await PeopleAdmin.AddStaffQualificationAsync(_selectedStaffProfileId, _newQualificationTitle, _newQualificationInstitution, _newQualificationYear);
+        _newQualificationTitle = ""; _newQualificationInstitution = null; _newQualificationYear = null;
+        _qualifications = await PeopleAdmin.GetStaffQualificationsAsync(_selectedStaffProfileId);
+        Snackbar.Add("Qualification added.", Severity.Success);
+    }
+
+    private async Task CreateGuardianAsync()
+    {
+        var personId = await PeopleAdmin.CreatePersonAsync(
+            _guardianPersonForm.NameEn, _guardianPersonForm.NameDv,
+            _guardianPersonForm.DateOfBirth is { } dob ? DateOnly.FromDateTime(dob) : default,
+            _guardianPersonForm.ToAddress(), _guardianPersonForm.PhoneNumber, _guardianPersonForm.Email);
+        await PeopleAdmin.CreateGuardianProfileAsync(personId);
+
+        _guardianPersonForm = new();
+        _guardians = await PeopleAdmin.GetGuardianProfilesAsync();
+        Snackbar.Add("Guardian created.", Severity.Success);
+    }
+}

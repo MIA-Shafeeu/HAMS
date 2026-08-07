@@ -1,0 +1,428 @@
+@page "/intervention-cases"
+@using HAMS.WebHost.Components.Account
+@attribute [Authorize(Policy = StaffPolicy.Name)]
+@rendermode InteractiveServer
+@using HAMS.IdentityAccess.Application.Jwt
+@using HAMS.Intervention.Application
+@using HAMS.Intervention.Domain
+@using HAMS.OrgCurriculum.Application
+@using HAMS.PeopleEnrollment.Application
+@using HAMS.Platform.Access
+@using HAMS.Platform.Access.Domain
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject IOrgStructureLookup OrgLookup
+@inject IStudentEnrollmentService EnrollmentService
+@inject ISubjectLookup SubjectLookup
+@inject IInterventionCaseService CaseService
+@inject IConfidentialRecordAccessor ConfidentialAccessor
+@inject ISnackbar Snackbar
+
+<PageTitle>Intervention Cases — HAMS</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Intervention Cases</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedAsync" Label="School" Dense="true">
+                @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedAsync" Label="Academic year" Dense="true" Disabled="@(_academicYears.Count == 0)">
+                @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" Value="_selectedClassId" ValueChanged="OnClassChangedAsync" Label="Class" Dense="true" Disabled="@(_classes.Count == 0)">
+                @foreach (var classOption in _classes) { <MudSelectItem T="Guid" Value="@classOption.Id">@classOption.Name</MudSelectItem> }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid" Value="_selectedStudentId" ValueChanged="OnStudentChangedAsync" Label="Student" Dense="true" Disabled="@(_roster.Count == 0)">
+                @foreach (var student in _roster) { <MudSelectItem T="Guid" Value="@student.StudentPersonId">@student.NameEn</MudSelectItem> }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+}
+else if (_selectedStudentId == Guid.Empty)
+{
+    <MudAlert Severity="Severity.Info">Choose a school, academic year, class and student to continue.</MudAlert>
+}
+else
+{
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Open New Case</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="Guid" @bind-Value="_newSubjectId" Label="Subject" Dense="true">
+                    @foreach (var subject in _subjects) { <MudSelectItem T="Guid" Value="@subject.Id">@subject.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="Guid" @bind-Value="_newInterventionTypeId" Label="Intervention type" Dense="true">
+                    @foreach (var type in _interventionTypes) { <MudSelectItem T="Guid" Value="@type.Id">@type.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="string" @bind-Value="_newConfidentialityTierCode" Label="Confidentiality tier" Dense="true">
+                    <MudSelectItem T="string" Value="@ConfidentialityTierCodes.Restricted">Restricted</MudSelectItem>
+                    <MudSelectItem T="string" Value="@ConfidentialityTierCodes.Safeguarding">Safeguarding</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="OpenCaseAsync" Disabled="_saving">
+            Open Case
+        </MudButton>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Cases</MudText>
+        @if (_cases.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No intervention cases for this student.</MudText>
+        }
+        else
+        {
+            <MudTable Items="@_cases" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Subject</MudTh>
+                    <MudTh>Opened</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Closed</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Subject">@context.SubjectName</MudTd>
+                    <MudTd DataLabel="Opened">@context.Case.OpenedDate.ToString("yyyy-MM-dd")</MudTd>
+                    <MudTd DataLabel="Status">
+                        <MudChip T="string" Size="Size.Small" Color="@(context.Case.Status == InterventionCaseStatus.Open ? Color.Info : Color.Success)">@context.Case.Status</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Closed">@(context.Case.ClosedDate?.ToString("yyyy-MM-dd") ?? "—")</MudTd>
+                    <MudTd>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => ViewDetailsAsync(context.Case.Id))">
+                            View Details
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudPaper>
+
+    @if (_selectedCaseId is { } caseId)
+    {
+        <MudPaper Class="pa-4" Elevation="1">
+            @if (!_selectedCaseAuthorized)
+            {
+                <MudAlert Severity="Severity.Error">You do not have a confidentiality grant covering this case.</MudAlert>
+            }
+            else
+            {
+                <MudText Typo="Typo.h6" Class="mb-2">Support Plans</MudText>
+                @if (_plans.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">No plans recorded yet.</MudText>
+                }
+                else
+                {
+                    <MudTable Items="@_plans" Dense="true" Hover="true" Class="mb-3">
+                        <HeaderContent>
+                            <MudTh>Description</MudTh>
+                            <MudTh>Start</MudTh>
+                            <MudTh>Target</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Description">@context.Description</MudTd>
+                            <MudTd DataLabel="Start">@context.StartDate.ToString("yyyy-MM-dd")</MudTd>
+                            <MudTd DataLabel="Target">@context.TargetDate.ToString("yyyy-MM-dd")</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+
+                <MudGrid Class="mb-3">
+                    <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_newPlanDescription" Label="New plan description" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudDatePicker Label="Start date" Date="_newPlanStartDate" DateChanged="d => _newPlanStartDate = d" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudDatePicker Label="Target date" Date="_newPlanTargetDate" DateChanged="d => _newPlanTargetDate = d" /></MudItem>
+                </MudGrid>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mb-4" OnClick="@(() => CreatePlanAsync(caseId))">Add Plan</MudButton>
+
+                <MudText Typo="Typo.h6" Class="mb-2">Reassessment Attempts</MudText>
+                @if (_reassessmentAttempts.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">No reassessment attempts recorded yet.</MudText>
+                }
+                else
+                {
+                    <MudTable Items="@_reassessmentAttempts" Dense="true" Hover="true" Class="mb-3">
+                        <HeaderContent>
+                            <MudTh>Recorded</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Recorded">@context.RecordedAtUtc.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+
+                @if (_selectedCaseStatus == InterventionCaseStatus.Open)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => CloseCaseAsync(caseId))">Close Case</MudButton>
+                }
+            }
+        </MudPaper>
+    }
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private Guid? _currentPersonId;
+    private ClaimsPrincipal? _user;
+
+    private IReadOnlyList<SchoolOption> _schools = [];
+    private IReadOnlyList<AcademicYearOption> _academicYears = [];
+    private IReadOnlyList<ClassOption> _classes = [];
+    private IReadOnlyList<ClassRosterEntry> _roster = [];
+    private IReadOnlyList<SubjectOption> _subjects = [];
+    private IReadOnlyList<InterventionTypeOption> _interventionTypes = [];
+
+    private Guid _selectedSchoolId, _selectedAcademicYearId, _selectedClassId, _selectedStudentId;
+    private Guid _newSubjectId, _newInterventionTypeId;
+    private string _newConfidentialityTierCode = ConfidentialityTierCodes.Restricted;
+
+    private List<CaseRow> _cases = [];
+    private Guid? _selectedCaseId;
+    private bool _selectedCaseAuthorized;
+    private InterventionCaseStatus _selectedCaseStatus;
+    private List<InterventionPlan> _plans = [];
+    private List<ReassessmentAttempt> _reassessmentAttempts = [];
+
+    private string _newPlanDescription = "";
+    private DateTime? _newPlanStartDate = DateTime.Today;
+    private DateTime? _newPlanTargetDate = DateTime.Today.AddMonths(1);
+
+    private bool _loading = true;
+    private bool _saving;
+
+    private sealed class CaseRow(InterventionCase interventionCase, string subjectName)
+    {
+        public InterventionCase Case { get; } = interventionCase;
+        public string SubjectName { get; } = subjectName;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            _user = (await AuthState).User;
+            if (Guid.TryParse(_user.FindFirstValue(HamsClaimTypes.PersonId), out var personId))
+            {
+                _currentPersonId = personId;
+            }
+        }
+
+        try
+        {
+            _schools = await OrgLookup.GetSchoolsAsync();
+            _interventionTypes = await CaseService.GetActiveInterventionTypesAsync();
+            if (_interventionTypes.Count > 0)
+            {
+                _newInterventionTypeId = _interventionTypes[0].Id;
+            }
+
+            if (_schools.Count > 0)
+            {
+                await OnSchoolChangedAsync(_schools[0].Id);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Could not load setup data.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnSchoolChangedAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _academicYears = await OrgLookup.GetAcademicYearsAsync(schoolId);
+        _subjects = await OrgLookup.GetSubjectsAsync(schoolId);
+        if (_subjects.Count > 0)
+        {
+            _newSubjectId = _subjects[0].Id;
+        }
+
+        _classes = [];
+        _roster = [];
+        _cases = [];
+        _selectedCaseId = null;
+        _selectedStudentId = Guid.Empty;
+
+        if (_academicYears.Count > 0)
+        {
+            await OnAcademicYearChangedAsync(_academicYears[0].Id);
+        }
+    }
+
+    private async Task OnAcademicYearChangedAsync(Guid academicYearId)
+    {
+        _selectedAcademicYearId = academicYearId;
+        _classes = await OrgLookup.GetClassesAsync(academicYearId);
+        _roster = [];
+        _cases = [];
+        _selectedCaseId = null;
+        _selectedStudentId = Guid.Empty;
+
+        if (_classes.Count > 0)
+        {
+            await OnClassChangedAsync(_classes[0].Id);
+        }
+    }
+
+    private async Task OnClassChangedAsync(Guid classId)
+    {
+        _selectedClassId = classId;
+        _loading = true;
+        try
+        {
+            _roster = await EnrollmentService.GetActiveRosterForClassAsync(classId, DateOnly.FromDateTime(DateTime.Today));
+            if (_roster.Count > 0)
+            {
+                await OnStudentChangedAsync(_roster[0].StudentPersonId);
+            }
+            else
+            {
+                _selectedStudentId = Guid.Empty;
+                _cases = [];
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnStudentChangedAsync(Guid studentPersonId)
+    {
+        _selectedStudentId = studentPersonId;
+        _selectedCaseId = null;
+        await LoadCasesAsync();
+    }
+
+    private async Task LoadCasesAsync()
+    {
+        if (_selectedStudentId == Guid.Empty)
+        {
+            return;
+        }
+
+        try
+        {
+            var cases = await CaseService.GetCasesForStudentAsync(_selectedStudentId);
+            var rows = new List<CaseRow>();
+            foreach (var interventionCase in cases)
+            {
+                var subjectName = await SubjectLookup.GetNameAsync(interventionCase.SubjectId) ?? "(unknown subject)";
+                rows.Add(new CaseRow(interventionCase, subjectName));
+            }
+
+            _cases = rows;
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Could not load intervention cases.", Severity.Error);
+        }
+    }
+
+    private async Task OpenCaseAsync()
+    {
+        if (_currentPersonId is not { } openedBy)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            await CaseService.OpenCaseAsync(
+                _selectedStudentId, _newSubjectId, _selectedAcademicYearId, _newInterventionTypeId, _newConfidentialityTierCode,
+                null, null, null, openedBy, DateOnly.FromDateTime(DateTime.Today));
+
+            Snackbar.Add("Case opened.", Severity.Success);
+            await LoadCasesAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ViewDetailsAsync(Guid caseId)
+    {
+        _selectedCaseId = caseId;
+        var interventionCase = _cases.Single(c => c.Case.Id == caseId).Case;
+        _selectedCaseStatus = interventionCase.Status;
+
+        _selectedCaseAuthorized = _user is not null
+            && await ConfidentialAccessor.CanAccessAsync(_user, interventionCase, nameof(InterventionCase), caseId.ToString());
+
+        if (!_selectedCaseAuthorized)
+        {
+            _plans = [];
+            _reassessmentAttempts = [];
+            return;
+        }
+
+        _plans = (await CaseService.GetPlansAsync(caseId)).ToList();
+        _reassessmentAttempts = (await CaseService.GetReassessmentAttemptsAsync(caseId)).ToList();
+    }
+
+    private async Task CreatePlanAsync(Guid caseId)
+    {
+        if (_currentPersonId is not { } assignedTo || _newPlanStartDate is not { } start || _newPlanTargetDate is not { } target
+            || string.IsNullOrWhiteSpace(_newPlanDescription))
+        {
+            return;
+        }
+
+        try
+        {
+            await CaseService.CreatePlanAsync(caseId, _newPlanDescription, assignedTo, DateOnly.FromDateTime(start), DateOnly.FromDateTime(target), null);
+            _newPlanDescription = "";
+            Snackbar.Add("Plan added.", Severity.Success);
+            await ViewDetailsAsync(caseId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task CloseCaseAsync(Guid caseId)
+    {
+        try
+        {
+            await CaseService.CloseCaseAsync(caseId, DateOnly.FromDateTime(DateTime.Today));
+            Snackbar.Add("Case closed.", Severity.Success);
+            await LoadCasesAsync();
+            await ViewDetailsAsync(caseId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

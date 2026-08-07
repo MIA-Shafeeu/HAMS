@@ -1,0 +1,73 @@
+@page "/portal/children"
+@layout PortalLayout
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<MudText Typo="Typo.h5" Class="mb-4">My Children</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else if (_students.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No students are linked to your account yet. Contact the school office if this is unexpected.</MudAlert>
+}
+else
+{
+    <MudGrid>
+        @foreach (var student in _students)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard>
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6">@student.NameEn</MudText>
+                        <MudText Typo="Typo.body2">@student.NameDv</MudText>
+                        <MudText Typo="Typo.body2">Admission No: @student.AdmissionNumber</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="@($"/portal/children/{student.StudentPersonId}")">
+                            View
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
+}
+
+@code {
+    [Inject] private HttpClient Http { get; set; } = null!;
+    [Inject] private PortalAuthenticationStateProvider AuthStateProvider { get; set; } = null!;
+    [Inject] private NavigationManager Nav { get; set; } = null!;
+
+    private List<GuardianStudentSummaryDto> _students = [];
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthStateProvider.HasClaimAsync(HamsClaimTypes.IsGuardian, "true"))
+        {
+            Nav.NavigateTo("/guardian/login", forceLoad: false);
+            return;
+        }
+
+        try
+        {
+            _students = await Http.GetFromJsonAsync<List<GuardianStudentSummaryDto>>("/api/v1/portal/guardian/students", PortalJson.Options) ?? [];
+        }
+        catch (HttpRequestException)
+        {
+            _error = "Could not load your children. Please try again later.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

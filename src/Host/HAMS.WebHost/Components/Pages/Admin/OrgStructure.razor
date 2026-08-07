@@ -1,0 +1,524 @@
+@page "/admin/org-structure"
+@using HAMS.WebHost.Components.Account
+@attribute [Authorize(Policy = SystemOrSchoolAdminPolicy.Name)]
+@rendermode InteractiveServer
+@using HAMS.OrgCurriculum.Application
+@using OrgSchool = HAMS.OrgCurriculum.Domain.School
+@using OrgCampus = HAMS.OrgCurriculum.Domain.Campus
+@using OrgAcademicYear = HAMS.OrgCurriculum.Domain.AcademicYear
+@using OrgTerm = HAMS.OrgCurriculum.Domain.Term
+@using OrgPhase = HAMS.OrgCurriculum.Domain.Phase
+@using OrgKeyStage = HAMS.OrgCurriculum.Domain.KeyStage
+@using OrgKeyStagePolicy = HAMS.OrgCurriculum.Domain.KeyStagePolicy
+@using OrgGrade = HAMS.OrgCurriculum.Domain.Grade
+@using OrgClass = HAMS.OrgCurriculum.Domain.Class
+@using HAMS.Platform.Common.Contracts
+@inject IOrgAdminService OrgAdmin
+@inject ISnackbar Snackbar
+
+<PageTitle>Org &amp; Academic Structure — HAMS</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">System Administration — Org &amp; Academic Structure</MudText>
+
+<MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true">
+
+    <MudTabPanel Text="Schools">
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_newSchoolCode" Label="Code" /></MudItem>
+            <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_newSchoolName" Label="Name" /></MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateSchoolAsync">Create</MudButton></MudItem>
+        </MudGrid>
+        <MudTable Items="@_schools" Dense="true" Hover="true" Class="mb-4">
+            <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Code">@context.Code</MudTd>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectSchoolAsync(context.Id))">Manage Campuses</MudButton></MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        @if (_selectedSchoolId != Guid.Empty)
+        {
+            <MudText Typo="Typo.h6" Class="mb-2">Campuses — @_schools.SingleOrDefault(s => s.Id == _selectedSchoolId)?.Name</MudText>
+            <MudTable Items="@_campuses" Dense="true" Hover="true" Class="mb-3">
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh></HeaderContent>
+                <RowTemplate><MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.Name</MudTd></RowTemplate>
+            </MudTable>
+            <MudGrid>
+                <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_newCampusCode" Label="Code" /></MudItem>
+                <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_newCampusName" Label="Name" /></MudItem>
+                <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateCampusAsync">Add</MudButton></MudItem>
+            </MudGrid>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Academic Years &amp; Terms">
+        <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForYearsAsync" Label="School" Dense="true" Class="mb-4">
+            @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+        </MudSelect>
+
+        @if (_selectedSchoolId != Guid.Empty)
+        {
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="_newYearCode" Label="Code" /></MudItem>
+                <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newYearName" Label="Name" /></MudItem>
+                <MudItem xs="12" sm="3"><MudDatePicker Label="Start date" Date="_newYearStart" DateChanged="d => _newYearStart = d" /></MudItem>
+                <MudItem xs="12" sm="3"><MudDatePicker Label="End date" Date="_newYearEnd" DateChanged="d => _newYearEnd = d" /></MudItem>
+                <MudItem xs="12" sm="1" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAcademicYearAsync">Add</MudButton></MudItem>
+            </MudGrid>
+
+            <MudTable Items="@_academicYears" Dense="true" Hover="true" Class="mb-4">
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Start</MudTh><MudTh>End</MudTh><MudTh></MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.Code</MudTd>
+                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                    <MudTd DataLabel="Start">@context.StartDate.ToString("yyyy-MM-dd")</MudTd>
+                    <MudTd DataLabel="End">@context.EndDate.ToString("yyyy-MM-dd")</MudTd>
+                    <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectAcademicYearAsync(context.Id))">Manage Terms</MudButton></MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            @if (_selectedAcademicYearId != Guid.Empty)
+            {
+                <MudText Typo="Typo.h6" Class="mb-2">Terms</MudText>
+                <MudTable Items="@_terms" Dense="true" Hover="true" Class="mb-3">
+                    <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Start</MudTh><MudTh>End</MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.Name</MudTd>
+                        <MudTd DataLabel="Start">@context.StartDate.ToString("yyyy-MM-dd")</MudTd><MudTd DataLabel="End">@context.EndDate.ToString("yyyy-MM-dd")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+                <MudGrid>
+                    <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="_newTermCode" Label="Code" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newTermName" Label="Name" /></MudItem>
+                    <MudItem xs="12" sm="2"><MudDatePicker Label="Start" Date="_newTermStart" DateChanged="d => _newTermStart = d" /></MudItem>
+                    <MudItem xs="12" sm="2"><MudDatePicker Label="End" Date="_newTermEnd" DateChanged="d => _newTermEnd = d" /></MudItem>
+                    <MudItem xs="12" sm="2"><MudNumericField T="int" @bind-Value="_newTermDisplayOrder" Label="Order" /></MudItem>
+                    <MudItem xs="12" sm="1" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateTermAsync">Add</MudButton></MudItem>
+                </MudGrid>
+            }
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Phases &amp; Key Stages">
+        <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForPhasesAsync" Label="School" Dense="true" Class="mb-4">
+            @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+        </MudSelect>
+
+        @if (_selectedSchoolId != Guid.Empty)
+        {
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newPhaseCode" Label="Code" /></MudItem>
+                <MudItem xs="12" sm="5"><MudTextField T="string" @bind-Value="_newPhaseName" Label="Name" /></MudItem>
+                <MudItem xs="12" sm="3"><MudNumericField T="int" @bind-Value="_newPhaseDisplayOrder" Label="Display order" /></MudItem>
+                <MudItem xs="12" sm="1" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreatePhaseAsync">Add</MudButton></MudItem>
+            </MudGrid>
+
+            <MudTable Items="@_phases" Dense="true" Hover="true" Class="mb-4">
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.Name</MudTd>
+                    <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectPhaseAsync(context.Id))">Manage Key Stages</MudButton></MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            @if (_selectedPhaseId != Guid.Empty)
+            {
+                <MudText Typo="Typo.h6" Class="mb-2">Key Stages</MudText>
+                <MudTable Items="@_keyStages" Dense="true" Hover="true" Class="mb-3">
+                    <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh></HeaderContent>
+                    <RowTemplate><MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.Name</MudTd></RowTemplate>
+                </MudTable>
+                <MudGrid>
+                    <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newKeyStageCode" Label="Code" /></MudItem>
+                    <MudItem xs="12" sm="5"><MudTextField T="string" @bind-Value="_newKeyStageName" Label="Name" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudNumericField T="int" @bind-Value="_newKeyStageDisplayOrder" Label="Display order" /></MudItem>
+                    <MudItem xs="12" sm="1" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateKeyStageAsync">Add</MudButton></MudItem>
+                </MudGrid>
+            }
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Key Stage Policies">
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            The evaluation-model cascade: set exactly one policy per key stage per academic year. Every grade assigned to that key stage automatically inherits it — this is the single most important configuration screen in the system.
+        </MudAlert>
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="6">
+                <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForKeyStagePoliciesAsync" Label="School" Dense="true">
+                    @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="Guid" @bind-Value="_policyKeyStageId" Label="Key stage" Dense="true" Disabled="@(_allKeyStagesForSchool.Count == 0)">
+                    @foreach (var keyStage in _allKeyStagesForSchool) { <MudSelectItem T="Guid" Value="@keyStage.Id">@keyStage.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        @if (_selectedSchoolId != Guid.Empty)
+        {
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="Guid" @bind-Value="_policyAcademicYearId" Label="Academic year" Dense="true">
+                        @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSelect T="string" @bind-Value="_newPolicyEvaluationModelCode" Label="Evaluation model code" Dense="true">
+                        <MudSelectItem T="string" Value="@("MASTERY")">Mastery</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("ASSESSMENT")">Assessment</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("HYBRID")">Hybrid</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="4" Class="d-flex align-end">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateKeyStagePolicyAsync" Disabled="@(_policyKeyStageId == Guid.Empty)">Create Draft Policy</MudButton>
+                </MudItem>
+            </MudGrid>
+
+            @if (_keyStagePolicies.Count > 0)
+            {
+                <MudTable Items="@_keyStagePolicies" Dense="true" Hover="true">
+                    <HeaderContent><MudTh>Status</MudTh><MudTh>Current</MudTh><MudTh></MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Status">@context.Status</MudTd>
+                        <MudTd DataLabel="Current">@(context.IsCurrent ? "Yes" : "No")</MudTd>
+                        <MudTd>
+                            @if (context.Status == HAMS.Platform.Common.Contracts.RecordStatus.Draft)
+                            {
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success" OnClick="@(() => PublishKeyStagePolicyAsync(context.Id))">Publish</MudButton>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Grades">
+        <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForGradesAsync" Label="School" Dense="true" Class="mb-4">
+            @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+        </MudSelect>
+
+        @if (_selectedSchoolId != Guid.Empty)
+        {
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newGradeCode" Label="Code" /></MudItem>
+                <MudItem xs="12" sm="5"><MudTextField T="string" @bind-Value="_newGradeName" Label="Name" /></MudItem>
+                <MudItem xs="12" sm="3"><MudNumericField T="int" @bind-Value="_newGradeDisplayOrder" Label="Display order" /></MudItem>
+                <MudItem xs="12" sm="1" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateGradeAsync">Add</MudButton></MudItem>
+            </MudGrid>
+
+            <MudTable Items="@_grades" Dense="true" Hover="true">
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Next Grade</MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.Code</MudTd>
+                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                    <MudTd DataLabel="Next Grade">
+                        <MudSelect T="Guid" Value="@(context.NextGradeId ?? Guid.Empty)" ValueChanged="@(id => SetNextGradeAsync(context.Id, id))" Dense="true" Margin="Margin.Dense">
+                            <MudSelectItem T="Guid" Value="Guid.Empty">(none)</MudSelectItem>
+                            @foreach (var grade in _grades.Where(g => g.Id != context.Id)) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
+                        </MudSelect>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Classes">
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="6">
+                <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForClassesAsync" Label="School" Dense="true">
+                    @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedForClassesAsync" Label="Academic year" Dense="true" Disabled="@(_academicYears.Count == 0)">
+                    @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        @if (_selectedAcademicYearId != Guid.Empty)
+        {
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newClassCode" Label="Code" /></MudItem>
+                <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newClassName" Label="Name" /></MudItem>
+                <MudItem xs="12" sm="5">
+                    <MudSelect T="Guid" MultiSelection="true" @bind-SelectedValues="_newClassGradeIds" Label="Grades (select one or more — more than one means a combined class)" Dense="true">
+                        @foreach (var grade in _grades) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="1" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateClassAsync">Add</MudButton></MudItem>
+            </MudGrid>
+
+            <MudTable Items="@_classes" Dense="true" Hover="true">
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh></HeaderContent>
+                <RowTemplate><MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.Name</MudTd></RowTemplate>
+            </MudTable>
+        }
+    </MudTabPanel>
+
+</MudTabs>
+
+@code {
+    private IReadOnlyList<OrgSchool> _schools = [];
+    private IReadOnlyList<OrgCampus> _campuses = [];
+    private IReadOnlyList<OrgAcademicYear> _academicYears = [];
+    private IReadOnlyList<OrgTerm> _terms = [];
+    private IReadOnlyList<OrgPhase> _phases = [];
+    private IReadOnlyList<OrgKeyStage> _keyStages = [];
+    private List<OrgKeyStage> _allKeyStagesForSchool = [];
+    private IReadOnlyList<OrgKeyStagePolicy> _keyStagePolicies = [];
+    private IReadOnlyList<OrgGrade> _grades = [];
+    private IReadOnlyList<OrgClass> _classes = [];
+
+    private Guid _selectedSchoolId;
+    private Guid _selectedAcademicYearId;
+    private Guid _selectedPhaseId;
+    private Guid _policyKeyStageId;
+    private Guid _policyAcademicYearId;
+
+    private string _newSchoolCode = "";
+    private string _newSchoolName = "";
+    private string _newCampusCode = "";
+    private string _newCampusName = "";
+    private string _newYearCode = "";
+    private string _newYearName = "";
+    private DateTime? _newYearStart = DateTime.Today;
+    private DateTime? _newYearEnd = DateTime.Today.AddYears(1);
+    private string _newTermCode = "";
+    private string _newTermName = "";
+    private DateTime? _newTermStart = DateTime.Today;
+    private DateTime? _newTermEnd = DateTime.Today.AddMonths(3);
+    private int _newTermDisplayOrder = 1;
+    private string _newPhaseCode = "";
+    private string _newPhaseName = "";
+    private int _newPhaseDisplayOrder = 1;
+    private string _newKeyStageCode = "";
+    private string _newKeyStageName = "";
+    private int _newKeyStageDisplayOrder = 1;
+    private string _newPolicyEvaluationModelCode = "MASTERY";
+    private string _newGradeCode = "";
+    private string _newGradeName = "";
+    private int _newGradeDisplayOrder = 1;
+    private string _newClassCode = "";
+    private string _newClassName = "";
+    private IReadOnlyCollection<Guid> _newClassGradeIds = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _schools = await OrgAdmin.GetSchoolsAsync();
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Could not load schools.", Severity.Error);
+        }
+    }
+
+    private async Task CreateSchoolAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newSchoolCode) || string.IsNullOrWhiteSpace(_newSchoolName)) return;
+
+        await OrgAdmin.CreateSchoolAsync(_newSchoolCode, _newSchoolName);
+        _newSchoolCode = "";
+        _newSchoolName = "";
+        Snackbar.Add("School created.", Severity.Success);
+        _schools = await OrgAdmin.GetSchoolsAsync();
+    }
+
+    private async Task SelectSchoolAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _campuses = await OrgAdmin.GetCampusesAsync(schoolId);
+    }
+
+    private async Task CreateCampusAsync()
+    {
+        if (_selectedSchoolId == Guid.Empty || string.IsNullOrWhiteSpace(_newCampusCode) || string.IsNullOrWhiteSpace(_newCampusName)) return;
+
+        await OrgAdmin.CreateCampusAsync(_selectedSchoolId, _newCampusCode, _newCampusName);
+        _newCampusCode = "";
+        _newCampusName = "";
+        Snackbar.Add("Campus created.", Severity.Success);
+        _campuses = await OrgAdmin.GetCampusesAsync(_selectedSchoolId);
+    }
+
+    private async Task OnSchoolChangedForYearsAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _selectedAcademicYearId = Guid.Empty;
+        _terms = [];
+        _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
+    }
+
+    private async Task CreateAcademicYearAsync()
+    {
+        if (_selectedSchoolId == Guid.Empty || string.IsNullOrWhiteSpace(_newYearCode) || _newYearStart is not { } start || _newYearEnd is not { } end) return;
+
+        await OrgAdmin.CreateAcademicYearAsync(_selectedSchoolId, _newYearCode, _newYearName, DateOnly.FromDateTime(start), DateOnly.FromDateTime(end));
+        _newYearCode = "";
+        _newYearName = "";
+        Snackbar.Add("Academic year created.", Severity.Success);
+        _academicYears = await OrgAdmin.GetAcademicYearsAsync(_selectedSchoolId);
+    }
+
+    private async Task SelectAcademicYearAsync(Guid academicYearId)
+    {
+        _selectedAcademicYearId = academicYearId;
+        _terms = await OrgAdmin.GetTermsAsync(academicYearId);
+    }
+
+    private async Task CreateTermAsync()
+    {
+        if (_selectedAcademicYearId == Guid.Empty || string.IsNullOrWhiteSpace(_newTermCode) || _newTermStart is not { } start || _newTermEnd is not { } end) return;
+
+        await OrgAdmin.CreateTermAsync(_selectedAcademicYearId, _newTermCode, _newTermName, DateOnly.FromDateTime(start), DateOnly.FromDateTime(end), _newTermDisplayOrder);
+        _newTermCode = "";
+        _newTermName = "";
+        Snackbar.Add("Term created.", Severity.Success);
+        _terms = await OrgAdmin.GetTermsAsync(_selectedAcademicYearId);
+    }
+
+    private async Task OnSchoolChangedForPhasesAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _selectedPhaseId = Guid.Empty;
+        _keyStages = [];
+        _phases = await OrgAdmin.GetPhasesAsync(schoolId);
+    }
+
+    private async Task CreatePhaseAsync()
+    {
+        if (_selectedSchoolId == Guid.Empty || string.IsNullOrWhiteSpace(_newPhaseCode)) return;
+
+        await OrgAdmin.CreatePhaseAsync(_selectedSchoolId, _newPhaseCode, _newPhaseName, _newPhaseDisplayOrder);
+        _newPhaseCode = "";
+        _newPhaseName = "";
+        Snackbar.Add("Phase created.", Severity.Success);
+        _phases = await OrgAdmin.GetPhasesAsync(_selectedSchoolId);
+    }
+
+    private async Task SelectPhaseAsync(Guid phaseId)
+    {
+        _selectedPhaseId = phaseId;
+        _keyStages = (await OrgAdmin.GetKeyStagesAsync(_selectedSchoolId)).Where(k => k.PhaseId == phaseId).ToList();
+    }
+
+    private async Task CreateKeyStageAsync()
+    {
+        if (_selectedSchoolId == Guid.Empty || _selectedPhaseId == Guid.Empty || string.IsNullOrWhiteSpace(_newKeyStageCode)) return;
+
+        await OrgAdmin.CreateKeyStageAsync(_selectedSchoolId, _selectedPhaseId, _newKeyStageCode, _newKeyStageName, _newKeyStageDisplayOrder);
+        _newKeyStageCode = "";
+        _newKeyStageName = "";
+        Snackbar.Add("Key stage created.", Severity.Success);
+        _keyStages = (await OrgAdmin.GetKeyStagesAsync(_selectedSchoolId)).Where(k => k.PhaseId == _selectedPhaseId).ToList();
+    }
+
+    private async Task OnSchoolChangedForKeyStagePoliciesAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
+        _allKeyStagesForSchool = (await OrgAdmin.GetKeyStagesAsync(schoolId)).ToList();
+        if (_academicYears.Count > 0) _policyAcademicYearId = _academicYears[0].Id;
+        if (_allKeyStagesForSchool.Count > 0)
+        {
+            _policyKeyStageId = _allKeyStagesForSchool[0].Id;
+            _keyStagePolicies = await OrgAdmin.GetKeyStagePoliciesAsync(_policyKeyStageId);
+        }
+    }
+
+    private async Task CreateKeyStagePolicyAsync()
+    {
+        if (_policyKeyStageId == Guid.Empty || _policyAcademicYearId == Guid.Empty) return;
+
+        try
+        {
+            await OrgAdmin.CreateKeyStagePolicyAsync(_policyKeyStageId, _policyAcademicYearId, _newPolicyEvaluationModelCode, null, null, null, null);
+            Snackbar.Add("Draft key stage policy created.", Severity.Success);
+            _keyStagePolicies = await OrgAdmin.GetKeyStagePoliciesAsync(_policyKeyStageId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task PublishKeyStagePolicyAsync(Guid policyId)
+    {
+        try
+        {
+            await OrgAdmin.PublishKeyStagePolicyAsync(policyId);
+            Snackbar.Add("Policy published.", Severity.Success);
+            _keyStagePolicies = await OrgAdmin.GetKeyStagePoliciesAsync(_policyKeyStageId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task OnSchoolChangedForGradesAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _grades = await OrgAdmin.GetGradesAsync(schoolId);
+    }
+
+    private async Task CreateGradeAsync()
+    {
+        if (_selectedSchoolId == Guid.Empty || string.IsNullOrWhiteSpace(_newGradeCode)) return;
+
+        await OrgAdmin.CreateGradeAsync(_selectedSchoolId, _newGradeCode, _newGradeName, _newGradeDisplayOrder);
+        _newGradeCode = "";
+        _newGradeName = "";
+        Snackbar.Add("Grade created.", Severity.Success);
+        _grades = await OrgAdmin.GetGradesAsync(_selectedSchoolId);
+    }
+
+    private async Task SetNextGradeAsync(Guid gradeId, Guid nextGradeId)
+    {
+        try
+        {
+            await OrgAdmin.SetNextGradeAsync(gradeId, nextGradeId == Guid.Empty ? null : nextGradeId);
+            _grades = await OrgAdmin.GetGradesAsync(_selectedSchoolId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task OnSchoolChangedForClassesAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _selectedAcademicYearId = Guid.Empty;
+        _classes = [];
+        _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
+        _grades = await OrgAdmin.GetGradesAsync(schoolId);
+    }
+
+    private async Task OnAcademicYearChangedForClassesAsync(Guid academicYearId)
+    {
+        _selectedAcademicYearId = academicYearId;
+        _classes = await OrgAdmin.GetClassesAsync(academicYearId);
+    }
+
+    private async Task CreateClassAsync()
+    {
+        if (_selectedSchoolId == Guid.Empty || _selectedAcademicYearId == Guid.Empty || string.IsNullOrWhiteSpace(_newClassCode) || _newClassGradeIds.Count == 0)
+        {
+            Snackbar.Add("Code, name, and at least one grade are required.", Severity.Warning);
+            return;
+        }
+
+        await OrgAdmin.CreateClassAsync(_selectedSchoolId, null, _selectedAcademicYearId, _newClassCode, _newClassName, _newClassGradeIds.ToList());
+        _newClassCode = "";
+        _newClassName = "";
+        _newClassGradeIds = [];
+        Snackbar.Add("Class created.", Severity.Success);
+        _classes = await OrgAdmin.GetClassesAsync(_selectedAcademicYearId);
+    }
+}

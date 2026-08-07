@@ -1,0 +1,69 @@
+@using HAMS.Platform.Access
+@using HAMS.Platform.Common.Contracts
+@using System.Security.Claims
+@inject IRoleMembershipQuery RoleMembershipQuery
+@inject IClock Clock
+
+<MudNavMenu>
+    @if (_isAdmin)
+    {
+        <MudNavLink Href="/dashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+
+        <MudNavGroup Title="System Administration" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="true">
+            <MudNavLink Href="/admin/org-structure" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AccountTree">Org &amp; Academic Structure</MudNavLink>
+            <MudNavLink Href="/admin/curriculum-setup" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MenuBook">Curriculum Setup</MudNavLink>
+            <MudNavLink Href="/admin/people-enrollment" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.People">People &amp; Enrollment</MudNavLink>
+            <MudNavLink Href="/admin/staff-accounts-roles" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ManageAccounts">Staff Accounts &amp; Roles</MudNavLink>
+            <MudNavLink Href="/admin/teaching-assignments-timetable" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Schedule">Teaching Assignments &amp; Timetable</MudNavLink>
+            <MudNavLink Href="/admin/assessment-evaluation-config" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Grading">Assessment &amp; Evaluation Config</MudNavLink>
+            <MudNavLink Href="/admin/reference-data" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.List">Reference Data</MudNavLink>
+            <MudNavLink Href="/admin/notifications" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Notifications">Notification Outbox</MudNavLink>
+        </MudNavGroup>
+    }
+
+    @if (_isStaff)
+    {
+        <MudNavGroup Title="Teaching" Icon="@Icons.Material.Filled.School" Expanded="true">
+            <MudNavLink Href="/attendance" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.EventAvailable">Attendance</MudNavLink>
+            <MudNavLink Href="/homework" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assignment">Homework</MudNavLink>
+            <MudNavLink Href="/assessment-marks" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Grading">Assessment Marks</MudNavLink>
+            <MudNavLink Href="/behaviour-incidents" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ReportProblem">Behaviour</MudNavLink>
+            <MudNavLink Href="/intervention-cases" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SupportAgent">Intervention Cases</MudNavLink>
+            <MudNavLink Href="/lesson-planning" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MenuBook">Lesson Planning</MudNavLink>
+            <MudNavLink Href="/promotion-report-cards" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.WorkspacePremium">Promotion &amp; Report Cards</MudNavLink>
+        </MudNavGroup>
+    }
+
+    @if (_isAdmin)
+    {
+        <MudNavGroup Title="Regulatory" Icon="@Icons.Material.Filled.FactCheck" Expanded="true">
+            <MudNavLink Href="/audit-log" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.History">Audit Log</MudNavLink>
+            <MudNavLink Href="/reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assessment">Regulatory Reports</MudNavLink>
+        </MudNavGroup>
+    }
+</MudNavMenu>
+
+@code {
+    [CascadingParameter]
+    private Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>? AuthState { get; set; }
+
+    private bool _isAdmin;
+    private bool _isStaff;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null)
+        {
+            return;
+        }
+
+        var user = (await AuthState).User;
+        _isStaff = user.HasClaim(HAMS.IdentityAccess.Application.Jwt.HamsClaimTypes.IsStaff, "true");
+        var personIdValue = user.FindFirstValue(HAMS.IdentityAccess.Application.Jwt.HamsClaimTypes.PersonId);
+
+        if (Guid.TryParse(personIdValue, out var personId))
+        {
+            _isAdmin = await RoleMembershipQuery.IsSystemOrSchoolAdminAsync(personId, Clock.TodayUtc);
+        }
+    }
+}

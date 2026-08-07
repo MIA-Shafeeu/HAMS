@@ -1,0 +1,87 @@
+@page "/account/login/mfa"
+@layout HAMS.WebHost.Components.Layout.AccountLayout
+@using System.ComponentModel.DataAnnotations
+@using HAMS.IdentityAccess.Application.Auth
+@using HAMS.WebHost.Components.Account
+@inject IStaffAuthenticationService StaffAuth
+@inject NavigationManager Navigation
+
+<PageTitle>Verify code — HAMS</PageTitle>
+
+<div class="account-card">
+    <div class="account-brand">
+        <span class="account-brand-mark">HAMS</span>
+        <span class="account-brand-sub">Hirilandhoo Academic Management System</span>
+    </div>
+
+    <h1 class="account-title">Enter your authenticator code</h1>
+    <p class="account-subtitle">Open your authenticator app and enter the 6-digit code.</p>
+
+    @if (_error is not null)
+    {
+        <div class="account-alert" role="alert">@_error</div>
+    }
+
+    @if (string.IsNullOrEmpty(Token))
+    {
+        <div class="account-alert" role="alert">This verification link has expired. Please sign in again.</div>
+        <a class="account-link" href="/account/login">Back to sign in</a>
+    }
+    else
+    {
+        <EditForm Model="Mfa!" FormName="staff-mfa" OnValidSubmit="HandleSubmitAsync">
+            <DataAnnotationsValidator />
+
+            <div class="account-field">
+                <label for="code">Authentication code</label>
+                <InputText id="code" @bind-Value="Mfa!.Code" autofocus="true" autocomplete="one-time-code" />
+                <ValidationMessage For="() => Mfa!.Code" />
+            </div>
+
+            <button type="submit" class="account-submit">Verify</button>
+        </EditForm>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private string? Token { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromForm(FormName = "staff-mfa")]
+    private MfaModel? Mfa { get; set; }
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    private string? _error;
+
+    protected override void OnInitialized() => Mfa ??= new();
+
+    private async Task HandleSubmitAsync()
+    {
+        var result = await StaffAuth.VerifyMfaAsync(
+            new StaffMfaVerifyRequest(Token!, Mfa!.Code, "HAMS Web (Blazor)"),
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        if (!result.Succeeded)
+        {
+            _error = result.Error ?? "Invalid authentication code.";
+            return;
+        }
+
+        await StaffCookieSignIn.SignInAsync(HttpContext, result);
+
+        var target = !string.IsNullOrEmpty(ReturnUrl) && ReturnUrl.StartsWith('/') && !ReturnUrl.StartsWith("//") ? ReturnUrl : "/dashboard";
+        Navigation.NavigateTo(target, forceLoad: true);
+    }
+
+    private sealed class MfaModel
+    {
+        [Required(ErrorMessage = "Enter the 6-digit code.")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "Enter all 6 digits.")]
+        public string Code { get; set; } = "";
+    }
+}

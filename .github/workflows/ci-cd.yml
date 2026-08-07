@@ -1,0 +1,60 @@
+name: CI/CD
+
+# Scoped to the web platform only (HAMS.Web.slnx excludes HAMS.Mobile, whose Android/iOS/MacCatalyst/
+# Windows targets need MAUI workloads a plain ubuntu-latest runner doesn't have) — see the build plan's
+# own "web platform first" sequencing.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore HAMS.Web.slnx
+
+      - name: Build
+        run: dotnet build HAMS.Web.slnx --no-restore -c Release
+
+      - name: Test
+        run: dotnet test HAMS.Web.slnx --no-build -c Release --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+
+  # Runs on the self-hosted runner installed on the IIS/SQL Server box itself — every step in
+  # Deploy-HAMS.ps1 is a local operation on that same machine (dotnet publish, IIS app pool
+  # start/stop, file copy), so no remote transfer/credentials are needed beyond what the runner
+  # already has by being installed there. Only fires for a real push to main, never for a PR.
+  deploy:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to IIS
+        shell: pwsh
+        run: ./deploy/Deploy-HAMS.ps1
+        env:
+          HAMS_JWT_SIGNING_KEY: ${{ secrets.PROD_JWT_SIGNING_KEY }}
+          HAMS_MSGOWL_API_KEY: ${{ secrets.PROD_MSGOWL_API_KEY }}
+          HAMS_MSGOWL_SENDER_ID: ${{ secrets.PROD_MSGOWL_SENDER_ID }}
+          HAMS_MSGOWL_ENABLED: ${{ vars.PROD_MSGOWL_ENABLED }}

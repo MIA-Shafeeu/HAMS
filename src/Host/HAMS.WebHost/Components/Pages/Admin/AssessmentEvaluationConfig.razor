@@ -1,0 +1,461 @@
+@page "/admin/assessment-evaluation-config"
+@using HAMS.WebHost.Components.Account
+@attribute [Authorize(Policy = SystemOrSchoolAdminPolicy.Name)]
+@rendermode InteractiveServer
+@using HAMS.AssessmentEvaluation.Application
+@using HAMS.AssessmentEvaluation.Domain
+@using HAMS.OrgCurriculum.Application
+@using OrgSchool = HAMS.OrgCurriculum.Domain.School
+@using OrgAcademicYear = HAMS.OrgCurriculum.Domain.AcademicYear
+@using OrgTerm = HAMS.OrgCurriculum.Domain.Term
+@using OrgGrade = HAMS.OrgCurriculum.Domain.Grade
+@using CurrSubject = HAMS.OrgCurriculum.Domain.Subject
+@inject IAssessmentConfigAdminService AssessmentConfig
+@inject IOrgAdminService OrgAdmin
+@inject ICurriculumAdminService CurriculumAdmin
+@inject ISnackbar Snackbar
+
+<PageTitle>Assessment &amp; Evaluation Configuration — HAMS</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">System Administration — Assessment &amp; Evaluation Configuration</MudText>
+
+<MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true">
+
+    <MudTabPanel Text="Assessment Schemes">
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_newSchemeCode" Label="Code" /></MudItem>
+            <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_newSchemeName" Label="Name" /></MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateSchemeAsync">Create</MudButton></MudItem>
+        </MudGrid>
+        <MudTable Items="@_schemes" Dense="true" Hover="true" Class="mb-4">
+            <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Code">@context.Code</MudTd>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectSchemeAsync(context.Id))">Manage Components</MudButton></MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        @if (_selectedSchemeId != Guid.Empty)
+        {
+            <MudText Typo="Typo.h6" Class="mb-2">Components — @_schemes.SingleOrDefault(s => s.Id == _selectedSchemeId)?.Name</MudText>
+            <MudTable Items="@_schemeComponents" Dense="true" Hover="true" Class="mb-3">
+                <HeaderContent><MudTh>Category</MudTh><MudTh>Aggregation Rule</MudTh><MudTh>Weight %</MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Category">@(_categories.SingleOrDefault(c => c.Id == context.AssessmentCategoryId)?.Name)</MudTd>
+                    <MudTd DataLabel="Aggregation Rule">@(_aggregationRules.SingleOrDefault(r => r.Id == context.ResultAggregationRuleId)?.Name)</MudTd>
+                    <MudTd DataLabel="Weight %">@context.WeightPercentage</MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="string" @bind-Value="_newComponentCategoryCode" Label="Category" Dense="true">
+                        @foreach (var category in _categories) { <MudSelectItem T="string" Value="@category.Code">@category.Name</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="string" @bind-Value="_newComponentAggregationRuleCode" Label="Aggregation Rule" Dense="true">
+                        @foreach (var rule in _aggregationRules) { <MudSelectItem T="string" Value="@rule.Code">@rule.Name</MudSelectItem> }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="2"><MudNumericField T="decimal" @bind-Value="_newComponentWeight" Label="Weight %" /></MudItem>
+                <MudItem xs="12" sm="2"><MudNumericField T="int" @bind-Value="_newComponentDisplayOrder" Label="Order" /></MudItem>
+                <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddComponentAsync">Add</MudButton></MudItem>
+            </MudGrid>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Grade Scales">
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_newScaleCode" Label="Code" /></MudItem>
+            <MudItem xs="12" sm="6"><MudTextField T="string" @bind-Value="_newScaleName" Label="Name" /></MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateGradeScaleAsync">Create</MudButton></MudItem>
+        </MudGrid>
+        <MudTable Items="@_gradeScales" Dense="true" Hover="true" Class="mb-4">
+            <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Code">@context.Code</MudTd>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectGradeScaleAsync(context.Id))">Manage Bands</MudButton></MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        @if (_selectedGradeScaleId != Guid.Empty)
+        {
+            <MudText Typo="Typo.h6" Class="mb-2">Bands — @_gradeScales.SingleOrDefault(s => s.Id == _selectedGradeScaleId)?.Name</MudText>
+            <MudTable Items="@_gradeBands" Dense="true" Hover="true" Class="mb-3">
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Min %</MudTh><MudTh>Max %</MudTh><MudTh>Rank</MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.Code</MudTd>
+                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                    <MudTd DataLabel="Min %">@context.MinPercentage</MudTd>
+                    <MudTd DataLabel="Max %">@context.MaxPercentage</MudTd>
+                    <MudTd DataLabel="Rank">@context.Rank</MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="_newBandCode" Label="Code" /></MudItem>
+                <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="_newBandName" Label="Name" /></MudItem>
+                <MudItem xs="12" sm="2"><MudNumericField T="decimal" @bind-Value="_newBandMinPercentage" Label="Min %" /></MudItem>
+                <MudItem xs="12" sm="2"><MudNumericField T="decimal" @bind-Value="_newBandMaxPercentage" Label="Max %" /></MudItem>
+                <MudItem xs="12" sm="2"><MudNumericField T="int" @bind-Value="_newBandRank" Label="Rank" /></MudItem>
+                <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddGradeBandAsync">Add</MudButton></MudItem>
+            </MudGrid>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Evaluation Periods">
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="4">
+                <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedAsync" Label="School" Dense="true">
+                    @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedAsync" Label="Academic Year" Dense="true">
+                    @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        @if (_selectedAcademicYearId != Guid.Empty)
+        {
+            <MudTable Items="@_evaluationPeriods" Dense="true" Hover="true" Class="mb-4">
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Start</MudTh><MudTh>End</MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.Code</MudTd>
+                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                    <MudTd DataLabel="Start">@context.StartDate</MudTd>
+                    <MudTd DataLabel="End">@context.EndDate</MudTd>
+                </RowTemplate>
+            </MudTable>
+            <MudGrid>
+                <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="_newPeriodCode" Label="Code" /></MudItem>
+                <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newPeriodName" Label="Name" /></MudItem>
+                <MudItem xs="12" sm="2"><MudDatePicker Label="Start" Date="_newPeriodStart" DateChanged="d => _newPeriodStart = d" /></MudItem>
+                <MudItem xs="12" sm="2"><MudDatePicker Label="End" Date="_newPeriodEnd" DateChanged="d => _newPeriodEnd = d" /></MudItem>
+                <MudItem xs="12" sm="1"><MudNumericField T="int" @bind-Value="_newPeriodDisplayOrder" Label="Order" /></MudItem>
+                <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateEvaluationPeriodAsync">Create</MudButton></MudItem>
+            </MudGrid>
+        }
+    </MudTabPanel>
+
+    <MudTabPanel Text="Promotion Policies">
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="_newPolicyCode" Label="Code" /></MudItem>
+            <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newPolicyName" Label="Name" /></MudItem>
+            <MudItem xs="12" sm="2"><MudNumericField T="int" @bind-Value="_newPolicyMinimumRank" Label="Min. Rank" /></MudItem>
+            <MudItem xs="12" sm="3"><MudNumericField T="int" @bind-Value="_newPolicyMinimumSubjects" Label="Min. Subjects to Clear" /></MudItem>
+            <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreatePromotionPolicyAsync">Create</MudButton></MudItem>
+        </MudGrid>
+        <MudTable Items="@_promotionPolicies" Dense="true" Hover="true">
+            <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Min. Rank</MudTh><MudTh>Min. Subjects</MudTh></HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Code">@context.Code</MudTd>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Min. Rank">@context.MinimumRank</MudTd>
+                <MudTd DataLabel="Min. Subjects">@context.MinimumSubjectsRequiredToClear</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Assessments">
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="3">
+                <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedAsync" Label="School" Dense="true">
+                    @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedForAssessmentsAsync" Label="Academic Year" Dense="true">
+                    @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudSelect T="Guid" Value="_selectedTermId" ValueChanged="OnTermChangedForAssessmentsAsync" Label="Term" Dense="true">
+                    @foreach (var term in _terms) { <MudSelectItem T="Guid" Value="@term.Id">@term.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudSelect T="Guid" Value="_selectedGradeId" ValueChanged="OnGradeChangedForAssessmentsAsync" Label="Grade" Dense="true">
+                    @foreach (var grade in _grades) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        @if (_selectedTermId != Guid.Empty && _selectedGradeId != Guid.Empty)
+        {
+            <MudSelect T="Guid" Value="_selectedSubjectId" ValueChanged="OnSubjectChangedForAssessmentsAsync" Label="Subject" Dense="true" Class="mb-4">
+                @foreach (var subject in _subjects) { <MudSelectItem T="Guid" Value="@subject.Id">@subject.Name</MudSelectItem> }
+            </MudSelect>
+
+            @if (_selectedSubjectId != Guid.Empty)
+            {
+                <MudTable Items="@_assessments" Dense="true" Hover="true" Class="mb-4" @key="_selectedSubjectId">
+                    <HeaderContent><MudTh>Title</MudTh><MudTh>Category</MudTh><MudTh>Max Marks</MudTh><MudTh>Scheduled</MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Title">@context.Title</MudTd>
+                        <MudTd DataLabel="Category">@(_categories.SingleOrDefault(c => c.Id == context.AssessmentCategoryId)?.Name)</MudTd>
+                        <MudTd DataLabel="Max Marks">@context.MaxMarks</MudTd>
+                        <MudTd DataLabel="Scheduled">@context.ScheduledDate</MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <MudGrid Class="mb-2">
+                    <MudItem xs="12" sm="3">
+                        <MudSelect T="string" @bind-Value="_newAssessmentCategoryCode" Label="Category" Dense="true">
+                            @foreach (var category in _categories) { <MudSelectItem T="string" Value="@category.Code">@category.Name</MudSelectItem> }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_newAssessmentTitle" Label="Title" /></MudItem>
+                    <MudItem xs="12" sm="2"><MudNumericField T="decimal" @bind-Value="_newAssessmentMaxMarks" Label="Max Marks" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudNumericField T="int?" @bind-Value="_newAssessmentDurationMinutes" Label="Duration (min, optional)" /></MudItem>
+                </MudGrid>
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="3">
+                        <MudSelect T="string" @bind-Value="_newAssessmentExamBoardCode" Label="External Board (optional)" Dense="true" Clearable="true">
+                            @foreach (var board in _examBoards) { <MudSelectItem T="string" Value="@board.Code">@board.Name</MudSelectItem> }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newAssessmentExternalSyllabusCode" Label="External Syllabus Code (optional)" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudDatePicker Label="Scheduled Date" Date="_newAssessmentScheduledDate" DateChanged="d => _newAssessmentScheduledDate = d" /></MudItem>
+                    <MudItem xs="12" sm="3" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAssessmentAsync">Create</MudButton></MudItem>
+                </MudGrid>
+            }
+        }
+    </MudTabPanel>
+
+</MudTabs>
+
+@code {
+    private IReadOnlyList<AssessmentScheme> _schemes = [];
+    private IReadOnlyList<AssessmentSchemeComponent> _schemeComponents = [];
+    private IReadOnlyList<GradeScale> _gradeScales = [];
+    private IReadOnlyList<GradeBand> _gradeBands = [];
+    private IReadOnlyList<EvaluationPeriod> _evaluationPeriods = [];
+    private IReadOnlyList<PromotionPolicy> _promotionPolicies = [];
+    private IReadOnlyList<Assessment> _assessments = [];
+
+    private IReadOnlyList<AssessmentCategory> _categories = [];
+    private IReadOnlyList<ResultAggregationRule> _aggregationRules = [];
+    private IReadOnlyList<ExternalExaminationBoard> _examBoards = [];
+
+    private IReadOnlyList<OrgSchool> _schools = [];
+    private IReadOnlyList<OrgAcademicYear> _academicYears = [];
+    private IReadOnlyList<OrgTerm> _terms = [];
+    private IReadOnlyList<OrgGrade> _grades = [];
+    private IReadOnlyList<CurrSubject> _subjects = [];
+
+    private Guid _selectedSchoolId;
+    private Guid _selectedAcademicYearId;
+    private Guid _selectedTermId;
+    private Guid _selectedGradeId;
+    private Guid _selectedSubjectId;
+
+    private string _newSchemeCode = "";
+    private string _newSchemeName = "";
+    private Guid _selectedSchemeId;
+    private string _newComponentCategoryCode = "";
+    private string _newComponentAggregationRuleCode = "";
+    private decimal _newComponentWeight;
+    private int _newComponentDisplayOrder;
+
+    private string _newScaleCode = "";
+    private string _newScaleName = "";
+    private Guid _selectedGradeScaleId;
+    private string _newBandCode = "";
+    private string _newBandName = "";
+    private decimal _newBandMinPercentage;
+    private decimal _newBandMaxPercentage;
+    private int _newBandRank;
+
+    private string _newPeriodCode = "";
+    private string _newPeriodName = "";
+    private DateTime? _newPeriodStart;
+    private DateTime? _newPeriodEnd;
+    private int _newPeriodDisplayOrder;
+
+    private string _newPolicyCode = "";
+    private string _newPolicyName = "";
+    private int _newPolicyMinimumRank;
+    private int _newPolicyMinimumSubjects;
+
+    private string _newAssessmentCategoryCode = "";
+    private string _newAssessmentTitle = "";
+    private decimal _newAssessmentMaxMarks;
+    private int? _newAssessmentDurationMinutes;
+    private string? _newAssessmentExamBoardCode;
+    private string? _newAssessmentExternalSyllabusCode;
+    private DateTime? _newAssessmentScheduledDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _schemes = await AssessmentConfig.GetAssessmentSchemesAsync();
+        _gradeScales = await AssessmentConfig.GetGradeScalesAsync();
+        _promotionPolicies = await AssessmentConfig.GetPromotionPoliciesAsync();
+        _categories = await AssessmentConfig.GetAssessmentCategoriesAsync();
+        _aggregationRules = await AssessmentConfig.GetResultAggregationRulesAsync();
+        _examBoards = await AssessmentConfig.GetExternalExaminationBoardsAsync();
+        _schools = await OrgAdmin.GetSchoolsAsync();
+    }
+
+    private async Task CreateSchemeAsync()
+    {
+        await AssessmentConfig.CreateAssessmentSchemeAsync(_newSchemeCode, _newSchemeName);
+        _newSchemeCode = ""; _newSchemeName = "";
+        _schemes = await AssessmentConfig.GetAssessmentSchemesAsync();
+        Snackbar.Add("Assessment scheme created.", Severity.Success);
+    }
+
+    private async Task SelectSchemeAsync(Guid schemeId)
+    {
+        _selectedSchemeId = schemeId;
+        _schemeComponents = await AssessmentConfig.GetAssessmentSchemeComponentsAsync(schemeId);
+    }
+
+    private async Task AddComponentAsync()
+    {
+        if (string.IsNullOrEmpty(_newComponentCategoryCode) || string.IsNullOrEmpty(_newComponentAggregationRuleCode))
+        {
+            Snackbar.Add("Select a category and an aggregation rule.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            await AssessmentConfig.AddAssessmentSchemeComponentAsync(_selectedSchemeId, _newComponentCategoryCode, _newComponentAggregationRuleCode, _newComponentWeight, _newComponentDisplayOrder);
+            _newComponentCategoryCode = ""; _newComponentAggregationRuleCode = ""; _newComponentWeight = 0; _newComponentDisplayOrder = 0;
+            _schemeComponents = await AssessmentConfig.GetAssessmentSchemeComponentsAsync(_selectedSchemeId);
+            Snackbar.Add("Component added.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task CreateGradeScaleAsync()
+    {
+        await AssessmentConfig.CreateGradeScaleAsync(_newScaleCode, _newScaleName);
+        _newScaleCode = ""; _newScaleName = "";
+        _gradeScales = await AssessmentConfig.GetGradeScalesAsync();
+        Snackbar.Add("Grade scale created.", Severity.Success);
+    }
+
+    private async Task SelectGradeScaleAsync(Guid scaleId)
+    {
+        _selectedGradeScaleId = scaleId;
+        _gradeBands = await AssessmentConfig.GetGradeBandsAsync(scaleId);
+    }
+
+    private async Task AddGradeBandAsync()
+    {
+        await AssessmentConfig.AddGradeBandAsync(_selectedGradeScaleId, _newBandCode, _newBandName, _newBandMinPercentage, _newBandMaxPercentage, _newBandRank, _gradeBands.Count + 1);
+        _newBandCode = ""; _newBandName = ""; _newBandMinPercentage = 0; _newBandMaxPercentage = 0; _newBandRank = 0;
+        _gradeBands = await AssessmentConfig.GetGradeBandsAsync(_selectedGradeScaleId);
+        Snackbar.Add("Grade band added.", Severity.Success);
+    }
+
+    private async Task OnSchoolChangedAsync(Guid schoolId)
+    {
+        _selectedSchoolId = schoolId;
+        _selectedAcademicYearId = Guid.Empty;
+        _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
+        _subjects = await CurriculumAdmin.GetSubjectsAsync(schoolId);
+        _grades = await OrgAdmin.GetGradesAsync(schoolId);
+    }
+
+    private async Task OnAcademicYearChangedAsync(Guid academicYearId)
+    {
+        _selectedAcademicYearId = academicYearId;
+        _evaluationPeriods = await AssessmentConfig.GetEvaluationPeriodsAsync(academicYearId);
+    }
+
+    private async Task OnAcademicYearChangedForAssessmentsAsync(Guid academicYearId)
+    {
+        _selectedAcademicYearId = academicYearId;
+        _selectedTermId = Guid.Empty;
+        _selectedGradeId = Guid.Empty;
+        _selectedSubjectId = Guid.Empty;
+        _assessments = [];
+        _terms = await OrgAdmin.GetTermsAsync(academicYearId);
+    }
+
+    private async Task OnTermChangedForAssessmentsAsync(Guid termId)
+    {
+        _selectedTermId = termId;
+        await RefreshAssessmentsIfReadyAsync();
+    }
+
+    private async Task OnGradeChangedForAssessmentsAsync(Guid gradeId)
+    {
+        _selectedGradeId = gradeId;
+        await RefreshAssessmentsIfReadyAsync();
+    }
+
+    private async Task OnSubjectChangedForAssessmentsAsync(Guid subjectId)
+    {
+        _selectedSubjectId = subjectId;
+        await RefreshAssessmentsIfReadyAsync();
+    }
+
+    private async Task RefreshAssessmentsIfReadyAsync()
+    {
+        if (_selectedTermId == Guid.Empty || _selectedGradeId == Guid.Empty || _selectedSubjectId == Guid.Empty)
+        {
+            _assessments = [];
+            return;
+        }
+
+        _assessments = await AssessmentConfig.GetAssessmentsAsync(_selectedSubjectId, _selectedGradeId, _selectedTermId);
+    }
+
+    private async Task CreateEvaluationPeriodAsync()
+    {
+        if (_newPeriodStart is null || _newPeriodEnd is null)
+        {
+            Snackbar.Add("Set a start and end date.", Severity.Warning);
+            return;
+        }
+
+        await AssessmentConfig.CreateEvaluationPeriodAsync(
+            _selectedAcademicYearId, _newPeriodCode, _newPeriodName, DateOnly.FromDateTime(_newPeriodStart.Value), DateOnly.FromDateTime(_newPeriodEnd.Value), _newPeriodDisplayOrder);
+        _newPeriodCode = ""; _newPeriodName = ""; _newPeriodStart = null; _newPeriodEnd = null; _newPeriodDisplayOrder = 0;
+        _evaluationPeriods = await AssessmentConfig.GetEvaluationPeriodsAsync(_selectedAcademicYearId);
+        Snackbar.Add("Evaluation period created.", Severity.Success);
+    }
+
+    private async Task CreatePromotionPolicyAsync()
+    {
+        await AssessmentConfig.CreatePromotionPolicyAsync(_newPolicyCode, _newPolicyName, _newPolicyMinimumRank, _newPolicyMinimumSubjects);
+        _newPolicyCode = ""; _newPolicyName = ""; _newPolicyMinimumRank = 0; _newPolicyMinimumSubjects = 0;
+        _promotionPolicies = await AssessmentConfig.GetPromotionPoliciesAsync();
+        Snackbar.Add("Promotion policy created.", Severity.Success);
+    }
+
+    private async Task CreateAssessmentAsync()
+    {
+        if (string.IsNullOrEmpty(_newAssessmentCategoryCode) || _newAssessmentScheduledDate is null)
+        {
+            Snackbar.Add("Select a category and a scheduled date.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            await AssessmentConfig.CreateAssessmentAsync(
+                _selectedSubjectId, _selectedGradeId, _selectedTermId, _selectedAcademicYearId, _newAssessmentCategoryCode, _newAssessmentTitle,
+                _newAssessmentMaxMarks, _newAssessmentDurationMinutes, _newAssessmentExamBoardCode, _newAssessmentExternalSyllabusCode,
+                DateOnly.FromDateTime(_newAssessmentScheduledDate.Value));
+
+            _newAssessmentCategoryCode = ""; _newAssessmentTitle = ""; _newAssessmentMaxMarks = 0; _newAssessmentDurationMinutes = null;
+            _newAssessmentExamBoardCode = null; _newAssessmentExternalSyllabusCode = null; _newAssessmentScheduledDate = null;
+            _assessments = await AssessmentConfig.GetAssessmentsAsync(_selectedSubjectId, _selectedGradeId, _selectedTermId);
+            Snackbar.Add("Assessment created.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+}

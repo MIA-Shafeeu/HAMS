@@ -1,0 +1,98 @@
+@page "/reports"
+@using HAMS.WebHost.Components.Account
+@attribute [Authorize(Policy = SystemOrSchoolAdminPolicy.Name)]
+@rendermode InteractiveServer
+@using HAMS.ReportingAnalyticsAudit.Application
+@inject IDashboardQueryService DashboardQuery
+
+<PageTitle>Regulatory Reports — HAMS</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Regulatory Reports</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_academicYears is null || _academicYears.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No enrolment data exists yet — there's nothing to export until at least one student is enrolled.</MudAlert>
+}
+else
+{
+    <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="@(v => _selectedAcademicYearId = v)" Label="Academic year" Class="mb-4" Style="max-width:300px">
+        @foreach (var year in _academicYears)
+        {
+            <MudSelectItem Value="@year.AcademicYearId">@year.Name</MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4" Elevation="1" Style="height:100%">
+                <MudText Typo="Typo.h6">Student Roster</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                    Every currently active enrolment for the selected academic year — admission number, name, grade, and class.
+                </MudText>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="@BuildRosterUrl(ExportFormat.Csv)" Target="_blank">CSV</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@BuildRosterUrl(ExportFormat.Xlsx)" Target="_blank">Excel</MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4" Elevation="1" Style="height:100%">
+                <MudText Typo="Typo.h6">Attendance Summary</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">Every daily attendance mark within the selected date range.</MudText>
+                <MudStack Row="true" Spacing="2" Class="mb-3">
+                    <MudDatePicker Label="From" @bind-Date="_attendanceFrom" Editable="true" />
+                    <MudDatePicker Label="To" @bind-Date="_attendanceTo" Editable="true" />
+                </MudStack>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_attendanceFrom is null || _attendanceTo is null)" Href="@BuildAttendanceUrl(ExportFormat.Csv)" Target="_blank">CSV</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@(_attendanceFrom is null || _attendanceTo is null)" Href="@BuildAttendanceUrl(ExportFormat.Xlsx)" Target="_blank">Excel</MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4" Elevation="1" Style="height:100%">
+                <MudText Typo="Typo.h6">Promotion Decisions</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">Every recorded promotion/progression decision for the selected academic year.</MudText>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="@BuildPromotionUrl(ExportFormat.Csv)" Target="_blank">CSV</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@BuildPromotionUrl(ExportFormat.Xlsx)" Target="_blank">Excel</MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private IReadOnlyList<AcademicYearOption>? _academicYears;
+    private Guid _selectedAcademicYearId;
+    private DateTime? _attendanceFrom = DateTime.Today.AddDays(-30);
+    private DateTime? _attendanceTo = DateTime.Today;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _academicYears = await DashboardQuery.GetAvailableAcademicYearsAsync();
+        if (_academicYears.Count > 0)
+        {
+            _selectedAcademicYearId = _academicYears[0].AcademicYearId;
+        }
+
+        _loading = false;
+    }
+
+    private string BuildRosterUrl(ExportFormat format)
+        => $"/api/v1/reporting/exports/student-roster?academicYearId={_selectedAcademicYearId}&format={format}";
+
+    private string BuildAttendanceUrl(ExportFormat format)
+        => $"/api/v1/reporting/exports/attendance-summary?academicYearId={_selectedAcademicYearId}" +
+           $"&fromDate={_attendanceFrom:yyyy-MM-dd}&toDate={_attendanceTo:yyyy-MM-dd}&format={format}";
+
+    private string BuildPromotionUrl(ExportFormat format)
+        => $"/api/v1/reporting/exports/promotion-decisions?academicYearId={_selectedAcademicYearId}&format={format}";
+}
