@@ -37,9 +37,9 @@
             </RowTemplate>
         </MudTable>
 
-        @if (_selectedSchoolId != Guid.Empty)
+        @if (_selectedSchoolIdForCampuses != Guid.Empty)
         {
-            <MudText Typo="Typo.h6" Class="mb-2">Campuses — @_schools.SingleOrDefault(s => s.Id == _selectedSchoolId)?.Name</MudText>
+            <MudText Typo="Typo.h6" Class="mb-2">Campuses — @_schools.SingleOrDefault(s => s.Id == _selectedSchoolIdForCampuses)?.Name</MudText>
             <MudTable Items="@_campuses" Dense="true" Hover="true" Class="mb-3">
                 <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh></HeaderContent>
                 <RowTemplate><MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.Name</MudTd></RowTemplate>
@@ -53,11 +53,11 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Academic Years &amp; Terms">
-        <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForYearsAsync" Label="School" Dense="true" Class="mb-4">
+        <MudSelect T="Guid" Value="_selectedSchoolIdForYears" ValueChanged="OnSchoolChangedForYearsAsync" Label="School" Dense="true" Class="mb-4">
             @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
         </MudSelect>
 
-        @if (_selectedSchoolId != Guid.Empty)
+        @if (_selectedSchoolIdForYears != Guid.Empty)
         {
             <MudGrid Class="mb-4">
                 <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="_newYearCode" Label="Code" /></MudItem>
@@ -78,7 +78,7 @@
                 </RowTemplate>
             </MudTable>
 
-            @if (_selectedAcademicYearId != Guid.Empty)
+            @if (_selectedAcademicYearIdForTerms != Guid.Empty)
             {
                 <MudText Typo="Typo.h6" Class="mb-2">Terms</MudText>
                 <MudTable Items="@_terms" Dense="true" Hover="true" Class="mb-3">
@@ -101,11 +101,11 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Phases &amp; Key Stages">
-        <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForPhasesAsync" Label="School" Dense="true" Class="mb-4">
+        <MudSelect T="Guid" Value="_selectedSchoolIdForPhases" ValueChanged="OnSchoolChangedForPhasesAsync" Label="School" Dense="true" Class="mb-4">
             @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
         </MudSelect>
 
-        @if (_selectedSchoolId != Guid.Empty)
+        @if (_selectedSchoolIdForPhases != Guid.Empty)
         {
             <MudGrid Class="mb-4">
                 <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newPhaseCode" Label="Code" /></MudItem>
@@ -145,7 +145,7 @@
         </MudAlert>
         <MudGrid Class="mb-4">
             <MudItem xs="12" sm="6">
-                <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForKeyStagePoliciesAsync" Label="School" Dense="true">
+                <MudSelect T="Guid" Value="_selectedSchoolIdForKeyStagePolicies" ValueChanged="OnSchoolChangedForKeyStagePoliciesAsync" Label="School" Dense="true">
                     @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
                 </MudSelect>
             </MudItem>
@@ -156,7 +156,7 @@
             </MudItem>
         </MudGrid>
 
-        @if (_selectedSchoolId != Guid.Empty)
+        @if (_selectedSchoolIdForKeyStagePolicies != Guid.Empty)
         {
             <MudGrid Class="mb-4">
                 <MudItem xs="12" sm="4">
@@ -196,11 +196,11 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Grades">
-        <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForGradesAsync" Label="School" Dense="true" Class="mb-4">
+        <MudSelect T="Guid" Value="_selectedSchoolIdForGrades" ValueChanged="OnSchoolChangedForGradesAsync" Label="School" Dense="true" Class="mb-4">
             @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
         </MudSelect>
 
-        @if (_selectedSchoolId != Guid.Empty)
+        @if (_selectedSchoolIdForGrades != Guid.Empty)
         {
             <MudGrid Class="mb-4">
                 <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newGradeCode" Label="Code" /></MudItem>
@@ -228,18 +228,18 @@
     <MudTabPanel Text="Classes">
         <MudGrid Class="mb-4">
             <MudItem xs="12" sm="6">
-                <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForClassesAsync" Label="School" Dense="true">
+                <MudSelect T="Guid" Value="_selectedSchoolIdForClasses" ValueChanged="OnSchoolChangedForClassesAsync" Label="School" Dense="true">
                     @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedForClassesAsync" Label="Academic year" Dense="true" Disabled="@(_academicYears.Count == 0)">
+                <MudSelect T="Guid" Value="_selectedAcademicYearIdForClasses" ValueChanged="OnAcademicYearChangedForClassesAsync" Label="Academic year" Dense="true" Disabled="@(_academicYears.Count == 0)">
                     @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
                 </MudSelect>
             </MudItem>
         </MudGrid>
 
-        @if (_selectedAcademicYearId != Guid.Empty)
+        @if (_selectedAcademicYearIdForClasses != Guid.Empty)
         {
             <MudGrid Class="mb-4">
                 <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newClassCode" Label="Code" /></MudItem>
@@ -273,8 +273,18 @@
     private IReadOnlyList<OrgGrade> _grades = [];
     private IReadOnlyList<OrgClass> _classes = [];
 
-    private Guid _selectedSchoolId;
-    private Guid _selectedAcademicYearId;
+    // Each tab has its own School (and, where relevant, Academic Year) selector - these must NOT
+    // share one field. Sharing one made switching tabs show a school/year as already "selected"
+    // while that tab's own dependent table was never (re)loaded, since only the ValueChanged
+    // handler tied to whichever dropdown the admin last touched actually runs.
+    private Guid _selectedSchoolIdForCampuses;
+    private Guid _selectedSchoolIdForYears;
+    private Guid _selectedAcademicYearIdForTerms;
+    private Guid _selectedSchoolIdForPhases;
+    private Guid _selectedSchoolIdForKeyStagePolicies;
+    private Guid _selectedSchoolIdForGrades;
+    private Guid _selectedSchoolIdForClasses;
+    private Guid _selectedAcademicYearIdForClasses;
     private Guid _selectedPhaseId;
     private Guid _policyKeyStageId;
     private Guid _policyAcademicYearId;
@@ -320,7 +330,11 @@
 
     private async Task CreateSchoolAsync()
     {
-        if (string.IsNullOrWhiteSpace(_newSchoolCode) || string.IsNullOrWhiteSpace(_newSchoolName)) return;
+        if (string.IsNullOrWhiteSpace(_newSchoolCode) || string.IsNullOrWhiteSpace(_newSchoolName))
+        {
+            Snackbar.Add("Code and name are required.", Severity.Warning);
+            return;
+        }
 
         await OrgAdmin.CreateSchoolAsync(_newSchoolCode, _newSchoolName);
         _newSchoolCode = "";
@@ -331,60 +345,72 @@
 
     private async Task SelectSchoolAsync(Guid schoolId)
     {
-        _selectedSchoolId = schoolId;
+        _selectedSchoolIdForCampuses = schoolId;
         _campuses = await OrgAdmin.GetCampusesAsync(schoolId);
     }
 
     private async Task CreateCampusAsync()
     {
-        if (_selectedSchoolId == Guid.Empty || string.IsNullOrWhiteSpace(_newCampusCode) || string.IsNullOrWhiteSpace(_newCampusName)) return;
+        if (_selectedSchoolIdForCampuses == Guid.Empty || string.IsNullOrWhiteSpace(_newCampusCode) || string.IsNullOrWhiteSpace(_newCampusName))
+        {
+            Snackbar.Add("Select a school, and provide a code and name.", Severity.Warning);
+            return;
+        }
 
-        await OrgAdmin.CreateCampusAsync(_selectedSchoolId, _newCampusCode, _newCampusName);
+        await OrgAdmin.CreateCampusAsync(_selectedSchoolIdForCampuses, _newCampusCode, _newCampusName);
         _newCampusCode = "";
         _newCampusName = "";
         Snackbar.Add("Campus created.", Severity.Success);
-        _campuses = await OrgAdmin.GetCampusesAsync(_selectedSchoolId);
+        _campuses = await OrgAdmin.GetCampusesAsync(_selectedSchoolIdForCampuses);
     }
 
     private async Task OnSchoolChangedForYearsAsync(Guid schoolId)
     {
-        _selectedSchoolId = schoolId;
-        _selectedAcademicYearId = Guid.Empty;
+        _selectedSchoolIdForYears = schoolId;
+        _selectedAcademicYearIdForTerms = Guid.Empty;
         _terms = [];
         _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
     }
 
     private async Task CreateAcademicYearAsync()
     {
-        if (_selectedSchoolId == Guid.Empty || string.IsNullOrWhiteSpace(_newYearCode) || _newYearStart is not { } start || _newYearEnd is not { } end) return;
+        if (_selectedSchoolIdForYears == Guid.Empty || string.IsNullOrWhiteSpace(_newYearCode) || _newYearStart is not { } start || _newYearEnd is not { } end)
+        {
+            Snackbar.Add("Select a school, and provide a code, start date and end date.", Severity.Warning);
+            return;
+        }
 
-        await OrgAdmin.CreateAcademicYearAsync(_selectedSchoolId, _newYearCode, _newYearName, DateOnly.FromDateTime(start), DateOnly.FromDateTime(end));
+        await OrgAdmin.CreateAcademicYearAsync(_selectedSchoolIdForYears, _newYearCode, _newYearName, DateOnly.FromDateTime(start), DateOnly.FromDateTime(end));
         _newYearCode = "";
         _newYearName = "";
         Snackbar.Add("Academic year created.", Severity.Success);
-        _academicYears = await OrgAdmin.GetAcademicYearsAsync(_selectedSchoolId);
+        _academicYears = await OrgAdmin.GetAcademicYearsAsync(_selectedSchoolIdForYears);
     }
 
     private async Task SelectAcademicYearAsync(Guid academicYearId)
     {
-        _selectedAcademicYearId = academicYearId;
+        _selectedAcademicYearIdForTerms = academicYearId;
         _terms = await OrgAdmin.GetTermsAsync(academicYearId);
     }
 
     private async Task CreateTermAsync()
     {
-        if (_selectedAcademicYearId == Guid.Empty || string.IsNullOrWhiteSpace(_newTermCode) || _newTermStart is not { } start || _newTermEnd is not { } end) return;
+        if (_selectedAcademicYearIdForTerms == Guid.Empty || string.IsNullOrWhiteSpace(_newTermCode) || _newTermStart is not { } start || _newTermEnd is not { } end)
+        {
+            Snackbar.Add("Select an academic year, and provide a code, start date and end date.", Severity.Warning);
+            return;
+        }
 
-        await OrgAdmin.CreateTermAsync(_selectedAcademicYearId, _newTermCode, _newTermName, DateOnly.FromDateTime(start), DateOnly.FromDateTime(end), _newTermDisplayOrder);
+        await OrgAdmin.CreateTermAsync(_selectedAcademicYearIdForTerms, _newTermCode, _newTermName, DateOnly.FromDateTime(start), DateOnly.FromDateTime(end), _newTermDisplayOrder);
         _newTermCode = "";
         _newTermName = "";
         Snackbar.Add("Term created.", Severity.Success);
-        _terms = await OrgAdmin.GetTermsAsync(_selectedAcademicYearId);
+        _terms = await OrgAdmin.GetTermsAsync(_selectedAcademicYearIdForTerms);
     }
 
     private async Task OnSchoolChangedForPhasesAsync(Guid schoolId)
     {
-        _selectedSchoolId = schoolId;
+        _selectedSchoolIdForPhases = schoolId;
         _selectedPhaseId = Guid.Empty;
         _keyStages = [];
         _phases = await OrgAdmin.GetPhasesAsync(schoolId);
@@ -392,35 +418,43 @@
 
     private async Task CreatePhaseAsync()
     {
-        if (_selectedSchoolId == Guid.Empty || string.IsNullOrWhiteSpace(_newPhaseCode)) return;
+        if (_selectedSchoolIdForPhases == Guid.Empty || string.IsNullOrWhiteSpace(_newPhaseCode))
+        {
+            Snackbar.Add("Select a school and provide a code.", Severity.Warning);
+            return;
+        }
 
-        await OrgAdmin.CreatePhaseAsync(_selectedSchoolId, _newPhaseCode, _newPhaseName, _newPhaseDisplayOrder);
+        await OrgAdmin.CreatePhaseAsync(_selectedSchoolIdForPhases, _newPhaseCode, _newPhaseName, _newPhaseDisplayOrder);
         _newPhaseCode = "";
         _newPhaseName = "";
         Snackbar.Add("Phase created.", Severity.Success);
-        _phases = await OrgAdmin.GetPhasesAsync(_selectedSchoolId);
+        _phases = await OrgAdmin.GetPhasesAsync(_selectedSchoolIdForPhases);
     }
 
     private async Task SelectPhaseAsync(Guid phaseId)
     {
         _selectedPhaseId = phaseId;
-        _keyStages = (await OrgAdmin.GetKeyStagesAsync(_selectedSchoolId)).Where(k => k.PhaseId == phaseId).ToList();
+        _keyStages = (await OrgAdmin.GetKeyStagesAsync(_selectedSchoolIdForPhases)).Where(k => k.PhaseId == phaseId).ToList();
     }
 
     private async Task CreateKeyStageAsync()
     {
-        if (_selectedSchoolId == Guid.Empty || _selectedPhaseId == Guid.Empty || string.IsNullOrWhiteSpace(_newKeyStageCode)) return;
+        if (_selectedSchoolIdForPhases == Guid.Empty || _selectedPhaseId == Guid.Empty || string.IsNullOrWhiteSpace(_newKeyStageCode))
+        {
+            Snackbar.Add("Select a phase and provide a code.", Severity.Warning);
+            return;
+        }
 
-        await OrgAdmin.CreateKeyStageAsync(_selectedSchoolId, _selectedPhaseId, _newKeyStageCode, _newKeyStageName, _newKeyStageDisplayOrder);
+        await OrgAdmin.CreateKeyStageAsync(_selectedSchoolIdForPhases, _selectedPhaseId, _newKeyStageCode, _newKeyStageName, _newKeyStageDisplayOrder);
         _newKeyStageCode = "";
         _newKeyStageName = "";
         Snackbar.Add("Key stage created.", Severity.Success);
-        _keyStages = (await OrgAdmin.GetKeyStagesAsync(_selectedSchoolId)).Where(k => k.PhaseId == _selectedPhaseId).ToList();
+        _keyStages = (await OrgAdmin.GetKeyStagesAsync(_selectedSchoolIdForPhases)).Where(k => k.PhaseId == _selectedPhaseId).ToList();
     }
 
     private async Task OnSchoolChangedForKeyStagePoliciesAsync(Guid schoolId)
     {
-        _selectedSchoolId = schoolId;
+        _selectedSchoolIdForKeyStagePolicies = schoolId;
         _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
         _allKeyStagesForSchool = (await OrgAdmin.GetKeyStagesAsync(schoolId)).ToList();
         if (_academicYears.Count > 0) _policyAcademicYearId = _academicYears[0].Id;
@@ -463,19 +497,23 @@
 
     private async Task OnSchoolChangedForGradesAsync(Guid schoolId)
     {
-        _selectedSchoolId = schoolId;
+        _selectedSchoolIdForGrades = schoolId;
         _grades = await OrgAdmin.GetGradesAsync(schoolId);
     }
 
     private async Task CreateGradeAsync()
     {
-        if (_selectedSchoolId == Guid.Empty || string.IsNullOrWhiteSpace(_newGradeCode)) return;
+        if (_selectedSchoolIdForGrades == Guid.Empty || string.IsNullOrWhiteSpace(_newGradeCode))
+        {
+            Snackbar.Add("Select a school and provide a code.", Severity.Warning);
+            return;
+        }
 
-        await OrgAdmin.CreateGradeAsync(_selectedSchoolId, _newGradeCode, _newGradeName, _newGradeDisplayOrder);
+        await OrgAdmin.CreateGradeAsync(_selectedSchoolIdForGrades, _newGradeCode, _newGradeName, _newGradeDisplayOrder);
         _newGradeCode = "";
         _newGradeName = "";
         Snackbar.Add("Grade created.", Severity.Success);
-        _grades = await OrgAdmin.GetGradesAsync(_selectedSchoolId);
+        _grades = await OrgAdmin.GetGradesAsync(_selectedSchoolIdForGrades);
     }
 
     private async Task SetNextGradeAsync(Guid gradeId, Guid nextGradeId)
@@ -483,7 +521,7 @@
         try
         {
             await OrgAdmin.SetNextGradeAsync(gradeId, nextGradeId == Guid.Empty ? null : nextGradeId);
-            _grades = await OrgAdmin.GetGradesAsync(_selectedSchoolId);
+            _grades = await OrgAdmin.GetGradesAsync(_selectedSchoolIdForGrades);
         }
         catch (InvalidOperationException ex)
         {
@@ -493,8 +531,8 @@
 
     private async Task OnSchoolChangedForClassesAsync(Guid schoolId)
     {
-        _selectedSchoolId = schoolId;
-        _selectedAcademicYearId = Guid.Empty;
+        _selectedSchoolIdForClasses = schoolId;
+        _selectedAcademicYearIdForClasses = Guid.Empty;
         _classes = [];
         _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
         _grades = await OrgAdmin.GetGradesAsync(schoolId);
@@ -502,23 +540,23 @@
 
     private async Task OnAcademicYearChangedForClassesAsync(Guid academicYearId)
     {
-        _selectedAcademicYearId = academicYearId;
+        _selectedAcademicYearIdForClasses = academicYearId;
         _classes = await OrgAdmin.GetClassesAsync(academicYearId);
     }
 
     private async Task CreateClassAsync()
     {
-        if (_selectedSchoolId == Guid.Empty || _selectedAcademicYearId == Guid.Empty || string.IsNullOrWhiteSpace(_newClassCode) || _newClassGradeIds.Count == 0)
+        if (_selectedSchoolIdForClasses == Guid.Empty || _selectedAcademicYearIdForClasses == Guid.Empty || string.IsNullOrWhiteSpace(_newClassCode) || _newClassGradeIds.Count == 0)
         {
             Snackbar.Add("Code, name, and at least one grade are required.", Severity.Warning);
             return;
         }
 
-        await OrgAdmin.CreateClassAsync(_selectedSchoolId, null, _selectedAcademicYearId, _newClassCode, _newClassName, _newClassGradeIds.ToList());
+        await OrgAdmin.CreateClassAsync(_selectedSchoolIdForClasses, null, _selectedAcademicYearIdForClasses, _newClassCode, _newClassName, _newClassGradeIds.ToList());
         _newClassCode = "";
         _newClassName = "";
         _newClassGradeIds = [];
         Snackbar.Add("Class created.", Severity.Success);
-        _classes = await OrgAdmin.GetClassesAsync(_selectedAcademicYearId);
+        _classes = await OrgAdmin.GetClassesAsync(_selectedAcademicYearIdForClasses);
     }
 }

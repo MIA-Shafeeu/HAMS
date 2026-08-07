@@ -23,6 +23,8 @@ public interface ILessonPlanningService
 
     Task<Guid> CreateTeachingTopicAsync(Guid schemeOfWorkItemId, string nameEn, string nameDv, int displayOrder, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<TeachingTopic>> GetTeachingTopicsAsync(Guid schemeOfWorkItemId, CancellationToken cancellationToken = default);
+
     Task<Guid> CreateLessonPlanAsync(Guid teachingTopicId, Guid staffPersonId, DateOnly plannedDate, string objectives, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<LessonPlan>> GetLessonPlansAsync(Guid teachingTopicId, CancellationToken cancellationToken = default);

@@ -4,6 +4,7 @@
 @rendermode InteractiveServer
 @using HAMS.ReportingAnalyticsAudit.Application
 @inject IDashboardQueryService DashboardQuery
+@inject ISnackbar Snackbar
 
 <PageTitle>Regulatory Reports — HAMS</PageTitle>
 
@@ -77,13 +78,22 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _academicYears = await DashboardQuery.GetAvailableAcademicYearsAsync();
-        if (_academicYears.Count > 0)
+        try
         {
-            _selectedAcademicYearId = _academicYears[0].AcademicYearId;
+            _academicYears = await DashboardQuery.GetAvailableAcademicYearsAsync();
+            if (_academicYears.Count > 0)
+            {
+                _selectedAcademicYearId = _academicYears[0].AcademicYearId;
+            }
         }
-
-        _loading = false;
+        catch (Exception)
+        {
+            Snackbar.Add("Could not load academic years.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private string BuildRosterUrl(ExportFormat format)

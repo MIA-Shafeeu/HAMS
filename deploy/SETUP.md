@@ -40,6 +40,23 @@ Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebServerRole, IIS-WebSer
 `IIS-ManagementScriptingTools` is the one that actually gives you the `WebAdministration` PowerShell
 module `Deploy-HAMS.ps1` depends on (`Stop-WebAppPool`, `robocopy` target resolution, etc.).
 
+**Also enable the WebSocket Protocol feature** - the staff Blazor UI is Blazor Server, which needs a
+persistent connection (SignalR) back to the app for every interactive page. Without this IIS
+feature, the browser's WebSocket upgrade request is rejected at the IIS level and Blazor silently
+falls back to SignalR's Long Polling transport (you'll see "Failed to connect via WebSockets, using
+the Long Polling fallback transport" in the browser console) - Long Polling still mostly works but
+is slower and noticeably less reliable for JS-interop-heavy components (date pickers, popovers):
+
+```powershell
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebSockets
+```
+
+Restart IIS afterward (`net stop /y was` then `net start w3svc`, same as after installing the
+Hosting Bundle above) so it picks up the feature. This alone doesn't guarantee a real browser will
+use WebSockets end-to-end - the Cloudflare Tunnel hop and the Cloudflare zone itself both need to
+allow WebSocket upgrades too (Cloudflare's dashboard has a per-zone "WebSockets" toggle under
+Network settings, on by default for most zones - worth confirming it's actually on for this zone).
+
 ### 1.2 Create the IIS site and application pool
 
 ```powershell

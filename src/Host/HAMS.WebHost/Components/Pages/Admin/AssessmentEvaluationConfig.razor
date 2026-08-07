@@ -112,13 +112,13 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedAsync" Label="Academic Year" Dense="true">
+                <MudSelect T="Guid" Value="_selectedAcademicYearIdForPeriods" ValueChanged="OnAcademicYearChangedAsync" Label="Academic Year" Dense="true">
                     @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
                 </MudSelect>
             </MudItem>
         </MudGrid>
 
-        @if (_selectedAcademicYearId != Guid.Empty)
+        @if (_selectedAcademicYearIdForPeriods != Guid.Empty)
         {
             <MudTable Items="@_evaluationPeriods" Dense="true" Hover="true" Class="mb-4">
                 <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Start</MudTh><MudTh>End</MudTh></HeaderContent>
@@ -167,7 +167,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="3">
-                <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedForAssessmentsAsync" Label="Academic Year" Dense="true">
+                <MudSelect T="Guid" Value="_selectedAcademicYearIdForAssessments" ValueChanged="OnAcademicYearChangedForAssessmentsAsync" Label="Academic Year" Dense="true">
                     @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
                 </MudSelect>
             </MudItem>
@@ -247,7 +247,12 @@
     private IReadOnlyList<CurrSubject> _subjects = [];
 
     private Guid _selectedSchoolId;
-    private Guid _selectedAcademicYearId;
+    // School stays one shared field - OnSchoolChangedAsync is the same handler for both tabs and
+    // reloads everything both need. Academic Year does NOT - Evaluation Periods and Assessments
+    // load different dependent data from it, so sharing one field made the second tab visited look
+    // like it already had a year picked while its own dependent list was never loaded.
+    private Guid _selectedAcademicYearIdForPeriods;
+    private Guid _selectedAcademicYearIdForAssessments;
     private Guid _selectedTermId;
     private Guid _selectedGradeId;
     private Guid _selectedSubjectId;
@@ -301,6 +306,12 @@
 
     private async Task CreateSchemeAsync()
     {
+        if (string.IsNullOrWhiteSpace(_newSchemeCode) || string.IsNullOrWhiteSpace(_newSchemeName))
+        {
+            Snackbar.Add("Code and name are required.", Severity.Warning);
+            return;
+        }
+
         await AssessmentConfig.CreateAssessmentSchemeAsync(_newSchemeCode, _newSchemeName);
         _newSchemeCode = ""; _newSchemeName = "";
         _schemes = await AssessmentConfig.GetAssessmentSchemesAsync();
@@ -336,6 +347,12 @@
 
     private async Task CreateGradeScaleAsync()
     {
+        if (string.IsNullOrWhiteSpace(_newScaleCode) || string.IsNullOrWhiteSpace(_newScaleName))
+        {
+            Snackbar.Add("Code and name are required.", Severity.Warning);
+            return;
+        }
+
         await AssessmentConfig.CreateGradeScaleAsync(_newScaleCode, _newScaleName);
         _newScaleCode = ""; _newScaleName = "";
         _gradeScales = await AssessmentConfig.GetGradeScalesAsync();
@@ -359,7 +376,8 @@
     private async Task OnSchoolChangedAsync(Guid schoolId)
     {
         _selectedSchoolId = schoolId;
-        _selectedAcademicYearId = Guid.Empty;
+        _selectedAcademicYearIdForPeriods = Guid.Empty;
+        _selectedAcademicYearIdForAssessments = Guid.Empty;
         _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
         _subjects = await CurriculumAdmin.GetSubjectsAsync(schoolId);
         _grades = await OrgAdmin.GetGradesAsync(schoolId);
@@ -367,13 +385,13 @@
 
     private async Task OnAcademicYearChangedAsync(Guid academicYearId)
     {
-        _selectedAcademicYearId = academicYearId;
+        _selectedAcademicYearIdForPeriods = academicYearId;
         _evaluationPeriods = await AssessmentConfig.GetEvaluationPeriodsAsync(academicYearId);
     }
 
     private async Task OnAcademicYearChangedForAssessmentsAsync(Guid academicYearId)
     {
-        _selectedAcademicYearId = academicYearId;
+        _selectedAcademicYearIdForAssessments = academicYearId;
         _selectedTermId = Guid.Empty;
         _selectedGradeId = Guid.Empty;
         _selectedSubjectId = Guid.Empty;
@@ -419,14 +437,20 @@
         }
 
         await AssessmentConfig.CreateEvaluationPeriodAsync(
-            _selectedAcademicYearId, _newPeriodCode, _newPeriodName, DateOnly.FromDateTime(_newPeriodStart.Value), DateOnly.FromDateTime(_newPeriodEnd.Value), _newPeriodDisplayOrder);
+            _selectedAcademicYearIdForPeriods, _newPeriodCode, _newPeriodName, DateOnly.FromDateTime(_newPeriodStart.Value), DateOnly.FromDateTime(_newPeriodEnd.Value), _newPeriodDisplayOrder);
         _newPeriodCode = ""; _newPeriodName = ""; _newPeriodStart = null; _newPeriodEnd = null; _newPeriodDisplayOrder = 0;
-        _evaluationPeriods = await AssessmentConfig.GetEvaluationPeriodsAsync(_selectedAcademicYearId);
+        _evaluationPeriods = await AssessmentConfig.GetEvaluationPeriodsAsync(_selectedAcademicYearIdForPeriods);
         Snackbar.Add("Evaluation period created.", Severity.Success);
     }
 
     private async Task CreatePromotionPolicyAsync()
     {
+        if (string.IsNullOrWhiteSpace(_newPolicyCode) || string.IsNullOrWhiteSpace(_newPolicyName))
+        {
+            Snackbar.Add("Code and name are required.", Severity.Warning);
+            return;
+        }
+
         await AssessmentConfig.CreatePromotionPolicyAsync(_newPolicyCode, _newPolicyName, _newPolicyMinimumRank, _newPolicyMinimumSubjects);
         _newPolicyCode = ""; _newPolicyName = ""; _newPolicyMinimumRank = 0; _newPolicyMinimumSubjects = 0;
         _promotionPolicies = await AssessmentConfig.GetPromotionPoliciesAsync();
@@ -444,7 +468,7 @@
         try
         {
             await AssessmentConfig.CreateAssessmentAsync(
-                _selectedSubjectId, _selectedGradeId, _selectedTermId, _selectedAcademicYearId, _newAssessmentCategoryCode, _newAssessmentTitle,
+                _selectedSubjectId, _selectedGradeId, _selectedTermId, _selectedAcademicYearIdForAssessments, _newAssessmentCategoryCode, _newAssessmentTitle,
                 _newAssessmentMaxMarks, _newAssessmentDurationMinutes, _newAssessmentExamBoardCode, _newAssessmentExternalSyllabusCode,
                 DateOnly.FromDateTime(_newAssessmentScheduledDate.Value));
 

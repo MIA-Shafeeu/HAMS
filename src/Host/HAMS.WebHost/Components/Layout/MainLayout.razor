@@ -28,7 +28,23 @@
             </MudDrawer>
             <MudMainContent>
                 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-6 px-4">
-                    @Body
+                    @* Many pages have a click handler or dropdown-cascade callback that doesn't
+                       catch its own service exceptions. Without this boundary, one unhandled
+                       exception anywhere in @Body tears down the whole SignalR circuit - the page
+                       and everything else in the app goes blank until a full browser reload. The
+                       boundary confines that to the one page, with a way to retry without losing
+                       the tab/session. *@
+                    <ErrorBoundary @ref="_errorBoundary">
+                        <ChildContent>
+                            @Body
+                        </ChildContent>
+                        <ErrorContent Context="_">
+                            <MudAlert Severity="Severity.Error" Class="my-4">
+                                Something went wrong loading or updating this page.
+                                <MudButton Variant="Variant.Text" Color="Color.Inherit" Class="ml-2" OnClick="@(() => _errorBoundary?.Recover())">Try again</MudButton>
+                            </MudAlert>
+                        </ErrorContent>
+                    </ErrorBoundary>
                 </MudContainer>
             </MudMainContent>
         </MudLayout>
@@ -46,6 +62,7 @@
 
 @code {
     private bool _drawerOpen = true;
+    private ErrorBoundary? _errorBoundary;
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 }

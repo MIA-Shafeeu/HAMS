@@ -40,6 +40,9 @@ internal sealed class LessonPlanningService(LearningDeliveryDbContext dbContext)
         return topic.Id;
     }
 
+    public async Task<IReadOnlyList<TeachingTopic>> GetTeachingTopicsAsync(Guid schemeOfWorkItemId, CancellationToken cancellationToken = default) =>
+        await dbContext.TeachingTopics.Where(t => t.SchemeOfWorkItemId == schemeOfWorkItemId).OrderBy(t => t.DisplayOrder).ToListAsync(cancellationToken);
+
     public async Task<Guid> CreateLessonPlanAsync(Guid teachingTopicId, Guid staffPersonId, DateOnly plannedDate, string objectives, CancellationToken cancellationToken = default)
     {
         var plan = new LessonPlan { Id = Guid.NewGuid(), TeachingTopicId = teachingTopicId, StaffPersonId = staffPersonId, PlannedDate = plannedDate, Objectives = objectives };

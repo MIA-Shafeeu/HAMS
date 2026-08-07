@@ -29,7 +29,7 @@
             </MudSelect>
         </MudItem>
         <MudItem xs="12" sm="6" md="3">
-            <MudSelect T="Guid" @bind-Value="_selectedGradeId" Label="Grade" Dense="true" Disabled="@(_grades.Count == 0)">
+            <MudSelect T="Guid" Value="_selectedGradeId" ValueChanged="OnGradeChangedAsync" Label="Grade" Dense="true" Disabled="@(_grades.Count == 0)">
                 @foreach (var grade in _grades) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
             </MudSelect>
         </MudItem>
@@ -267,6 +267,19 @@
         }
     }
 
+    private async Task OnGradeChangedAsync(Guid gradeId)
+    {
+        _selectedGradeId = gradeId;
+        ResetBelowScheme();
+
+        if (_selectedSubjectId == Guid.Empty || _selectedAcademicYearId == Guid.Empty)
+        {
+            return;
+        }
+
+        _schemes = (await PlanningService.GetSchemesOfWorkAsync(_selectedSubjectId, _selectedGradeId, _selectedAcademicYearId)).ToList();
+    }
+
     private async Task OnSubjectChangedAsync(Guid subjectId)
     {
         _selectedSubjectId = subjectId;
@@ -296,6 +309,7 @@
     {
         if (string.IsNullOrWhiteSpace(_newSchemeTitle) || _selectedGradeId == Guid.Empty || _selectedAcademicYearId == Guid.Empty)
         {
+            Snackbar.Add("Select a grade and academic year, and enter a title.", Severity.Warning);
             return;
         }
 
@@ -333,7 +347,7 @@
     private async Task SelectItemAsync(Guid itemId)
     {
         _selectedItemId = itemId;
-        _topics = [];
+        _topics = (await PlanningService.GetTeachingTopicsAsync(itemId)).ToList();
         _selectedTopicId = null;
         _lessonPlans = [];
         _resources = [];
@@ -343,6 +357,7 @@
     {
         if (_selectedItemId is not { } itemId || string.IsNullOrWhiteSpace(_newTopicNameEn) || string.IsNullOrWhiteSpace(_newTopicNameDv))
         {
+            Snackbar.Add("Enter both the English and Dhivehi topic name.", Severity.Warning);
             return;
         }
 
@@ -350,6 +365,7 @@
         _newTopicNameEn = "";
         _newTopicNameDv = "";
         Snackbar.Add("Teaching topic added.", Severity.Success);
+        _topics = (await PlanningService.GetTeachingTopicsAsync(itemId)).ToList();
     }
 
     private async Task SelectTopicAsync(Guid topicId)
@@ -363,6 +379,7 @@
     {
         if (_currentPersonId is not { } staffId || _newPlanDate is not { } plannedDate || string.IsNullOrWhiteSpace(_newPlanObjectives))
         {
+            Snackbar.Add("Set a planned date and enter objectives.", Severity.Warning);
             return;
         }
 

@@ -43,11 +43,11 @@
     <MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true">
 
         <MudTabPanel Text="Subject Teaching">
-            <MudSelect T="Guid" Value="_selectedClassId" ValueChanged="OnClassChangedForSubjectTeachingAsync" Label="Class" Dense="true" Class="mb-4">
+            <MudSelect T="Guid" Value="_selectedClassIdForSubjectTeaching" ValueChanged="OnClassChangedForSubjectTeachingAsync" Label="Class" Dense="true" Class="mb-4">
                 @foreach (var cls in _classes) { <MudSelectItem T="Guid" Value="@cls.Id">@cls.Name</MudSelectItem> }
             </MudSelect>
 
-            @if (_selectedClassId != Guid.Empty)
+            @if (_selectedClassIdForSubjectTeaching != Guid.Empty)
             {
                 <MudTable Items="@_subjectTeachingAssignments" Dense="true" Hover="true" Class="mb-4">
                     <HeaderContent><MudTh>Staff</MudTh><MudTh>Subject</MudTh><MudTh>From</MudTh><MudTh>To</MudTh><MudTh></MudTh></HeaderContent>
@@ -101,11 +101,11 @@
         </MudTabPanel>
 
         <MudTabPanel Text="Class Teacher">
-            <MudSelect T="Guid" Value="_selectedClassId" ValueChanged="OnClassChangedForClassTeacherAsync" Label="Class" Dense="true" Class="mb-4">
+            <MudSelect T="Guid" Value="_selectedClassIdForClassTeacher" ValueChanged="OnClassChangedForClassTeacherAsync" Label="Class" Dense="true" Class="mb-4">
                 @foreach (var cls in _classes) { <MudSelectItem T="Guid" Value="@cls.Id">@cls.Name</MudSelectItem> }
             </MudSelect>
 
-            @if (_selectedClassId != Guid.Empty)
+            @if (_selectedClassIdForClassTeacher != Guid.Empty)
             {
                 <MudTable Items="@_classTeacherAssignments" Dense="true" Hover="true" Class="mb-4">
                     <HeaderContent><MudTh>Staff</MudTh><MudTh>From</MudTh><MudTh>To</MudTh><MudTh></MudTh></HeaderContent>
@@ -181,19 +181,19 @@
             <MudGrid>
                 <MudItem xs="12" sm="2"><MudTextField T="string" @bind-Value="_newPeriodCode" Label="Code" /></MudItem>
                 <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newPeriodName" Label="Name" /></MudItem>
-                <MudItem xs="12" sm="2"><MudTextField T="TimeOnly?" @bind-Value="_newPeriodStart" Label="Start" InputType="InputType.Time" /></MudItem>
-                <MudItem xs="12" sm="2"><MudTextField T="TimeOnly?" @bind-Value="_newPeriodEnd" Label="End" InputType="InputType.Time" /></MudItem>
+                <MudItem xs="12" sm="2"><MudTextField T="TimeOnly?" @bind-Value="_newPeriodStart" Label="Start" InputType="InputType.Time" Converter="_timeOnlyConverter" /></MudItem>
+                <MudItem xs="12" sm="2"><MudTextField T="TimeOnly?" @bind-Value="_newPeriodEnd" Label="End" InputType="InputType.Time" Converter="_timeOnlyConverter" /></MudItem>
                 <MudItem xs="12" sm="1"><MudNumericField T="int" @bind-Value="_newPeriodDisplayOrder" Label="Order" /></MudItem>
                 <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreatePeriodAsync">Create</MudButton></MudItem>
             </MudGrid>
         </MudTabPanel>
 
         <MudTabPanel Text="Timetable">
-            <MudSelect T="Guid" Value="_selectedClassId" ValueChanged="OnClassChangedForTimetableAsync" Label="Class" Dense="true" Class="mb-4">
+            <MudSelect T="Guid" Value="_selectedClassIdForTimetable" ValueChanged="OnClassChangedForTimetableAsync" Label="Class" Dense="true" Class="mb-4">
                 @foreach (var cls in _classes) { <MudSelectItem T="Guid" Value="@cls.Id">@cls.Name</MudSelectItem> }
             </MudSelect>
 
-            @if (_selectedClassId != Guid.Empty)
+            @if (_selectedClassIdForTimetable != Guid.Empty)
             {
                 <MudTable Items="@_timetableEntries" Dense="true" Hover="true" Class="mb-4">
                     <HeaderContent><MudTh>Day</MudTh><MudTh>Period</MudTh><MudTh>Subject</MudTh><MudTh>Staff</MudTh><MudTh></MudTh></HeaderContent>
@@ -201,7 +201,7 @@
                         <MudTd DataLabel="Day">@context.DayOfWeek</MudTd>
                         <MudTd DataLabel="Period">@(_periods.SingleOrDefault(p => p.Id == context.PeriodId)?.Name ?? context.PeriodId.ToString())</MudTd>
                         <MudTd DataLabel="Subject">@SubjectName(context.SubjectId)</MudTd>
-                        <MudTd DataLabel="Staff">@(_subjectTeachingAssignments.SingleOrDefault(a => a.Id == context.TeachingAssignmentId) is { } a ? StaffName(a.StaffPersonId) : "—")</MudTd>
+                        <MudTd DataLabel="Staff">@(_timetableSubjectTeachingAssignments.SingleOrDefault(a => a.Id == context.TeachingAssignmentId) is { } a ? StaffName(a.StaffPersonId) : "—")</MudTd>
                         <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RemoveTimetableEntryAsync(context.Id))">Remove</MudButton></MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -219,7 +219,7 @@
                     </MudItem>
                     <MudItem xs="12" sm="3">
                         <MudSelect T="Guid" @bind-Value="_newEntryTeachingAssignmentId" Label="Subject Teaching Assignment" Dense="true">
-                            @foreach (var a in _subjectTeachingAssignments.Where(a => a.EffectiveTo is null)) { <MudSelectItem T="Guid" Value="@a.Id">@SubjectName(a.SubjectId) — @StaffName(a.StaffPersonId)</MudSelectItem> }
+                            @foreach (var a in _timetableSubjectTeachingAssignments.Where(a => a.EffectiveTo is null)) { <MudSelectItem T="Guid" Value="@a.Id">@SubjectName(a.SubjectId) — @StaffName(a.StaffPersonId)</MudSelectItem> }
                         </MudSelect>
                     </MudItem>
                     <MudItem xs="12" sm="3" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ScheduleTimetableEntryAsync">Schedule</MudButton></MudItem>
@@ -240,7 +240,12 @@
 
     private Guid _selectedSchoolId;
     private Guid _selectedAcademicYearId;
-    private Guid _selectedClassId;
+    // Separate per-tab class selections - Subject Teaching, Class Teacher and Timetable each have
+    // their own Class dropdown; sharing one field made switching tabs show the class as already
+    // "selected" while that tab's own dependent table/list was never (re)loaded.
+    private Guid _selectedClassIdForSubjectTeaching;
+    private Guid _selectedClassIdForClassTeacher;
+    private Guid _selectedClassIdForTimetable;
     private Guid _selectedSubjectId;
 
     private IReadOnlyList<SubjectTeachingAssignment> _subjectTeachingAssignments = [];
@@ -267,7 +272,22 @@
     private TimeOnly? _newPeriodEnd;
     private int _newPeriodDisplayOrder;
 
+    // MudTextField's own DefaultConverter<TimeOnly?> cannot parse a native <input type="time">
+    // value back into a TimeOnly (confirmed: it throws on every "HH:mm" string tried) - the picker
+    // looked like it "didn't work" because whatever the admin typed/picked never reached the field.
+    private readonly TimeOnlyFieldConverter _timeOnlyConverter = new();
+
+    private sealed class TimeOnlyFieldConverter : MudBlazor.IConverter<TimeOnly?, string>, MudBlazor.IReversibleConverter<TimeOnly?, string>
+    {
+        public string Convert(TimeOnly? value) => value?.ToString("HH:mm") ?? "";
+        public TimeOnly? ConvertBack(string value) => TimeOnly.TryParse(value, out var t) ? t : null;
+    }
+
     private IReadOnlyList<TimetableEntry> _timetableEntries = [];
+    // Separate from _subjectTeachingAssignments (the Subject Teaching tab's own list) - both tabs
+    // can have a DIFFERENT class selected at once, and sharing one list meant loading the Timetable
+    // tab's class silently overwrote the data the Subject Teaching tab's table was showing.
+    private IReadOnlyList<SubjectTeachingAssignment> _timetableSubjectTeachingAssignments = [];
     private DayOfWeek _newEntryDayOfWeek = DayOfWeek.Sunday;
     private Guid _newEntryPeriodId;
     private Guid _newEntryTeachingAssignmentId;
@@ -285,7 +305,9 @@
     {
         _selectedSchoolId = schoolId;
         _selectedAcademicYearId = Guid.Empty;
-        _selectedClassId = Guid.Empty;
+        _selectedClassIdForSubjectTeaching = Guid.Empty;
+        _selectedClassIdForClassTeacher = Guid.Empty;
+        _selectedClassIdForTimetable = Guid.Empty;
         _selectedSubjectId = Guid.Empty;
         _academicYears = await OrgAdmin.GetAcademicYearsAsync(schoolId);
         _subjects = await CurriculumAdmin.GetSubjectsAsync(schoolId);
@@ -296,13 +318,15 @@
     private async Task OnAcademicYearChangedAsync(Guid academicYearId)
     {
         _selectedAcademicYearId = academicYearId;
-        _selectedClassId = Guid.Empty;
+        _selectedClassIdForSubjectTeaching = Guid.Empty;
+        _selectedClassIdForClassTeacher = Guid.Empty;
+        _selectedClassIdForTimetable = Guid.Empty;
         _classes = await OrgAdmin.GetClassesAsync(academicYearId);
     }
 
     private async Task OnClassChangedForSubjectTeachingAsync(Guid classId)
     {
-        _selectedClassId = classId;
+        _selectedClassIdForSubjectTeaching = classId;
         _substitutionTargetAssignmentId = Guid.Empty;
         _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(classId, _selectedAcademicYearId);
     }
@@ -316,18 +340,18 @@
         }
 
         await SubjectTeachingAssignments.AssignAsync(
-            _newSubjectTeachingStaffId, _newSubjectTeachingSubjectId, _selectedClassId, _selectedAcademicYearId, _selectedSchoolId,
+            _newSubjectTeachingStaffId, _newSubjectTeachingSubjectId, _selectedClassIdForSubjectTeaching, _selectedAcademicYearId, _selectedSchoolId,
             DateOnly.FromDateTime(_newSubjectTeachingEffectiveFrom.Value), null);
 
         _newSubjectTeachingStaffId = Guid.Empty; _newSubjectTeachingSubjectId = Guid.Empty; _newSubjectTeachingEffectiveFrom = null;
-        _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(_selectedClassId, _selectedAcademicYearId);
+        _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(_selectedClassIdForSubjectTeaching, _selectedAcademicYearId);
         Snackbar.Add("Subject teaching assignment created.", Severity.Success);
     }
 
     private async Task EndSubjectTeachingAsync(Guid assignmentId)
     {
         await SubjectTeachingAssignments.EndAsync(assignmentId, DateOnly.FromDateTime(DateTime.Today));
-        _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(_selectedClassId, _selectedAcademicYearId);
+        _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(_selectedClassIdForSubjectTeaching, _selectedAcademicYearId);
     }
 
     private void SelectSubstitutionTargetAsync(Guid assignmentId)
@@ -349,7 +373,7 @@
             await Substitutions.CreateSubstitutionAsync(
                 _substitutionTargetAssignmentId, _substituteStaffId, DateOnly.FromDateTime(_substitutionDate.Value), _selectedSchoolId, _substitutionReason);
             _substitutionTargetAssignmentId = Guid.Empty;
-            _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(_selectedClassId, _selectedAcademicYearId);
+            _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(_selectedClassIdForSubjectTeaching, _selectedAcademicYearId);
             Snackbar.Add("Substitution created.", Severity.Success);
         }
         catch (InvalidOperationException ex)
@@ -360,7 +384,7 @@
 
     private async Task OnClassChangedForClassTeacherAsync(Guid classId)
     {
-        _selectedClassId = classId;
+        _selectedClassIdForClassTeacher = classId;
         _classTeacherAssignments = await ClassTeacherAssignments.GetAssignmentsForClassAsync(classId, _selectedAcademicYearId);
     }
 
@@ -372,16 +396,16 @@
             return;
         }
 
-        await ClassTeacherAssignments.AssignAsync(_newClassTeacherStaffId, _selectedClassId, _selectedAcademicYearId, _selectedSchoolId, DateOnly.FromDateTime(_newClassTeacherEffectiveFrom.Value), null);
+        await ClassTeacherAssignments.AssignAsync(_newClassTeacherStaffId, _selectedClassIdForClassTeacher, _selectedAcademicYearId, _selectedSchoolId, DateOnly.FromDateTime(_newClassTeacherEffectiveFrom.Value), null);
         _newClassTeacherStaffId = Guid.Empty; _newClassTeacherEffectiveFrom = null;
-        _classTeacherAssignments = await ClassTeacherAssignments.GetAssignmentsForClassAsync(_selectedClassId, _selectedAcademicYearId);
+        _classTeacherAssignments = await ClassTeacherAssignments.GetAssignmentsForClassAsync(_selectedClassIdForClassTeacher, _selectedAcademicYearId);
         Snackbar.Add("Class teacher assignment created.", Severity.Success);
     }
 
     private async Task EndClassTeacherAsync(Guid assignmentId)
     {
         await ClassTeacherAssignments.EndAsync(assignmentId, DateOnly.FromDateTime(DateTime.Today));
-        _classTeacherAssignments = await ClassTeacherAssignments.GetAssignmentsForClassAsync(_selectedClassId, _selectedAcademicYearId);
+        _classTeacherAssignments = await ClassTeacherAssignments.GetAssignmentsForClassAsync(_selectedClassIdForClassTeacher, _selectedAcademicYearId);
     }
 
     private async Task OnSubjectChangedForLeadingTeacherAsync(Guid subjectId)
@@ -426,9 +450,9 @@
 
     private async Task OnClassChangedForTimetableAsync(Guid classId)
     {
-        _selectedClassId = classId;
+        _selectedClassIdForTimetable = classId;
         _timetableEntries = await TimetableService.GetEntriesForClassAsync(classId, _selectedAcademicYearId);
-        _subjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(classId, _selectedAcademicYearId);
+        _timetableSubjectTeachingAssignments = await SubjectTeachingAssignments.GetAssignmentsForClassAsync(classId, _selectedAcademicYearId);
     }
 
     private async Task ScheduleTimetableEntryAsync()
@@ -439,15 +463,15 @@
             return;
         }
 
-        var assignment = _subjectTeachingAssignments.Single(a => a.Id == _newEntryTeachingAssignmentId);
+        var assignment = _timetableSubjectTeachingAssignments.Single(a => a.Id == _newEntryTeachingAssignmentId);
 
         try
         {
             await TimetableService.ScheduleAsync(
-                _selectedSchoolId, _selectedClassId, assignment.SubjectId, _newEntryTeachingAssignmentId, _selectedAcademicYearId,
+                _selectedSchoolId, _selectedClassIdForTimetable, assignment.SubjectId, _newEntryTeachingAssignmentId, _selectedAcademicYearId,
                 _newEntryDayOfWeek, _newEntryPeriodId);
             _newEntryPeriodId = Guid.Empty; _newEntryTeachingAssignmentId = Guid.Empty;
-            _timetableEntries = await TimetableService.GetEntriesForClassAsync(_selectedClassId, _selectedAcademicYearId);
+            _timetableEntries = await TimetableService.GetEntriesForClassAsync(_selectedClassIdForTimetable, _selectedAcademicYearId);
             Snackbar.Add("Timetable entry scheduled.", Severity.Success);
         }
         catch (InvalidOperationException ex)
@@ -459,6 +483,6 @@
     private async Task RemoveTimetableEntryAsync(Guid timetableEntryId)
     {
         await TimetableService.RemoveAsync(timetableEntryId);
-        _timetableEntries = await TimetableService.GetEntriesForClassAsync(_selectedClassId, _selectedAcademicYearId);
+        _timetableEntries = await TimetableService.GetEntriesForClassAsync(_selectedClassIdForTimetable, _selectedAcademicYearId);
     }
 }
