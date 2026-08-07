@@ -62,7 +62,12 @@ Write-Host "== 2. dotnet publish (Release) =="
 if (Test-Path $PublishOutputPath) {
     Remove-Item $PublishOutputPath -Recurse -Force
 }
-dotnet publish $ProjectPath -c Release -o $PublishOutputPath
+# Roslyn's shared compiler server (VBCSCompiler.exe) persists across builds and can outlive an
+# environment-variable change made after it first started - kill any stuck instance so a fresh one
+# starts with today's environment, and disable the shared server going forward (-p:UseSharedCompilation=false)
+# so this can't get stale again, at the cost of a slightly slower per-build compiler startup.
+Get-Process -Name "VBCSCompiler" -ErrorAction SilentlyContinue | Stop-Process -Force
+dotnet publish $ProjectPath -c Release -o $PublishOutputPath -p:UseSharedCompilation=false
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
 }
