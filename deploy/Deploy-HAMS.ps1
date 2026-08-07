@@ -3,20 +3,20 @@
 .SYNOPSIS
     Publishes HAMS.WebHost and deploys it into an existing IIS site, run by the CD job's
     "deploy" step on the self-hosted runner (which lives on the same box as IIS/SQL Server, so
-    every step here is a local operation — no remote copy/PSRemoting needed).
+    every step here is a local operation - no remote copy/PSRemoting needed).
 
 .DESCRIPTION
     1. Validates the secrets this script needs are actually present (an empty JWT signing key
-       would let the app start up "successfully" with a silently broken auth system — fail loud
+       would let the app start up "successfully" with a silently broken auth system - fail loud
        instead).
     2. dotnet publish (Release) to a scratch folder.
     3. Stops the app pool and waits for it to actually reach Stopped (a reported "Stopped" state
        doesn't guarantee w3wp.exe has released its file locks yet).
-    4. Copies the publish output into the site's physical path — NOT a mirror/purge copy, so
+    4. Copies the publish output into the site's physical path - NOT a mirror/purge copy, so
        anything already living in that folder that isn't part of the published app (future
        Platform.Documents local storage, ad hoc logs) is left alone; appsettings.Production.json
        specifically is never part of the publish output at all (it's git-ignored) so it's
-       naturally preserved rather than needing special-case exclusion — but this script always
+       naturally preserved rather than needing special-case exclusion - but this script always
        regenerates it fresh from secrets anyway, so it can never go stale.
     5. Writes appsettings.Production.json from the secrets passed in as environment variables.
     6. Starts the app pool and polls /health until the app actually answers.
@@ -24,7 +24,7 @@
 .NOTES
     Run this ON the IIS box (as the self-hosted runner does). Requires the IIS PowerShell module
     (installed with the Web-Scripting-Tools Windows feature) and an app pool/site that already
-    exist — see deploy/SETUP.md for the one-time server preparation steps.
+    exist - see deploy/SETUP.md for the one-time server preparation steps.
 #>
 
 [CmdletBinding()]
@@ -46,7 +46,7 @@ function Assert-EnvVar {
     param([string]$Name)
     $value = [System.Environment]::GetEnvironmentVariable($Name)
     if ([string]::IsNullOrWhiteSpace($value)) {
-        throw "Required environment variable '$Name' is not set (or empty) — refusing to deploy with a missing secret. Check the workflow's 'env:' block and the repository secret of the same name."
+        throw "Required environment variable '$Name' is not set (or empty) - refusing to deploy with a missing secret. Check the workflow's 'env:' block and the repository secret of the same name."
     }
     return $value
 }
@@ -78,7 +78,7 @@ while ((Get-WebAppPoolState -Name $AppPoolName).Value -ne "Stopped") {
     }
     Start-Sleep -Seconds 1
 }
-# The app pool reporting Stopped doesn't guarantee w3wp.exe has exited yet — give the runtime a
+# The app pool reporting Stopped doesn't guarantee w3wp.exe has exited yet - give the runtime a
 # moment to actually release the previous deployment's file locks.
 Start-Sleep -Seconds 3
 
@@ -129,7 +129,7 @@ while ((Get-Date) -lt $deadline) {
         }
     }
     catch {
-        # Not up yet (or mid-migration on a fresh database) — keep polling until the timeout.
+        # Not up yet (or mid-migration on a fresh database) - keep polling until the timeout.
     }
     Start-Sleep -Seconds 2
 }
@@ -138,4 +138,4 @@ if (-not $healthy) {
     throw "HAMS did not report healthy at $HealthCheckUrl within $HealthCheckTimeoutSeconds seconds after starting the app pool. Check the Windows Event Log / IIS stdout log for the actual startup error."
 }
 
-Write-Host "== Deploy succeeded — $SiteName is healthy at $HealthCheckUrl =="
+Write-Host "== Deploy succeeded - $SiteName is healthy at $HealthCheckUrl =="
