@@ -89,25 +89,66 @@ DBA-run migration step.
 
 ## 2. GitHub: repository, secrets, and the self-hosted runner
 
-### 2.1 Create the repository
+### 2.1 Runner machine prerequisites: Git + the .NET SDK
+
+The self-hosted runner is just a background process that polls GitHub and executes the workflow's
+steps **locally, as if you'd typed them yourself** — so anything a step needs, the machine needs
+installed first. Two things are missing on a fresh box that the Hosting Bundle (§1.1) doesn't cover:
+
+- **Git** — `actions/checkout@v4` (the very first step of both jobs) shells out to `git` to clone
+  the repo; without it on `PATH`, every run fails immediately at the checkout step, before your
+  own code ever runs.
+- **The .NET SDK** (not just the Hosting Bundle) — the Hosting Bundle only installs the ASP.NET
+  Core **runtime** + the IIS integration (ANCM), enough to *run* an already-published app. It does
+  NOT include `dotnet publish`/`dotnet build`, which need the full SDK. `Deploy-HAMS.ps1` calls
+  `dotnet publish` directly on this machine, so the SDK has to be here too.
+
+Install both (run as Administrator):
+
+```powershell
+winget install --id Git.Git -e --source winget
+winget install --id Microsoft.DotNet.SDK.10 -e --source winget
+```
+
+If `winget` isn't available on this Windows Server build (`winget --version` to check — some
+Windows Server images don't ship the App Installer by default), install manually instead:
+- Git: download and run the installer from [git-scm.com/download/win](https://git-scm.com/download/win) (defaults are fine).
+- .NET SDK: download and run the installer from [dotnet.microsoft.com/download/dotnet/10.0](https://dotnet.microsoft.com/download/dotnet/10.0) (the **SDK**, not just the runtime).
+
+**Close and reopen any PowerShell/terminal window** after installing (PATH changes don't apply to
+already-open sessions) — then confirm both are visible to a fresh session before continuing:
+
+```powershell
+git --version
+dotnet --version
+```
+
+If you already registered the runner as a service before installing these, restart it afterward so
+it picks up the new `PATH`:
+
+```powershell
+Restart-Service actions.runner.*
+```
+
+### 2.2 Create the repository
 On [github.com/new](https://github.com/new): create a **private** repository (no README/gitignore/
-license — this project already has all three). Don't push yet — finish §2.2–2.3 first so the very
+license — this project already has all three). Don't push yet — finish §2.3–2.4 first so the very
 first push already has the workflow wired to real secrets.
 
-### 2.2 Repository secrets and variables
+### 2.3 Repository secrets and variables
 **Settings → Secrets and variables → Actions**:
 
 | Type | Name | Value |
 |---|---|---|
 | Secret | `PROD_JWT_SIGNING_KEY` | a fresh random key — **deliberately different from the dev key** (which now lives only in your local user-secrets, never in git). Generate one yourself rather than reusing any value that's ever appeared in a chat transcript or committed file: `powershell -Command "[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))"` — paste the output straight into the GitHub secret field and nowhere else. |
-| Secret | `PROD_MSGOWL_API_KEY` | *(after you rotate the Msgowl key on their dashboard — see §2.2.1)* |
+| Secret | `PROD_MSGOWL_API_KEY` | *(after you rotate the Msgowl key on their dashboard — see §2.3.1)* |
 | Secret | `PROD_MSGOWL_SENDER_ID` | your Msgowl sender id (e.g. `HESS INC`) |
 | Variable | `PROD_MSGOWL_ENABLED` | `false` until the rotated key is in place, then `true` |
 
 **Never paste a real secret value into any file that gets committed** — not even this one. Secrets
 belong in exactly one place: the GitHub Secrets UI (or, for local dev, `dotnet user-secrets`).
 
-#### 2.2.1 Rotate the Msgowl key
+#### 2.3.1 Rotate the Msgowl key
 You confirmed the key currently sitting in `appsettings.Development.json`'s git history-to-be was
 live. It's already been moved to your local `dotnet user-secrets` store (outside the repo) for
 local dev, but the key **value itself** is still the old one — log into Msgowl's dashboard, revoke
@@ -117,12 +158,12 @@ that key, issue a new one, and use the new one for both:
   want local dev to actually send real SMS (otherwise leave `Msgowl:Enabled=false` locally and it
   falls back to the log-only dev sender, same as today).
 
-### 2.3 Self-hosted runner
+### 2.4 Self-hosted runner
 **Settings → Actions → Runners → New self-hosted runner** (choose Windows). GitHub shows you a
 `config.cmd` command with a repo-specific token baked in — run the **download** and **configure**
-steps it gives you directly on the IIS box, in whatever folder you want the runner installed (e.g.
-`C:\actions-runner`), then instead of running `run.cmd` interactively, install it as a service so it
-survives reboots:
+steps it gives you directly on the IIS box (after §2.1's Git/.NET SDK install), in whatever folder
+you want the runner installed (e.g. `C:\actions-runner`), then instead of running `run.cmd`
+interactively, install it as a service so it survives reboots:
 
 ```powershell
 cd C:\actions-runner
@@ -132,7 +173,7 @@ cd C:\actions-runner
 
 Verify: **Settings → Actions → Runners** should show it as "Idle".
 
-### 2.4 First push
+### 2.5 First push
 
 ```powershell
 git remote add origin https://github.com/<you>/<repo>.git
