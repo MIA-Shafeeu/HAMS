@@ -64,5 +64,9 @@ jobs:
           # Works around "Your Windows doesn't fully support CET" from the Roslyn compiler on this
           # runner (common on VMs/hypervisors that don't fully expose the CPU's CET shadow-stack
           # feature even when Windows itself is fully patched) - disables .NET's CET enforcement
-          # for this build step only, not machine-wide.
+          # for this build step only, not machine-wide. DOTNET_EnableCET=0 alone did not resolve
+          # this on this runner; DOTNET_EnableWriteXorExecute=0 (a related but distinct CoreCLR
+          # JIT memory-protection feature with the same VM/hypervisor failure mode) is a second,
+          # independently well-documented workaround worth trying alongside it.
           DOTNET_EnableCET: "0"
+          DOTNET_EnableWriteXorExecute: "0"
