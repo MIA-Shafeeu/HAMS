@@ -26,6 +26,11 @@ internal static class SetupEndpoints
 
         group.MapPost("/bootstrap-admin", async (BootstrapAdminRequest request, ISetupService service, CancellationToken ct) =>
         {
+            if (!await service.IsBootstrapNeededAsync(ct))
+            {
+                return Results.Conflict("A System Administrator already exists - this one-time setup endpoint permanently refuses after the first use.");
+            }
+
             try
             {
                 var userId = await service.BootstrapFirstAdminAsync(request.Username, request.Password, ct);
@@ -33,7 +38,9 @@ internal static class SetupEndpoints
             }
             catch (InvalidOperationException ex)
             {
-                return Results.Conflict(ex.Message);
+                // Not "already bootstrapped" (checked above) - this is a genuine input problem
+                // (weak password, malformed username, etc.), so it's a 400, not a 409.
+                return Results.BadRequest(ex.Message);
             }
         }).AllowAnonymous();
 

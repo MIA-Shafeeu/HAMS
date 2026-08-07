@@ -51,11 +51,13 @@ New-WebAppPool -Name "HAMS"
 Set-ItemProperty "IIS:\AppPools\HAMS" -Name managedRuntimeVersion -Value ""   # "No Managed Code" — required for ASP.NET Core
 Set-ItemProperty "IIS:\AppPools\HAMS" -Name startMode -Value "AlwaysRunning"
 
-New-WebSite -Name "HAMS" -PhysicalPath "C:\inetpub\wwwroot\hams" -ApplicationPool "HAMS" -Port 8081 -IPAddress "127.0.0.1"
+New-WebSite -Name "HAMS" -PhysicalPath "C:\inetpub\wwwroot\hams" -ApplicationPool "HAMS" -Port 8081 -IPAddress "*"
 ```
 
-`-IPAddress "127.0.0.1"` binds the site to localhost only — matches the Cloudflare Tunnel forwarding
-to `localhost:8081`; nothing needs to (or should) listen on `8081` on any other interface.
+`-IPAddress "*"` ("All Unassigned") is required here — binding to a specific IP like `127.0.0.1`
+causes IIS/HTTP.sys to reject every request with "HTTP Error 400. The request hostname is invalid."
+(confirmed live on this deployment). The site is still only reachable via the Cloudflare Tunnel
+forwarding to `localhost:8081`; nothing else needs to listen on `8081` from the outside.
 
 Grant the app pool identity read/execute on the site folder (it needs write too, since ASP.NET Core
 sometimes writes a `DataProtection-Keys` folder under the site root at runtime unless redirected —

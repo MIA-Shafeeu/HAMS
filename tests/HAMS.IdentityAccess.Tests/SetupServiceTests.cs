@@ -59,4 +59,18 @@ public class SetupServiceTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.BootstrapFirstAdminAsync("admin", "short"));
     }
+
+    [Fact]
+    public async Task BootstrapFirstAdminAsync_succeeds_when_the_username_is_email_shaped()
+    {
+        // Regression test: the placeholder email must never be derived from the username. An
+        // email-shaped username like this one used to be concatenated into "user@example.org@hams.local"
+        // - not a valid email - which Identity's RequireUniqueEmail validation rejected.
+        var (service, roleService) = CreateService();
+
+        var userId = await service.BootstrapFirstAdminAsync("admin@example.org", Password);
+
+        Assert.NotEqual(Guid.Empty, userId);
+        Assert.Contains(roleService.Assignments, a => a.RoleCode == RoleCodes.SystemAdministrator);
+    }
 }

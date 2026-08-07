@@ -21,10 +21,12 @@ internal sealed class SetupService(
             throw new InvalidOperationException("A System Administrator already exists — this one-time setup endpoint permanently refuses after the first use.");
         }
 
+        var newUserId = Guid.NewGuid();
         var user = new ApplicationUser
         {
+            Id = newUserId,
             UserName = userName,
-            Email = $"{userName}@hams.local",
+            Email = $"{newUserId}@admin.hams.local",
             EmailConfirmed = true,
             PersonId = Guid.NewGuid(),
         };
