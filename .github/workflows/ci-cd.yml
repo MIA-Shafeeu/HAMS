@@ -61,3 +61,8 @@ jobs:
           HAMS_MSGOWL_API_KEY: ${{ secrets.PROD_MSGOWL_API_KEY }}
           HAMS_MSGOWL_SENDER_ID: ${{ secrets.PROD_MSGOWL_SENDER_ID }}
           HAMS_MSGOWL_ENABLED: ${{ vars.PROD_MSGOWL_ENABLED }}
+          # Works around "Your Windows doesn't fully support CET" from the Roslyn compiler on this
+          # runner (common on VMs/hypervisors that don't fully expose the CPU's CET shadow-stack
+          # feature even when Windows itself is fully patched) - disables .NET's CET enforcement
+          # for this build step only, not machine-wide.
+          DOTNET_EnableCET: "0"
