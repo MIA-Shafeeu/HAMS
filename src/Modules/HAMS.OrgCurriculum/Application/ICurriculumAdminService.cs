@@ -17,9 +17,15 @@ public interface ICurriculumAdminService
 
     Task<IReadOnlyList<CurriculumFramework>> GetCurriculumFrameworksAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Renames/redescribes a <c>CurriculumFramework</c>. Code stays fixed. Throws <see cref="InvalidOperationException"/> if not found.</summary>
+    Task UpdateCurriculumFrameworkAsync(Guid id, string name, string? description, CancellationToken cancellationToken = default);
+
     Task<Guid> CreateLearningAreaAsync(Guid curriculumFrameworkId, string code, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<LearningArea>> GetLearningAreasAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Renames/reorders a <c>LearningArea</c>. Code and framework linkage stay fixed. Throws <see cref="InvalidOperationException"/> if not found.</summary>
+    Task UpdateLearningAreaAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<DeliveryMode>> GetDeliveryModesAsync(CancellationToken cancellationToken = default);
 
@@ -52,6 +58,9 @@ public interface ICurriculumAdminService
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Subject>> GetSubjectsAsync(Guid schoolId, CancellationToken cancellationToken = default);
+
+    /// <summary>Renames/reconfigures a <c>Subject</c> (delivery mode, default medium of instruction, display order). Code/School/LearningArea stay fixed. Throws <see cref="InvalidOperationException"/> if not found or if the delivery mode/medium code isn't an active one.</summary>
+    Task UpdateSubjectAsync(Guid id, string name, string deliveryModeCode, string defaultMediumOfInstructionCode, int displayOrder, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Syllabus>> GetSyllabusesForSubjectAsync(Guid subjectId, CancellationToken cancellationToken = default);
 

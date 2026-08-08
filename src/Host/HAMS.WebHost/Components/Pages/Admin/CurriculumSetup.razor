@@ -33,11 +33,26 @@
             <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateFrameworkAsync">Create</MudButton></MudItem>
         </MudGrid>
         <MudTable Items="@_frameworks" Dense="true" Hover="true">
-            <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Description</MudTh></HeaderContent>
+            <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Description</MudTh><MudTh></MudTh></HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Code">@context.Code</MudTd>
-                <MudTd DataLabel="Name">@context.Name</MudTd>
-                <MudTd DataLabel="Description">@context.Description</MudTd>
+                @if (_editingFrameworkId == context.Id)
+                {
+                    <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editFrameworkName" Margin="Margin.Dense" /></MudTd>
+                    <MudTd DataLabel="Description"><MudTextField T="string" @bind-Value="_editFrameworkDescription" Margin="Margin.Dense" /></MudTd>
+                    <MudTd>
+                        <MudStack Row="true" Spacing="1">
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SaveFrameworkEditAsync">Save</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingFrameworkId = null)">Cancel</MudButton>
+                        </MudStack>
+                    </MudTd>
+                }
+                else
+                {
+                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                    <MudTd DataLabel="Description">@context.Description</MudTd>
+                    <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartFrameworkEdit(context))">Edit</MudButton></MudTd>
+                }
             </RowTemplate>
         </MudTable>
     </MudTabPanel>
@@ -55,11 +70,27 @@
             <MudItem xs="12" sm="2" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateLearningAreaAsync">Create</MudButton></MudItem>
         </MudGrid>
         <MudTable Items="@_learningAreas" Dense="true" Hover="true">
-            <HeaderContent><MudTh>Order</MudTh><MudTh>Code</MudTh><MudTh>Name</MudTh></HeaderContent>
+            <HeaderContent><MudTh>Order</MudTh><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
-                <MudTd DataLabel="Code">@context.Code</MudTd>
-                <MudTd DataLabel="Name">@context.Name</MudTd>
+                @if (_editingLearningAreaId == context.Id)
+                {
+                    <MudTd DataLabel="Order"><MudNumericField T="int" @bind-Value="_editLearningAreaDisplayOrder" Margin="Margin.Dense" /></MudTd>
+                    <MudTd DataLabel="Code">@context.Code</MudTd>
+                    <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editLearningAreaName" Margin="Margin.Dense" /></MudTd>
+                    <MudTd>
+                        <MudStack Row="true" Spacing="1">
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SaveLearningAreaEditAsync">Save</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingLearningAreaId = null)">Cancel</MudButton>
+                        </MudStack>
+                    </MudTd>
+                }
+                else
+                {
+                    <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+                    <MudTd DataLabel="Code">@context.Code</MudTd>
+                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                    <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartLearningAreaEdit(context))">Edit</MudButton></MudTd>
+                }
             </RowTemplate>
         </MudTable>
     </MudTabPanel>
@@ -92,12 +123,44 @@
                 <MudItem xs="12" sm="1" Class="d-flex align-end"><MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateSubjectAsync">Create</MudButton></MudItem>
             </MudGrid>
             <MudTable Items="@_subjects" Dense="true" Hover="true">
-                <HeaderContent><MudTh>Order</MudTh><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
+                <HeaderContent><MudTh>Order</MudTh><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Delivery Mode</MudTh><MudTh>Medium</MudTh><MudTh></MudTh></HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
-                    <MudTd DataLabel="Code">@context.Code</MudTd>
-                    <MudTd DataLabel="Name">@context.Name</MudTd>
-                    <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectSubjectForSyllabusAsync(context.Id))">Manage Syllabus</MudButton></MudTd>
+                    @if (_editingSubjectId == context.Id)
+                    {
+                        <MudTd DataLabel="Order"><MudNumericField T="int" @bind-Value="_editSubjectDisplayOrder" Margin="Margin.Dense" /></MudTd>
+                        <MudTd DataLabel="Code">@context.Code</MudTd>
+                        <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editSubjectName" Margin="Margin.Dense" /></MudTd>
+                        <MudTd DataLabel="Delivery Mode">
+                            <MudSelect T="Guid" @bind-Value="_editSubjectDeliveryModeId" Dense="true" Margin="Margin.Dense">
+                                @foreach (var mode in _deliveryModes) { <MudSelectItem T="Guid" Value="@mode.Id">@mode.Name</MudSelectItem> }
+                            </MudSelect>
+                        </MudTd>
+                        <MudTd DataLabel="Medium">
+                            <MudSelect T="Guid" @bind-Value="_editSubjectMediumId" Dense="true" Margin="Margin.Dense">
+                                @foreach (var medium in _mediums) { <MudSelectItem T="Guid" Value="@medium.Id">@medium.Name</MudSelectItem> }
+                            </MudSelect>
+                        </MudTd>
+                        <MudTd>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SaveSubjectEditAsync">Save</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingSubjectId = null)">Cancel</MudButton>
+                            </MudStack>
+                        </MudTd>
+                    }
+                    else
+                    {
+                        <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+                        <MudTd DataLabel="Code">@context.Code</MudTd>
+                        <MudTd DataLabel="Name">@context.Name</MudTd>
+                        <MudTd DataLabel="Delivery Mode">@(_deliveryModes.SingleOrDefault(m => m.Id == context.DeliveryModeId)?.Name)</MudTd>
+                        <MudTd DataLabel="Medium">@(_mediums.SingleOrDefault(m => m.Id == context.DefaultMediumOfInstructionId)?.Name)</MudTd>
+                        <MudTd>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartSubjectEdit(context))">Edit</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectSubjectForSyllabusAsync(context.Id))">Manage Syllabus</MudButton>
+                            </MudStack>
+                        </MudTd>
+                    }
                 </RowTemplate>
             </MudTable>
         }
@@ -215,6 +278,20 @@
 
     private Guid _newApplicabilityGradeId;
 
+    private Guid? _editingFrameworkId;
+    private string _editFrameworkName = "";
+    private string _editFrameworkDescription = "";
+
+    private Guid? _editingLearningAreaId;
+    private string _editLearningAreaName = "";
+    private int _editLearningAreaDisplayOrder;
+
+    private Guid? _editingSubjectId;
+    private string _editSubjectName = "";
+    private Guid _editSubjectDeliveryModeId;
+    private Guid _editSubjectMediumId;
+    private int _editSubjectDisplayOrder;
+
     protected override async Task OnInitializedAsync()
     {
         _frameworks = await CurriculumAdmin.GetCurriculumFrameworksAsync();
@@ -232,6 +309,23 @@
         Snackbar.Add("Curriculum framework created.", Severity.Success);
     }
 
+    private void StartFrameworkEdit(CurrFramework framework)
+    {
+        _editingFrameworkId = framework.Id;
+        _editFrameworkName = framework.Name;
+        _editFrameworkDescription = framework.Description ?? "";
+    }
+
+    private async Task SaveFrameworkEditAsync()
+    {
+        if (_editingFrameworkId is not { } id) return;
+
+        await CurriculumAdmin.UpdateCurriculumFrameworkAsync(id, _editFrameworkName, string.IsNullOrWhiteSpace(_editFrameworkDescription) ? null : _editFrameworkDescription);
+        _editingFrameworkId = null;
+        Snackbar.Add("Curriculum framework updated.", Severity.Success);
+        _frameworks = await CurriculumAdmin.GetCurriculumFrameworksAsync();
+    }
+
     private async Task CreateLearningAreaAsync()
     {
         if (_newLearningAreaFrameworkId == Guid.Empty) { Snackbar.Add("Select a framework first.", Severity.Warning); return; }
@@ -239,6 +333,23 @@
         _newLearningAreaCode = ""; _newLearningAreaName = ""; _newLearningAreaDisplayOrder = 0;
         _learningAreas = await CurriculumAdmin.GetLearningAreasAsync();
         Snackbar.Add("Learning area created.", Severity.Success);
+    }
+
+    private void StartLearningAreaEdit(CurrLearningArea learningArea)
+    {
+        _editingLearningAreaId = learningArea.Id;
+        _editLearningAreaName = learningArea.Name;
+        _editLearningAreaDisplayOrder = learningArea.DisplayOrder;
+    }
+
+    private async Task SaveLearningAreaEditAsync()
+    {
+        if (_editingLearningAreaId is not { } id) return;
+
+        await CurriculumAdmin.UpdateLearningAreaAsync(id, _editLearningAreaName, _editLearningAreaDisplayOrder);
+        _editingLearningAreaId = null;
+        Snackbar.Add("Learning area updated.", Severity.Success);
+        _learningAreas = await CurriculumAdmin.GetLearningAreasAsync();
     }
 
     private async Task OnSchoolChangedForSubjectsAsync(Guid schoolId)
@@ -267,6 +378,35 @@
             _newSubjectCode = ""; _newSubjectName = "";
             _subjects = await CurriculumAdmin.GetSubjectsAsync(_selectedSchoolId);
             Snackbar.Add("Subject created.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private void StartSubjectEdit(CurrSubject subject)
+    {
+        _editingSubjectId = subject.Id;
+        _editSubjectName = subject.Name;
+        _editSubjectDeliveryModeId = subject.DeliveryModeId;
+        _editSubjectMediumId = subject.DefaultMediumOfInstructionId;
+        _editSubjectDisplayOrder = subject.DisplayOrder;
+    }
+
+    private async Task SaveSubjectEditAsync()
+    {
+        if (_editingSubjectId is not { } id) return;
+
+        var deliveryModeCode = _deliveryModes.Single(m => m.Id == _editSubjectDeliveryModeId).Code;
+        var mediumCode = _mediums.Single(m => m.Id == _editSubjectMediumId).Code;
+
+        try
+        {
+            await CurriculumAdmin.UpdateSubjectAsync(id, _editSubjectName, deliveryModeCode, mediumCode, _editSubjectDisplayOrder);
+            _editingSubjectId = null;
+            Snackbar.Add("Subject updated.", Severity.Success);
+            _subjects = await CurriculumAdmin.GetSubjectsAsync(_selectedSchoolId);
         }
         catch (InvalidOperationException ex)
         {

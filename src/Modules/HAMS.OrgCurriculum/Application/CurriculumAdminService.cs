@@ -17,6 +17,16 @@ internal sealed class CurriculumAdminService(OrgDbContext dbContext) : ICurricul
     public Task<IReadOnlyList<CurriculumFramework>> GetCurriculumFrameworksAsync(CancellationToken cancellationToken = default) =>
         GetOrderedAsync(dbContext.CurriculumFrameworks.OrderBy(f => f.Name), cancellationToken);
 
+    public async Task UpdateCurriculumFrameworkAsync(Guid id, string name, string? description, CancellationToken cancellationToken = default)
+    {
+        var framework = await dbContext.CurriculumFrameworks.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Curriculum framework not found.");
+
+        framework.Name = name;
+        framework.Description = description;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreateLearningAreaAsync(Guid curriculumFrameworkId, string code, string name, int displayOrder, CancellationToken cancellationToken = default)
     {
         var learningArea = new LearningArea { Id = Guid.NewGuid(), CurriculumFrameworkId = curriculumFrameworkId, Code = code, Name = name, DisplayOrder = displayOrder };
@@ -27,6 +37,16 @@ internal sealed class CurriculumAdminService(OrgDbContext dbContext) : ICurricul
 
     public Task<IReadOnlyList<LearningArea>> GetLearningAreasAsync(CancellationToken cancellationToken = default) =>
         GetOrderedAsync(dbContext.LearningAreas.OrderBy(a => a.DisplayOrder), cancellationToken);
+
+    public async Task UpdateLearningAreaAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var learningArea = await dbContext.LearningAreas.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Learning area not found.");
+
+        learningArea.Name = name;
+        learningArea.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     public Task<IReadOnlyList<DeliveryMode>> GetDeliveryModesAsync(CancellationToken cancellationToken = default) =>
         GetOrderedAsync(dbContext.DeliveryModes.Where(m => m.IsActive).OrderBy(m => m.DisplayOrder), cancellationToken);
@@ -118,6 +138,24 @@ internal sealed class CurriculumAdminService(OrgDbContext dbContext) : ICurricul
 
     public Task<IReadOnlyList<Subject>> GetSubjectsAsync(Guid schoolId, CancellationToken cancellationToken = default) =>
         GetOrderedAsync(dbContext.Subjects.Where(s => s.SchoolId == schoolId).OrderBy(s => s.DisplayOrder), cancellationToken);
+
+    public async Task UpdateSubjectAsync(Guid id, string name, string deliveryModeCode, string defaultMediumOfInstructionCode, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var subject = await dbContext.Subjects.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Subject not found.");
+
+        var deliveryMode = await dbContext.DeliveryModes.SingleOrDefaultAsync(m => m.Code == deliveryModeCode && m.IsActive, cancellationToken)
+            ?? throw new InvalidOperationException($"No active delivery mode with code '{deliveryModeCode}'.");
+
+        var medium = await dbContext.MediumsOfInstruction.SingleOrDefaultAsync(m => m.Code == defaultMediumOfInstructionCode && m.IsActive, cancellationToken)
+            ?? throw new InvalidOperationException($"No active medium of instruction with code '{defaultMediumOfInstructionCode}'.");
+
+        subject.Name = name;
+        subject.DeliveryModeId = deliveryMode.Id;
+        subject.DefaultMediumOfInstructionId = medium.Id;
+        subject.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     public Task<IReadOnlyList<Syllabus>> GetSyllabusesForSubjectAsync(Guid subjectId, CancellationToken cancellationToken = default) =>
         GetOrderedAsync(dbContext.Syllabuses.Where(s => s.SubjectId == subjectId).OrderByDescending(s => s.Version), cancellationToken);
