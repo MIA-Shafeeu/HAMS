@@ -19,17 +19,41 @@
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="Code">@context.Code</MudTd>
-        <MudTd DataLabel="Name">@context.Name</MudTd>
-        <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+        @if (ReferenceEquals(context, _editing))
+        {
+            <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editName" Margin="Margin.Dense" /></MudTd>
+            <MudTd DataLabel="Order"><MudNumericField T="int" @bind-Value="_editDisplayOrder" Margin="Margin.Dense" /></MudTd>
+        }
+        else
+        {
+            <MudTd DataLabel="Name">@context.Name</MudTd>
+            <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+        }
         @if (RowExtra is not null)
         {
             @RowExtra(context)
         }
         <MudTd DataLabel="Active">@(context.IsActive ? "Yes" : "No")</MudTd>
         <MudTd>
-            <MudButton Size="Size.Small" Variant="Variant.Text" Color="@(context.IsActive ? Color.Error : Color.Success)" OnClick="@(() => ToggleActiveAsync(context))">
-                @(context.IsActive ? "Deactivate" : "Activate")
-            </MudButton>
+            @if (ReferenceEquals(context, _editing))
+            {
+                <MudStack Row="true" Spacing="1">
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SaveEditAsync">Save</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="CancelEdit">Cancel</MudButton>
+                </MudStack>
+            }
+            else
+            {
+                <MudStack Row="true" Spacing="1">
+                    @if (OnUpdate is not null)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartEdit(context))">Edit</MudButton>
+                    }
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="@(context.IsActive ? Color.Error : Color.Success)" OnClick="@(() => ToggleActiveAsync(context))">
+                        @(context.IsActive ? "Deactivate" : "Activate")
+                    </MudButton>
+                </MudStack>
+            }
         </MudTd>
     </RowTemplate>
 </MudTable>
@@ -38,6 +62,10 @@
     [Parameter, EditorRequired] public IReadOnlyList<TLookup> Items { get; set; } = [];
     [Parameter, EditorRequired] public Func<string, string, int, Task> OnCreate { get; set; } = null!;
     [Parameter, EditorRequired] public Func<TLookup, bool, Task> OnSetActive { get; set; } = null!;
+    // Optional: pages that haven't wired up a rename/reorder backend method yet simply don't get an
+    // Edit button (see SimpleLookupManager's Reference Data callers - this is being rolled out
+    // across ~18 lookups module by module, not all at once).
+    [Parameter] public Func<TLookup, string, int, Task>? OnUpdate { get; set; }
     [Parameter] public RenderFragment? ExtraFields { get; set; }
     [Parameter] public RenderFragment? HeaderExtra { get; set; }
     [Parameter] public RenderFragment<TLookup>? RowExtra { get; set; }
@@ -45,6 +73,10 @@
     private string _code = "";
     private string _name = "";
     private int _displayOrder;
+
+    private TLookup? _editing;
+    private string _editName = "";
+    private int _editDisplayOrder;
 
     private async Task CreateClickedAsync()
     {
@@ -55,4 +87,21 @@
     }
 
     private Task ToggleActiveAsync(TLookup item) => OnSetActive(item, !item.IsActive);
+
+    private void StartEdit(TLookup item)
+    {
+        _editing = item;
+        _editName = item.Name;
+        _editDisplayOrder = item.DisplayOrder;
+    }
+
+    private void CancelEdit() => _editing = default;
+
+    private async Task SaveEditAsync()
+    {
+        if (OnUpdate is null || _editing is null) return;
+
+        await OnUpdate(_editing, _editName, _editDisplayOrder);
+        _editing = default;
+    }
 }

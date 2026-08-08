@@ -32,6 +32,9 @@ public interface IPersonRoleAssignmentService
     /// <summary>Activates or deactivates a <c>Role</c>. Throws <see cref="InvalidOperationException"/> if the role isn't found.</summary>
     Task SetRoleActiveAsync(Guid roleId, bool isActive, CancellationToken cancellationToken = default);
 
+    /// <summary>Renames/reorders a <c>Role</c> (build plan §1.6 — Name is admin-editable; Code stays fixed, application code branches on it). Throws <see cref="InvalidOperationException"/> if the role isn't found.</summary>
+    Task UpdateRoleAsync(Guid roleId, string name, int displayOrder, CancellationToken cancellationToken = default);
+
     /// <summary>Creates a new configurable <c>ConfidentialityTier</c> (build plan §1.6/§4).</summary>
     /// <returns>The new <c>ConfidentialityTier</c>'s id.</returns>
     Task<Guid> CreateConfidentialityTierAsync(string code, string name, string? description, int rank, int displayOrder, CancellationToken cancellationToken = default);
@@ -41,4 +44,7 @@ public interface IPersonRoleAssignmentService
 
     /// <summary>Activates or deactivates a <c>ConfidentialityTier</c>. Throws <see cref="InvalidOperationException"/> if the tier isn't found.</summary>
     Task SetConfidentialityTierActiveAsync(Guid tierId, bool isActive, CancellationToken cancellationToken = default);
+
+    /// <summary>Renames/reorders/re-ranks a <c>ConfidentialityTier</c>. Throws <see cref="InvalidOperationException"/> if the tier isn't found.</summary>
+    Task UpdateConfidentialityTierAsync(Guid tierId, string name, int rank, int displayOrder, CancellationToken cancellationToken = default);
 }

@@ -121,6 +121,16 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateEvaluationModelAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var model = await dbContext.EvaluationModels.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Evaluation model not found.");
+
+        model.Name = name;
+        model.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreateClassAsync(Guid schoolId, Guid? campusId, Guid academicYearId, string code, string name, IReadOnlyList<Guid> gradeIds, CancellationToken cancellationToken = default)
     {
         var @class = new Class { Id = Guid.NewGuid(), SchoolId = schoolId, CampusId = campusId, AcademicYearId = academicYearId, Code = code, Name = name };
@@ -231,6 +241,16 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
             ?? throw new InvalidOperationException("Holiday type not found.");
 
         holidayType.IsActive = isActive;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateHolidayTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var holidayType = await dbContext.HolidayTypes.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Holiday type not found.");
+
+        holidayType.Name = name;
+        holidayType.DisplayOrder = displayOrder;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 

@@ -75,6 +75,9 @@ internal sealed class FakePersonRoleAssignmentService : IPersonRoleAssignmentSer
     public Task SetRoleActiveAsync(Guid roleId, bool isActive, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Not needed by auth tests.");
 
+    public Task UpdateRoleAsync(Guid roleId, string name, int displayOrder, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("Not needed by auth tests.");
+
     public Task<Guid> CreateConfidentialityTierAsync(string code, string name, string? description, int rank, int displayOrder, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Not needed by auth tests.");
 
@@ -82,6 +85,9 @@ internal sealed class FakePersonRoleAssignmentService : IPersonRoleAssignmentSer
         => throw new NotSupportedException("Not needed by auth tests.");
 
     public Task SetConfidentialityTierActiveAsync(Guid tierId, bool isActive, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("Not needed by auth tests.");
+
+    public Task UpdateConfidentialityTierAsync(Guid tierId, string name, int rank, int displayOrder, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("Not needed by auth tests.");
 }
 

@@ -46,6 +46,9 @@ public interface IPeopleAdminService
     /// <exception cref="InvalidOperationException">No employment status with that id exists.</exception>
     Task SetEmploymentStatusActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
 
+    /// <exception cref="InvalidOperationException">No employment status with that id exists.</exception>
+    Task UpdateEmploymentStatusAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
+
     /// <exception cref="InvalidOperationException">No active employment status with that code exists.</exception>
     Task<Guid> CreateStaffProfileAsync(Guid personId, string employeeNumber, DateOnly hireDate, string employmentStatusCode, CancellationToken cancellationToken = default);
 
@@ -69,6 +72,9 @@ public interface IPeopleAdminService
     /// <exception cref="InvalidOperationException">No relationship type with that id exists.</exception>
     Task SetRelationshipTypeActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
 
+    /// <exception cref="InvalidOperationException">No relationship type with that id exists.</exception>
+    Task UpdateRelationshipTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<RestrictionType>> GetRestrictionTypesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Every <c>RestrictionType</c>, active or not — the Reference Data admin screen's list, distinct from <see cref="GetRestrictionTypesAsync"/>'s active-only picker list.</summary>
@@ -79,6 +85,9 @@ public interface IPeopleAdminService
     /// <exception cref="InvalidOperationException">No restriction type with that id exists.</exception>
     Task SetRestrictionTypeActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
 
+    /// <exception cref="InvalidOperationException">No restriction type with that id exists.</exception>
+    Task UpdateRestrictionTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<EnrollmentType>> GetEnrollmentTypesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Every <c>EnrollmentType</c>, active or not — the Reference Data admin screen's list, distinct from <see cref="GetEnrollmentTypesAsync"/>'s active-only picker list.</summary>
@@ -88,6 +97,9 @@ public interface IPeopleAdminService
 
     /// <exception cref="InvalidOperationException">No enrollment type with that id exists.</exception>
     Task SetEnrollmentTypeActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
+
+    /// <exception cref="InvalidOperationException">No enrollment type with that id exists.</exception>
+    Task UpdateEnrollmentTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<GuardianStudentRelationship>> GetGuardianRelationshipsForStudentAsync(Guid studentPersonId, CancellationToken cancellationToken = default);
 

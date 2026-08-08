@@ -35,6 +35,8 @@ public interface ILessonPlanningService
 
     Task SetResourceTypeActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
 
+    Task UpdateResourceTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
+
     /// <exception cref="InvalidOperationException">No active resource type with that code exists.</exception>
     Task<Guid> AddResourceAsync(
         Guid teachingTopicId, string titleEn, string titleDv, string resourceTypeCode, string fileReference, Guid uploadedByPersonId,
@@ -47,4 +49,6 @@ public interface ILessonPlanningService
     Task<Guid> CreateEvidenceTypeAsync(string code, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task SetEvidenceTypeActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
+
+    Task UpdateEvidenceTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
 }

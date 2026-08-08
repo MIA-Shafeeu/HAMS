@@ -25,4 +25,14 @@ internal sealed class AttendanceAdminService(AttendanceDbContext dbContext) : IA
         status.IsActive = isActive;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task UpdateAttendanceStatusAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var status = await dbContext.AttendanceStatuses.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Attendance status not found.");
+
+        status.Name = name;
+        status.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

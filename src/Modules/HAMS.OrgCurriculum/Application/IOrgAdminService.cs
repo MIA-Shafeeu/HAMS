@@ -50,6 +50,9 @@ public interface IOrgAdminService
 
     Task SetEvaluationModelActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
 
+    /// <summary>Renames/reorders a <c>EvaluationModel</c>. Throws <see cref="InvalidOperationException"/> if not found.</summary>
+    Task UpdateEvaluationModelAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
+
     Task<Guid> CreateClassAsync(Guid schoolId, Guid? campusId, Guid academicYearId, string code, string name, IReadOnlyList<Guid> gradeIds, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Class>> GetClassesAsync(Guid academicYearId, CancellationToken cancellationToken = default);
@@ -76,6 +79,9 @@ public interface IOrgAdminService
     Task<Guid> CreateHolidayTypeAsync(string code, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task SetHolidayTypeActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
+
+    /// <summary>Renames/reorders a <c>HolidayType</c>. Throws <see cref="InvalidOperationException"/> if not found.</summary>
+    Task UpdateHolidayTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Holiday>> GetHolidaysAsync(Guid schoolId, CancellationToken cancellationToken = default);
 

@@ -20,10 +20,16 @@ public interface IInterventionAdminService
     /// <exception cref="InvalidOperationException">No behaviour category with that id exists.</exception>
     Task SetBehaviourCategoryActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
 
+    /// <exception cref="InvalidOperationException">No behaviour category with that id exists.</exception>
+    Task UpdateBehaviourCategoryAsync(Guid id, string name, bool isPositive, int displayOrder, CancellationToken cancellationToken = default);
+
     Task<Guid> CreateInterventionTypeAsync(string code, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<InterventionType>> GetInterventionTypesAsync(CancellationToken cancellationToken = default);
 
     /// <exception cref="InvalidOperationException">No intervention type with that id exists.</exception>
     Task SetInterventionTypeActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
+
+    /// <exception cref="InvalidOperationException">No intervention type with that id exists.</exception>
+    Task UpdateInterventionTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
 }

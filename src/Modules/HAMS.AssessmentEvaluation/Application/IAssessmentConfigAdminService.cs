@@ -20,11 +20,15 @@ public interface IAssessmentConfigAdminService
 
     Task SetAssessmentCategoryActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
 
+    Task UpdateAssessmentCategoryAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<ExternalExaminationBoard>> GetExternalExaminationBoardsAsync(CancellationToken cancellationToken = default);
 
     Task<Guid> CreateExternalExaminationBoardAsync(string code, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task SetExternalExaminationBoardActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
+
+    Task UpdateExternalExaminationBoardAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<SpecialResultState>> GetSpecialResultStatesAsync(CancellationToken cancellationToken = default);
 
@@ -32,11 +36,15 @@ public interface IAssessmentConfigAdminService
 
     Task SetSpecialResultStateActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
 
+    Task UpdateSpecialResultStateAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<ResultAggregationRule>> GetResultAggregationRulesAsync(CancellationToken cancellationToken = default);
 
     Task<Guid> CreateResultAggregationRuleAsync(string code, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task SetResultAggregationRuleActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
+
+    Task UpdateResultAggregationRuleAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task<Guid> CreateAssessmentSchemeAsync(string code, string name, CancellationToken cancellationToken = default);
 

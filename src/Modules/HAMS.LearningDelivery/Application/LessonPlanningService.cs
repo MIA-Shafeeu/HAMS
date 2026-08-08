@@ -74,6 +74,16 @@ internal sealed class LessonPlanningService(LearningDeliveryDbContext dbContext)
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateResourceTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var resourceType = await dbContext.ResourceTypes.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Resource type not found.");
+
+        resourceType.Name = name;
+        resourceType.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> AddResourceAsync(
         Guid teachingTopicId, string titleEn, string titleDv, string resourceTypeCode, string fileReference, Guid uploadedByPersonId,
         CancellationToken cancellationToken = default)
@@ -111,6 +121,16 @@ internal sealed class LessonPlanningService(LearningDeliveryDbContext dbContext)
             ?? throw new InvalidOperationException("Evidence type not found.");
 
         evidenceType.IsActive = isActive;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateEvidenceTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var evidenceType = await dbContext.EvidenceTypes.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Evidence type not found.");
+
+        evidenceType.Name = name;
+        evidenceType.DisplayOrder = displayOrder;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

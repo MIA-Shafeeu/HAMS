@@ -50,12 +50,12 @@
 
     <MudTabPanel Text="Roles &amp; Confidentiality">
         <MudText Typo="Typo.h6" Class="mb-2">Roles</MudText>
-        <SimpleLookupManager TLookup="AccessRole" Items="_roles" OnCreate="CreateRoleAsync" OnSetActive="SetRoleActiveAsync" />
+        <SimpleLookupManager TLookup="AccessRole" Items="_roles" OnCreate="CreateRoleAsync" OnSetActive="SetRoleActiveAsync" OnUpdate="UpdateRoleAsync" />
 
         <MudDivider Class="my-4" />
 
         <MudText Typo="Typo.h6" Class="mb-2">Confidentiality Tiers</MudText>
-        <SimpleLookupManager TLookup="AccessConfidentialityTier" Items="_confidentialityTiers" OnCreate="CreateConfidentialityTierAsync" OnSetActive="SetConfidentialityTierActiveAsync">
+        <SimpleLookupManager TLookup="AccessConfidentialityTier" Items="_confidentialityTiers" OnCreate="CreateConfidentialityTierAsync" OnSetActive="SetConfidentialityTierActiveAsync" OnUpdate="UpdateConfidentialityTierAsync">
             <ExtraFields>
                 <MudItem xs="12" sm="2"><MudNumericField T="int" @bind-Value="_newTierRank" Label="Rank" /></MudItem>
             </ExtraFields>
@@ -66,45 +66,45 @@
 
     <MudTabPanel Text="Curriculum">
         <MudText Typo="Typo.h6" Class="mb-2">Evaluation Models</MudText>
-        <SimpleLookupManager TLookup="OrgEvaluationModel" Items="_evaluationModels" OnCreate="CreateEvaluationModelAsync" OnSetActive="SetEvaluationModelActiveAsync" />
+        <SimpleLookupManager TLookup="OrgEvaluationModel" Items="_evaluationModels" OnCreate="CreateEvaluationModelAsync" OnSetActive="SetEvaluationModelActiveAsync" OnUpdate="UpdateEvaluationModelAsync" />
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">Delivery Modes</MudText>
-        <SimpleLookupManager TLookup="OrgDeliveryMode" Items="_deliveryModes" OnCreate="CreateDeliveryModeAsync" OnSetActive="SetDeliveryModeActiveAsync" />
+        <SimpleLookupManager TLookup="OrgDeliveryMode" Items="_deliveryModes" OnCreate="CreateDeliveryModeAsync" OnSetActive="SetDeliveryModeActiveAsync" OnUpdate="UpdateDeliveryModeAsync" />
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">Mediums of Instruction</MudText>
-        <SimpleLookupManager TLookup="OrgMediumOfInstruction" Items="_mediumsOfInstruction" OnCreate="CreateMediumOfInstructionAsync" OnSetActive="SetMediumOfInstructionActiveAsync" />
+        <SimpleLookupManager TLookup="OrgMediumOfInstruction" Items="_mediumsOfInstruction" OnCreate="CreateMediumOfInstructionAsync" OnSetActive="SetMediumOfInstructionActiveAsync" OnUpdate="UpdateMediumOfInstructionAsync" />
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">Holiday Types</MudText>
-        <SimpleLookupManager TLookup="OrgHolidayType" Items="_holidayTypes" OnCreate="CreateHolidayTypeAsync" OnSetActive="SetHolidayTypeActiveAsync" />
+        <SimpleLookupManager TLookup="OrgHolidayType" Items="_holidayTypes" OnCreate="CreateHolidayTypeAsync" OnSetActive="SetHolidayTypeActiveAsync" OnUpdate="UpdateHolidayTypeAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="People">
         <MudText Typo="Typo.h6" Class="mb-2">Guardian Relationship Types</MudText>
-        <SimpleLookupManager TLookup="PplRelationshipType" Items="_relationshipTypes" OnCreate="CreateRelationshipTypeAsync" OnSetActive="SetRelationshipTypeActiveAsync" />
+        <SimpleLookupManager TLookup="PplRelationshipType" Items="_relationshipTypes" OnCreate="CreateRelationshipTypeAsync" OnSetActive="SetRelationshipTypeActiveAsync" OnUpdate="UpdateRelationshipTypeAsync" />
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">Restriction Types</MudText>
-        <SimpleLookupManager TLookup="PplRestrictionType" Items="_restrictionTypes" OnCreate="CreateRestrictionTypeAsync" OnSetActive="SetRestrictionTypeActiveAsync" />
+        <SimpleLookupManager TLookup="PplRestrictionType" Items="_restrictionTypes" OnCreate="CreateRestrictionTypeAsync" OnSetActive="SetRestrictionTypeActiveAsync" OnUpdate="UpdateRestrictionTypeAsync" />
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">Employment Statuses</MudText>
-        <SimpleLookupManager TLookup="PplEmploymentStatus" Items="_employmentStatuses" OnCreate="CreateEmploymentStatusAsync" OnSetActive="SetEmploymentStatusActiveAsync" />
+        <SimpleLookupManager TLookup="PplEmploymentStatus" Items="_employmentStatuses" OnCreate="CreateEmploymentStatusAsync" OnSetActive="SetEmploymentStatusActiveAsync" OnUpdate="UpdateEmploymentStatusAsync" />
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">Enrollment Types</MudText>
-        <SimpleLookupManager TLookup="PplEnrollmentType" Items="_enrollmentTypes" OnCreate="CreateEnrollmentTypeAsync" OnSetActive="SetEnrollmentTypeActiveAsync" />
+        <SimpleLookupManager TLookup="PplEnrollmentType" Items="_enrollmentTypes" OnCreate="CreateEnrollmentTypeAsync" OnSetActive="SetEnrollmentTypeActiveAsync" OnUpdate="UpdateEnrollmentTypeAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="Attendance &amp; Behaviour">
         <MudText Typo="Typo.h6" Class="mb-2">Attendance Statuses</MudText>
-        <SimpleLookupManager TLookup="AttAttendanceStatus" Items="_attendanceStatuses" OnCreate="CreateAttendanceStatusAsync" OnSetActive="SetAttendanceStatusActiveAsync" />
+        <SimpleLookupManager TLookup="AttAttendanceStatus" Items="_attendanceStatuses" OnCreate="CreateAttendanceStatusAsync" OnSetActive="SetAttendanceStatusActiveAsync" OnUpdate="UpdateAttendanceStatusAsync" />
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">Behaviour Categories</MudText>
-        <SimpleLookupManager TLookup="IntBehaviourCategory" Items="_behaviourCategories" OnCreate="CreateBehaviourCategoryAsync" OnSetActive="SetBehaviourCategoryActiveAsync">
+        <SimpleLookupManager TLookup="IntBehaviourCategory" Items="_behaviourCategories" OnCreate="CreateBehaviourCategoryAsync" OnSetActive="SetBehaviourCategoryActiveAsync" OnUpdate="UpdateBehaviourCategoryAsync">
             <ExtraFields>
                 <MudItem xs="12" sm="2"><MudCheckBox T="bool" @bind-Value="_newCategoryIsPositive" Label="Positive" /></MudItem>
             </ExtraFields>
@@ -114,33 +114,33 @@
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">Intervention Types</MudText>
-        <SimpleLookupManager TLookup="IntInterventionType" Items="_interventionTypes" OnCreate="CreateInterventionTypeAsync" OnSetActive="SetInterventionTypeActiveAsync" />
+        <SimpleLookupManager TLookup="IntInterventionType" Items="_interventionTypes" OnCreate="CreateInterventionTypeAsync" OnSetActive="SetInterventionTypeActiveAsync" OnUpdate="UpdateInterventionTypeAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="Assessment">
         <MudText Typo="Typo.h6" Class="mb-2">Assessment Categories</MudText>
-        <SimpleLookupManager TLookup="AsmAssessmentCategory" Items="_assessmentCategories" OnCreate="CreateAssessmentCategoryAsync" OnSetActive="SetAssessmentCategoryActiveAsync" />
+        <SimpleLookupManager TLookup="AsmAssessmentCategory" Items="_assessmentCategories" OnCreate="CreateAssessmentCategoryAsync" OnSetActive="SetAssessmentCategoryActiveAsync" OnUpdate="UpdateAssessmentCategoryAsync" />
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">External Examination Boards</MudText>
-        <SimpleLookupManager TLookup="AsmExternalExaminationBoard" Items="_externalExaminationBoards" OnCreate="CreateExternalExaminationBoardAsync" OnSetActive="SetExternalExaminationBoardActiveAsync" />
+        <SimpleLookupManager TLookup="AsmExternalExaminationBoard" Items="_externalExaminationBoards" OnCreate="CreateExternalExaminationBoardAsync" OnSetActive="SetExternalExaminationBoardActiveAsync" OnUpdate="UpdateExternalExaminationBoardAsync" />
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">Special Result States</MudText>
-        <SimpleLookupManager TLookup="AsmSpecialResultState" Items="_specialResultStates" OnCreate="CreateSpecialResultStateAsync" OnSetActive="SetSpecialResultStateActiveAsync" />
+        <SimpleLookupManager TLookup="AsmSpecialResultState" Items="_specialResultStates" OnCreate="CreateSpecialResultStateAsync" OnSetActive="SetSpecialResultStateActiveAsync" OnUpdate="UpdateSpecialResultStateAsync" />
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">Result Aggregation Rules</MudText>
-        <SimpleLookupManager TLookup="AsmResultAggregationRule" Items="_resultAggregationRules" OnCreate="CreateResultAggregationRuleAsync" OnSetActive="SetResultAggregationRuleActiveAsync" />
+        <SimpleLookupManager TLookup="AsmResultAggregationRule" Items="_resultAggregationRules" OnCreate="CreateResultAggregationRuleAsync" OnSetActive="SetResultAggregationRuleActiveAsync" OnUpdate="UpdateResultAggregationRuleAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="Learning Resources">
         <MudText Typo="Typo.h6" Class="mb-2">Resource Types</MudText>
-        <SimpleLookupManager TLookup="LrnResourceType" Items="_resourceTypes" OnCreate="CreateResourceTypeAsync" OnSetActive="SetResourceTypeActiveAsync" />
+        <SimpleLookupManager TLookup="LrnResourceType" Items="_resourceTypes" OnCreate="CreateResourceTypeAsync" OnSetActive="SetResourceTypeActiveAsync" OnUpdate="UpdateResourceTypeAsync" />
 
         <MudDivider Class="my-4" />
         <MudText Typo="Typo.h6" Class="mb-2">Evidence Types</MudText>
-        <SimpleLookupManager TLookup="LrnEvidenceType" Items="_evidenceTypes" OnCreate="CreateEvidenceTypeAsync" OnSetActive="SetEvidenceTypeActiveAsync" />
+        <SimpleLookupManager TLookup="LrnEvidenceType" Items="_evidenceTypes" OnCreate="CreateEvidenceTypeAsync" OnSetActive="SetEvidenceTypeActiveAsync" OnUpdate="UpdateEvidenceTypeAsync" />
     </MudTabPanel>
 
 </MudTabs>
@@ -214,6 +214,13 @@
         _roles = await RoleAssignments.GetAllRolesAsync();
     }
 
+    private async Task UpdateRoleAsync(AccessRole role, string name, int displayOrder)
+    {
+        await RoleAssignments.UpdateRoleAsync(role.Id, name, displayOrder);
+        _roles = await RoleAssignments.GetAllRolesAsync();
+        Snackbar.Add("Role updated.", Severity.Success);
+    }
+
     private async Task CreateConfidentialityTierAsync(string code, string name, int displayOrder)
     {
         await RoleAssignments.CreateConfidentialityTierAsync(code, name, null, _newTierRank, displayOrder);
@@ -226,6 +233,13 @@
     {
         await RoleAssignments.SetConfidentialityTierActiveAsync(tier.Id, isActive);
         _confidentialityTiers = await RoleAssignments.GetConfidentialityTiersAsync();
+    }
+
+    private async Task UpdateConfidentialityTierAsync(AccessConfidentialityTier tier, string name, int displayOrder)
+    {
+        await RoleAssignments.UpdateConfidentialityTierAsync(tier.Id, name, tier.Rank, displayOrder);
+        _confidentialityTiers = await RoleAssignments.GetConfidentialityTiersAsync();
+        Snackbar.Add("Confidentiality tier updated.", Severity.Success);
     }
 
     private async Task CreateEvaluationModelAsync(string code, string name, int displayOrder)
@@ -241,6 +255,13 @@
         _evaluationModels = await OrgAdmin.GetEvaluationModelsAsync();
     }
 
+    private async Task UpdateEvaluationModelAsync(OrgEvaluationModel model, string name, int displayOrder)
+    {
+        await OrgAdmin.UpdateEvaluationModelAsync(model.Id, name, displayOrder);
+        _evaluationModels = await OrgAdmin.GetEvaluationModelsAsync();
+        Snackbar.Add("Evaluation model updated.", Severity.Success);
+    }
+
     private async Task CreateDeliveryModeAsync(string code, string name, int displayOrder)
     {
         await CurriculumAdmin.CreateDeliveryModeAsync(code, name, displayOrder);
@@ -252,6 +273,13 @@
     {
         await CurriculumAdmin.SetDeliveryModeActiveAsync(mode.Id, isActive);
         _deliveryModes = await CurriculumAdmin.GetAllDeliveryModesAsync();
+    }
+
+    private async Task UpdateDeliveryModeAsync(OrgDeliveryMode mode, string name, int displayOrder)
+    {
+        await CurriculumAdmin.UpdateDeliveryModeAsync(mode.Id, name, displayOrder);
+        _deliveryModes = await CurriculumAdmin.GetAllDeliveryModesAsync();
+        Snackbar.Add("Delivery mode updated.", Severity.Success);
     }
 
     private async Task CreateMediumOfInstructionAsync(string code, string name, int displayOrder)
@@ -267,6 +295,13 @@
         _mediumsOfInstruction = await CurriculumAdmin.GetAllMediumsOfInstructionAsync();
     }
 
+    private async Task UpdateMediumOfInstructionAsync(OrgMediumOfInstruction medium, string name, int displayOrder)
+    {
+        await CurriculumAdmin.UpdateMediumOfInstructionAsync(medium.Id, name, displayOrder);
+        _mediumsOfInstruction = await CurriculumAdmin.GetAllMediumsOfInstructionAsync();
+        Snackbar.Add("Medium of instruction updated.", Severity.Success);
+    }
+
     private async Task CreateHolidayTypeAsync(string code, string name, int displayOrder)
     {
         await OrgAdmin.CreateHolidayTypeAsync(code, name, displayOrder);
@@ -278,6 +313,13 @@
     {
         await OrgAdmin.SetHolidayTypeActiveAsync(type.Id, isActive);
         _holidayTypes = await OrgAdmin.GetHolidayTypesAsync();
+    }
+
+    private async Task UpdateHolidayTypeAsync(OrgHolidayType type, string name, int displayOrder)
+    {
+        await OrgAdmin.UpdateHolidayTypeAsync(type.Id, name, displayOrder);
+        _holidayTypes = await OrgAdmin.GetHolidayTypesAsync();
+        Snackbar.Add("Holiday type updated.", Severity.Success);
     }
 
     private async Task CreateRelationshipTypeAsync(string code, string name, int displayOrder)
@@ -293,6 +335,13 @@
         _relationshipTypes = await PeopleAdmin.GetAllRelationshipTypesAsync();
     }
 
+    private async Task UpdateRelationshipTypeAsync(PplRelationshipType type, string name, int displayOrder)
+    {
+        await PeopleAdmin.UpdateRelationshipTypeAsync(type.Id, name, displayOrder);
+        _relationshipTypes = await PeopleAdmin.GetAllRelationshipTypesAsync();
+        Snackbar.Add("Relationship type updated.", Severity.Success);
+    }
+
     private async Task CreateRestrictionTypeAsync(string code, string name, int displayOrder)
     {
         await PeopleAdmin.CreateRestrictionTypeAsync(code, name, displayOrder);
@@ -304,6 +353,13 @@
     {
         await PeopleAdmin.SetRestrictionTypeActiveAsync(type.Id, isActive);
         _restrictionTypes = await PeopleAdmin.GetAllRestrictionTypesAsync();
+    }
+
+    private async Task UpdateRestrictionTypeAsync(PplRestrictionType type, string name, int displayOrder)
+    {
+        await PeopleAdmin.UpdateRestrictionTypeAsync(type.Id, name, displayOrder);
+        _restrictionTypes = await PeopleAdmin.GetAllRestrictionTypesAsync();
+        Snackbar.Add("Restriction type updated.", Severity.Success);
     }
 
     private async Task CreateEmploymentStatusAsync(string code, string name, int displayOrder)
@@ -319,6 +375,13 @@
         _employmentStatuses = await PeopleAdmin.GetAllEmploymentStatusesAsync();
     }
 
+    private async Task UpdateEmploymentStatusAsync(PplEmploymentStatus status, string name, int displayOrder)
+    {
+        await PeopleAdmin.UpdateEmploymentStatusAsync(status.Id, name, displayOrder);
+        _employmentStatuses = await PeopleAdmin.GetAllEmploymentStatusesAsync();
+        Snackbar.Add("Employment status updated.", Severity.Success);
+    }
+
     private async Task CreateEnrollmentTypeAsync(string code, string name, int displayOrder)
     {
         await PeopleAdmin.CreateEnrollmentTypeAsync(code, name, displayOrder);
@@ -332,6 +395,13 @@
         _enrollmentTypes = await PeopleAdmin.GetAllEnrollmentTypesAsync();
     }
 
+    private async Task UpdateEnrollmentTypeAsync(PplEnrollmentType type, string name, int displayOrder)
+    {
+        await PeopleAdmin.UpdateEnrollmentTypeAsync(type.Id, name, displayOrder);
+        _enrollmentTypes = await PeopleAdmin.GetAllEnrollmentTypesAsync();
+        Snackbar.Add("Enrollment type updated.", Severity.Success);
+    }
+
     private async Task CreateAttendanceStatusAsync(string code, string name, int displayOrder)
     {
         await AttendanceAdmin.CreateAttendanceStatusAsync(code, name, displayOrder);
@@ -343,6 +413,13 @@
     {
         await AttendanceAdmin.SetAttendanceStatusActiveAsync(status.Id, isActive);
         _attendanceStatuses = await AttendanceAdmin.GetAttendanceStatusesAsync();
+    }
+
+    private async Task UpdateAttendanceStatusAsync(AttAttendanceStatus status, string name, int displayOrder)
+    {
+        await AttendanceAdmin.UpdateAttendanceStatusAsync(status.Id, name, displayOrder);
+        _attendanceStatuses = await AttendanceAdmin.GetAttendanceStatusesAsync();
+        Snackbar.Add("Attendance status updated.", Severity.Success);
     }
 
     private async Task CreateBehaviourCategoryAsync(string code, string name, int displayOrder)
@@ -359,6 +436,13 @@
         _behaviourCategories = await InterventionAdmin.GetBehaviourCategoriesAsync();
     }
 
+    private async Task UpdateBehaviourCategoryAsync(IntBehaviourCategory category, string name, int displayOrder)
+    {
+        await InterventionAdmin.UpdateBehaviourCategoryAsync(category.Id, name, category.IsPositive, displayOrder);
+        _behaviourCategories = await InterventionAdmin.GetBehaviourCategoriesAsync();
+        Snackbar.Add("Behaviour category updated.", Severity.Success);
+    }
+
     private async Task CreateInterventionTypeAsync(string code, string name, int displayOrder)
     {
         await InterventionAdmin.CreateInterventionTypeAsync(code, name, displayOrder);
@@ -370,6 +454,13 @@
     {
         await InterventionAdmin.SetInterventionTypeActiveAsync(type.Id, isActive);
         _interventionTypes = await InterventionAdmin.GetInterventionTypesAsync();
+    }
+
+    private async Task UpdateInterventionTypeAsync(IntInterventionType type, string name, int displayOrder)
+    {
+        await InterventionAdmin.UpdateInterventionTypeAsync(type.Id, name, displayOrder);
+        _interventionTypes = await InterventionAdmin.GetInterventionTypesAsync();
+        Snackbar.Add("Intervention type updated.", Severity.Success);
     }
 
     private async Task CreateAssessmentCategoryAsync(string code, string name, int displayOrder)
@@ -385,6 +476,13 @@
         _assessmentCategories = await AssessmentConfig.GetAssessmentCategoriesAsync();
     }
 
+    private async Task UpdateAssessmentCategoryAsync(AsmAssessmentCategory category, string name, int displayOrder)
+    {
+        await AssessmentConfig.UpdateAssessmentCategoryAsync(category.Id, name, displayOrder);
+        _assessmentCategories = await AssessmentConfig.GetAssessmentCategoriesAsync();
+        Snackbar.Add("Assessment category updated.", Severity.Success);
+    }
+
     private async Task CreateExternalExaminationBoardAsync(string code, string name, int displayOrder)
     {
         await AssessmentConfig.CreateExternalExaminationBoardAsync(code, name, displayOrder);
@@ -396,6 +494,13 @@
     {
         await AssessmentConfig.SetExternalExaminationBoardActiveAsync(board.Id, isActive);
         _externalExaminationBoards = await AssessmentConfig.GetExternalExaminationBoardsAsync();
+    }
+
+    private async Task UpdateExternalExaminationBoardAsync(AsmExternalExaminationBoard board, string name, int displayOrder)
+    {
+        await AssessmentConfig.UpdateExternalExaminationBoardAsync(board.Id, name, displayOrder);
+        _externalExaminationBoards = await AssessmentConfig.GetExternalExaminationBoardsAsync();
+        Snackbar.Add("External examination board updated.", Severity.Success);
     }
 
     private async Task CreateSpecialResultStateAsync(string code, string name, int displayOrder)
@@ -411,6 +516,13 @@
         _specialResultStates = await AssessmentConfig.GetSpecialResultStatesAsync();
     }
 
+    private async Task UpdateSpecialResultStateAsync(AsmSpecialResultState state, string name, int displayOrder)
+    {
+        await AssessmentConfig.UpdateSpecialResultStateAsync(state.Id, name, displayOrder);
+        _specialResultStates = await AssessmentConfig.GetSpecialResultStatesAsync();
+        Snackbar.Add("Special result state updated.", Severity.Success);
+    }
+
     private async Task CreateResultAggregationRuleAsync(string code, string name, int displayOrder)
     {
         await AssessmentConfig.CreateResultAggregationRuleAsync(code, name, displayOrder);
@@ -422,6 +534,13 @@
     {
         await AssessmentConfig.SetResultAggregationRuleActiveAsync(rule.Id, isActive);
         _resultAggregationRules = await AssessmentConfig.GetResultAggregationRulesAsync();
+    }
+
+    private async Task UpdateResultAggregationRuleAsync(AsmResultAggregationRule rule, string name, int displayOrder)
+    {
+        await AssessmentConfig.UpdateResultAggregationRuleAsync(rule.Id, name, displayOrder);
+        _resultAggregationRules = await AssessmentConfig.GetResultAggregationRulesAsync();
+        Snackbar.Add("Result aggregation rule updated.", Severity.Success);
     }
 
     private async Task CreateResourceTypeAsync(string code, string name, int displayOrder)
@@ -437,6 +556,13 @@
         _resourceTypes = await LessonPlanning.GetResourceTypesAsync();
     }
 
+    private async Task UpdateResourceTypeAsync(LrnResourceType type, string name, int displayOrder)
+    {
+        await LessonPlanning.UpdateResourceTypeAsync(type.Id, name, displayOrder);
+        _resourceTypes = await LessonPlanning.GetResourceTypesAsync();
+        Snackbar.Add("Resource type updated.", Severity.Success);
+    }
+
     private async Task CreateEvidenceTypeAsync(string code, string name, int displayOrder)
     {
         await LessonPlanning.CreateEvidenceTypeAsync(code, name, displayOrder);
@@ -448,5 +574,12 @@
     {
         await LessonPlanning.SetEvidenceTypeActiveAsync(type.Id, isActive);
         _evidenceTypes = await LessonPlanning.GetEvidenceTypesAsync();
+    }
+
+    private async Task UpdateEvidenceTypeAsync(LrnEvidenceType type, string name, int displayOrder)
+    {
+        await LessonPlanning.UpdateEvidenceTypeAsync(type.Id, name, displayOrder);
+        _evidenceTypes = await LessonPlanning.GetEvidenceTypesAsync();
+        Snackbar.Add("Evidence type updated.", Severity.Success);
     }
 }

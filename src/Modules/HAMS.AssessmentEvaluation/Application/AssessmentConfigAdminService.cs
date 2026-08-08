@@ -26,6 +26,16 @@ internal sealed class AssessmentConfigAdminService(AssessmentEvaluationDbContext
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateAssessmentCategoryAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var category = await dbContext.AssessmentCategories.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Assessment category not found.");
+
+        category.Name = name;
+        category.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<ExternalExaminationBoard>> GetExternalExaminationBoardsAsync(CancellationToken cancellationToken = default) =>
         await dbContext.ExternalExaminationBoards.OrderBy(b => b.DisplayOrder).ToListAsync(cancellationToken);
 
@@ -43,6 +53,16 @@ internal sealed class AssessmentConfigAdminService(AssessmentEvaluationDbContext
             ?? throw new InvalidOperationException("External examination board not found.");
 
         board.IsActive = isActive;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateExternalExaminationBoardAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var board = await dbContext.ExternalExaminationBoards.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("External examination board not found.");
+
+        board.Name = name;
+        board.DisplayOrder = displayOrder;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -66,6 +86,16 @@ internal sealed class AssessmentConfigAdminService(AssessmentEvaluationDbContext
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateSpecialResultStateAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var state = await dbContext.SpecialResultStates.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Special result state not found.");
+
+        state.Name = name;
+        state.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<ResultAggregationRule>> GetResultAggregationRulesAsync(CancellationToken cancellationToken = default) =>
         await dbContext.ResultAggregationRules.OrderBy(r => r.DisplayOrder).ToListAsync(cancellationToken);
 
@@ -83,6 +113,16 @@ internal sealed class AssessmentConfigAdminService(AssessmentEvaluationDbContext
             ?? throw new InvalidOperationException("Result aggregation rule not found.");
 
         rule.IsActive = isActive;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateResultAggregationRuleAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var rule = await dbContext.ResultAggregationRules.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Result aggregation rule not found.");
+
+        rule.Name = name;
+        rule.DisplayOrder = displayOrder;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 

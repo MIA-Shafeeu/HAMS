@@ -18,4 +18,7 @@ public interface IAttendanceAdminService
 
     /// <exception cref="InvalidOperationException">No attendance status with that id exists.</exception>
     Task SetAttendanceStatusActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
+
+    /// <exception cref="InvalidOperationException">No attendance status with that id exists.</exception>
+    Task UpdateAttendanceStatusAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
 }

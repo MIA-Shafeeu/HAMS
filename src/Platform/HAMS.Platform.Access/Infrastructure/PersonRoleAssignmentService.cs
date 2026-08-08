@@ -79,6 +79,17 @@ internal sealed class PersonRoleAssignmentService(AccessDbContext dbContext, IAc
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateRoleAsync(Guid roleId, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var role = await dbContext.Roles.FindAsync([roleId], cancellationToken)
+            ?? throw new InvalidOperationException("Role not found.");
+
+        role.Name = name;
+        role.DisplayOrder = displayOrder;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreateConfidentialityTierAsync(string code, string name, string? description, int rank, int displayOrder, CancellationToken cancellationToken = default)
     {
         var tier = new ConfidentialityTier
@@ -106,6 +117,18 @@ internal sealed class PersonRoleAssignmentService(AccessDbContext dbContext, IAc
             ?? throw new InvalidOperationException("Confidentiality tier not found.");
 
         tier.IsActive = isActive;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateConfidentialityTierAsync(Guid tierId, string name, int rank, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var tier = await dbContext.ConfidentialityTiers.FindAsync([tierId], cancellationToken)
+            ?? throw new InvalidOperationException("Confidentiality tier not found.");
+
+        tier.Name = name;
+        tier.Rank = rank;
+        tier.DisplayOrder = displayOrder;
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }

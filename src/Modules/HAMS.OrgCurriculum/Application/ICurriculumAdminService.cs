@@ -30,6 +30,9 @@ public interface ICurriculumAdminService
 
     Task SetDeliveryModeActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
 
+    /// <summary>Renames/reorders a <c>DeliveryMode</c>. Throws <see cref="InvalidOperationException"/> if not found.</summary>
+    Task UpdateDeliveryModeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<MediumOfInstruction>> GetMediumsOfInstructionAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Every <c>MediumOfInstruction</c>, active or not — the Reference Data admin screen's list, distinct from <see cref="GetMediumsOfInstructionAsync"/>'s active-only picker list.</summary>
@@ -38,6 +41,9 @@ public interface ICurriculumAdminService
     Task<Guid> CreateMediumOfInstructionAsync(string code, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     Task SetMediumOfInstructionActiveAsync(Guid id, bool isActive, CancellationToken cancellationToken = default);
+
+    /// <summary>Renames/reorders a <c>MediumOfInstruction</c>. Throws <see cref="InvalidOperationException"/> if not found.</summary>
+    Task UpdateMediumOfInstructionAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
 
     /// <exception cref="InvalidOperationException">No active delivery mode or medium of instruction with that code exists.</exception>
     Task<Guid> CreateSubjectAsync(

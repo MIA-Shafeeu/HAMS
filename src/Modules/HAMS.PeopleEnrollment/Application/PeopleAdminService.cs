@@ -85,6 +85,15 @@ internal sealed class PeopleAdminService(PeopleDbContext dbContext) : IPeopleAdm
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateEmploymentStatusAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var status = await dbContext.EmploymentStatuses.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException($"Employment status '{id}' not found.");
+        status.Name = name;
+        status.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreateStaffProfileAsync(Guid personId, string employeeNumber, DateOnly hireDate, string employmentStatusCode, CancellationToken cancellationToken = default)
     {
         var status = await dbContext.EmploymentStatuses.SingleOrDefaultAsync(s => s.Code == employmentStatusCode && s.IsActive, cancellationToken)
@@ -161,6 +170,15 @@ internal sealed class PeopleAdminService(PeopleDbContext dbContext) : IPeopleAdm
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateRelationshipTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var relationshipType = await dbContext.RelationshipTypes.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException($"Relationship type '{id}' not found.");
+        relationshipType.Name = name;
+        relationshipType.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<RestrictionType>> GetRestrictionTypesAsync(CancellationToken cancellationToken = default) =>
         await dbContext.RestrictionTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync(cancellationToken);
 
@@ -183,6 +201,15 @@ internal sealed class PeopleAdminService(PeopleDbContext dbContext) : IPeopleAdm
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateRestrictionTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var restrictionType = await dbContext.RestrictionTypes.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException($"Restriction type '{id}' not found.");
+        restrictionType.Name = name;
+        restrictionType.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<EnrollmentType>> GetEnrollmentTypesAsync(CancellationToken cancellationToken = default) =>
         await dbContext.EnrollmentTypes.Where(t => t.IsActive).OrderBy(t => t.DisplayOrder).ToListAsync(cancellationToken);
 
@@ -202,6 +229,15 @@ internal sealed class PeopleAdminService(PeopleDbContext dbContext) : IPeopleAdm
         var enrollmentType = await dbContext.EnrollmentTypes.FindAsync([id], cancellationToken)
             ?? throw new InvalidOperationException($"Enrollment type '{id}' not found.");
         enrollmentType.IsActive = isActive;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateEnrollmentTypeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var enrollmentType = await dbContext.EnrollmentTypes.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException($"Enrollment type '{id}' not found.");
+        enrollmentType.Name = name;
+        enrollmentType.DisplayOrder = displayOrder;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 

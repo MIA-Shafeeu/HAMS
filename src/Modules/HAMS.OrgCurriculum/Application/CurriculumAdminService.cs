@@ -51,6 +51,16 @@ internal sealed class CurriculumAdminService(OrgDbContext dbContext) : ICurricul
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateDeliveryModeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var deliveryMode = await dbContext.DeliveryModes.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Delivery mode not found.");
+
+        deliveryMode.Name = name;
+        deliveryMode.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public Task<IReadOnlyList<MediumOfInstruction>> GetMediumsOfInstructionAsync(CancellationToken cancellationToken = default) =>
         GetOrderedAsync(dbContext.MediumsOfInstruction.Where(m => m.IsActive).OrderBy(m => m.DisplayOrder), cancellationToken);
 
@@ -71,6 +81,16 @@ internal sealed class CurriculumAdminService(OrgDbContext dbContext) : ICurricul
             ?? throw new InvalidOperationException("Medium of instruction not found.");
 
         medium.IsActive = isActive;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateMediumOfInstructionAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var medium = await dbContext.MediumsOfInstruction.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Medium of instruction not found.");
+
+        medium.Name = name;
+        medium.DisplayOrder = displayOrder;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
