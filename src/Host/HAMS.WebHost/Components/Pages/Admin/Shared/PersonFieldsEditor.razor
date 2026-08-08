@@ -10,11 +10,13 @@
 
     <MudItem xs="12" sm="3">
         <MudSelect T="Guid" Value="Model.AtollId" ValueChanged="OnAtollChangedAsync" Label="Atoll" Dense="true">
+            <MudSelectItem T="Guid" Value="Guid.Empty">(Select an atoll)</MudSelectItem>
             @foreach (var atoll in Atolls) { <MudSelectItem T="Guid" Value="@atoll.Id">@atoll.NameEn</MudSelectItem> }
         </MudSelect>
     </MudItem>
     <MudItem xs="12" sm="3">
         <MudSelect T="Guid" @bind-Value="Model.IslandId" Label="Island" Dense="true">
+            <MudSelectItem T="Guid" Value="Guid.Empty">(Select an island)</MudSelectItem>
             @foreach (var island in _islands) { <MudSelectItem T="Guid" Value="@island.Id">@island.NameEn</MudSelectItem> }
         </MudSelect>
     </MudItem>

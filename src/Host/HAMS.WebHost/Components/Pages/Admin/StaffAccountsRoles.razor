@@ -69,6 +69,7 @@
 
     <MudTabPanel Text="Roles">
         <MudSelect T="Guid" Value="_selectedRolesPersonId" ValueChanged="OnRolesPersonChangedAsync" Label="Staff Member" Dense="true" Class="mb-4">
+            <MudSelectItem T="Guid" Value="Guid.Empty">(Select a staff member)</MudSelectItem>
             @foreach (var staff in _staff) { <MudSelectItem T="Guid" Value="@staff.PersonId">@staff.NameEn</MudSelectItem> }
         </MudSelect>
 
@@ -93,6 +94,7 @@
             <MudGrid Class="mb-4">
                 <MudItem xs="12" sm="3">
                     <MudSelect T="Guid" @bind-Value="_newRoleId" Label="Role" Dense="true">
+                        <MudSelectItem T="Guid" Value="Guid.Empty">(Select a role)</MudSelectItem>
                         @foreach (var role in _roles) { <MudSelectItem T="Guid" Value="@role.Id">@role.Name</MudSelectItem> }
                     </MudSelect>
                 </MudItem>

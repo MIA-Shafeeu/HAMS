@@ -14,6 +14,7 @@
     @if (_academicYears is not null && _academicYears.Count > 0)
     {
         <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedAsync" Label="Academic year" Dense="true" Style="min-width: 220px">
+            <MudSelectItem T="Guid" Value="Guid.Empty">(Select an academic year)</MudSelectItem>
             @foreach (var year in _academicYears)
             {
                 <MudSelectItem Value="@year.AcademicYearId">@year.Name</MudSelectItem>

@@ -61,6 +61,7 @@
         <MudGrid Class="mb-4">
             <MudItem xs="12" sm="3">
                 <MudSelect T="Guid" @bind-Value="_newLearningAreaFrameworkId" Label="Framework" Dense="true">
+                    <MudSelectItem T="Guid" Value="Guid.Empty">(Select a curriculum framework)</MudSelectItem>
                     @foreach (var framework in _frameworks) { <MudSelectItem T="Guid" Value="@framework.Id">@framework.Name</MudSelectItem> }
                 </MudSelect>
             </MudItem>
@@ -97,6 +98,7 @@
 
     <MudTabPanel Text="Subjects">
         <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForSubjectsAsync" Label="School" Dense="true" Class="mb-4">
+            <MudSelectItem T="Guid" Value="Guid.Empty">(Select a school)</MudSelectItem>
             @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
         </MudSelect>
 
@@ -105,6 +107,7 @@
             <MudGrid Class="mb-4">
                 <MudItem xs="12" sm="2">
                     <MudSelect T="Guid" @bind-Value="_newSubjectLearningAreaId" Label="Learning Area" Dense="true">
+                        <MudSelectItem T="Guid" Value="Guid.Empty">(Select a learning area)</MudSelectItem>
                         @foreach (var area in _learningAreas) { <MudSelectItem T="Guid" Value="@area.Id">@area.Name</MudSelectItem> }
                     </MudSelect>
                 </MudItem>
@@ -112,11 +115,13 @@
                 <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newSubjectName" Label="Name" /></MudItem>
                 <MudItem xs="12" sm="2">
                     <MudSelect T="Guid" @bind-Value="_newSubjectDeliveryModeId" Label="Delivery Mode" Dense="true">
+                        <MudSelectItem T="Guid" Value="Guid.Empty">(Select a delivery mode)</MudSelectItem>
                         @foreach (var mode in _deliveryModes) { <MudSelectItem T="Guid" Value="@mode.Id">@mode.Name</MudSelectItem> }
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12" sm="2">
                     <MudSelect T="Guid" @bind-Value="_newSubjectMediumId" Label="Medium" Dense="true">
+                        <MudSelectItem T="Guid" Value="Guid.Empty">(Select a medium of instruction)</MudSelectItem>
                         @foreach (var medium in _mediums) { <MudSelectItem T="Guid" Value="@medium.Id">@medium.Name</MudSelectItem> }
                     </MudSelect>
                 </MudItem>
@@ -132,11 +137,13 @@
                         <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editSubjectName" Margin="Margin.Dense" /></MudTd>
                         <MudTd DataLabel="Delivery Mode">
                             <MudSelect T="Guid" @bind-Value="_editSubjectDeliveryModeId" Dense="true" Margin="Margin.Dense">
+                                <MudSelectItem T="Guid" Value="Guid.Empty">(Select a delivery mode)</MudSelectItem>
                                 @foreach (var mode in _deliveryModes) { <MudSelectItem T="Guid" Value="@mode.Id">@mode.Name</MudSelectItem> }
                             </MudSelect>
                         </MudTd>
                         <MudTd DataLabel="Medium">
                             <MudSelect T="Guid" @bind-Value="_editSubjectMediumId" Dense="true" Margin="Margin.Dense">
+                                <MudSelectItem T="Guid" Value="Guid.Empty">(Select a medium of instruction)</MudSelectItem>
                                 @foreach (var medium in _mediums) { <MudSelectItem T="Guid" Value="@medium.Id">@medium.Name</MudSelectItem> }
                             </MudSelect>
                         </MudTd>
@@ -175,11 +182,13 @@
         <MudGrid Class="mb-4">
             <MudItem xs="12" sm="4">
                 <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedForSubjectsAsync" Label="School" Dense="true">
+                    <MudSelectItem T="Guid" Value="Guid.Empty">(Select a school)</MudSelectItem>
                     @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudSelect T="Guid" Value="_selectedSubjectId" ValueChanged="SelectSubjectForSyllabusAsync" Label="Subject" Dense="true">
+                    <MudSelectItem T="Guid" Value="Guid.Empty">(Select a subject)</MudSelectItem>
                     @foreach (var subject in _subjects) { <MudSelectItem T="Guid" Value="@subject.Id">@subject.Name</MudSelectItem> }
                 </MudSelect>
             </MudItem>
@@ -223,6 +232,7 @@
                 <MudGrid Class="mb-4">
                     <MudItem xs="12" sm="4">
                         <MudSelect T="Guid" @bind-Value="_newApplicabilityGradeId" Label="Grade" Dense="true">
+                            <MudSelectItem T="Guid" Value="Guid.Empty">(Select a grade)</MudSelectItem>
                             @foreach (var grade in _grades) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
                         </MudSelect>
                     </MudItem>

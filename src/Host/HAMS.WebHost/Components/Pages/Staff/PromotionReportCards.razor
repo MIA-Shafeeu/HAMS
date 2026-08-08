@@ -30,21 +30,25 @@
 <MudGrid Class="mb-4">
     <MudItem xs="12" sm="3">
         <MudSelect T="Guid" Value="_selectedSchoolId" ValueChanged="OnSchoolChangedAsync" Label="School" Dense="true">
+            <MudSelectItem T="Guid" Value="Guid.Empty">(Select a school)</MudSelectItem>
             @foreach (var school in _schools) { <MudSelectItem T="Guid" Value="@school.Id">@school.Name</MudSelectItem> }
         </MudSelect>
     </MudItem>
     <MudItem xs="12" sm="3">
         <MudSelect T="Guid" Value="_selectedAcademicYearId" ValueChanged="OnAcademicYearChangedAsync" Label="Academic Year" Dense="true">
+            <MudSelectItem T="Guid" Value="Guid.Empty">(Select an academic year)</MudSelectItem>
             @foreach (var year in _academicYears) { <MudSelectItem T="Guid" Value="@year.Id">@year.Name</MudSelectItem> }
         </MudSelect>
     </MudItem>
     <MudItem xs="12" sm="3">
         <MudSelect T="Guid" Value="_selectedGradeId" ValueChanged="OnGradeChangedAsync" Label="Grade" Dense="true">
+            <MudSelectItem T="Guid" Value="Guid.Empty">(Select a grade)</MudSelectItem>
             @foreach (var grade in _grades) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
         </MudSelect>
     </MudItem>
     <MudItem xs="12" sm="3">
         <MudSelect T="Guid" Value="_selectedEvaluationPeriodId" ValueChanged="OnEvaluationPeriodChangedAsync" Label="Evaluation Period" Dense="true">
+            <MudSelectItem T="Guid" Value="Guid.Empty">(Select an evaluation period)</MudSelectItem>
             @foreach (var period in _evaluationPeriods) { <MudSelectItem T="Guid" Value="@period.Id">@period.Name</MudSelectItem> }
         </MudSelect>
     </MudItem>
@@ -89,6 +93,7 @@
                     <MudItem xs="6" sm="2"><MudCheckBox T="bool" @bind-Value="_decisionPromoted" Label="Promoted" /></MudItem>
                     <MudItem xs="12" sm="3">
                         <MudSelect T="Guid" @bind-Value="_decisionNextGradeId" Label="Next Grade (optional)" Dense="true" Clearable="true">
+                            <MudSelectItem T="Guid" Value="Guid.Empty">(No grade change)</MudSelectItem>
                             @foreach (var grade in _grades) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
                         </MudSelect>
                     </MudItem>
