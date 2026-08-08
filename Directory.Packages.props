@@ -43,7 +43,7 @@
          intermittent-island-connectivity constraint), the most widely adopted component library for
          exactly this use case (internal admin/dashboard tooling) — chosen for Phase 12, the first
          phase with any real Blazor UI. -->
-    <PackageVersion Include="MudBlazor" Version="9.7.0" />
+    <PackageVersion Include="MudBlazor" Version="9.8.0" />
     <!-- ClosedXML: MIT-licensed .xlsx writer, same risk-avoidance reasoning as Phase 11's
          PdfSharpCore-over-QuestPDF choice — EPPlus's non-commercial-use license isn't safe to
          unilaterally judge as compliant for a government deployment. CSV needs no library (the
