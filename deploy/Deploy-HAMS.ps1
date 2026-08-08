@@ -35,7 +35,7 @@ param(
     [string]$ProjectPath = "src\Host\HAMS.WebHost\HAMS.WebHost.csproj",
     [string]$PublishOutputPath = "$PSScriptRoot\_work\publish",
     [string]$HealthCheckUrl = "http://localhost:8081/health",
-    [int]$AppPoolStopTimeoutSeconds = 30,
+    [int]$AppPoolStopTimeoutSeconds = 60,
     [int]$HealthCheckTimeoutSeconds = 60
 )
 
@@ -79,7 +79,22 @@ if ((Get-WebAppPoolState -Name $AppPoolName).Value -ne "Stopped") {
 $deadline = (Get-Date).AddSeconds($AppPoolStopTimeoutSeconds)
 while ((Get-WebAppPoolState -Name $AppPoolName).Value -ne "Stopped") {
     if ((Get-Date) -gt $deadline) {
-        throw "App pool '$AppPoolName' did not reach Stopped within $AppPoolStopTimeoutSeconds seconds."
+        # A reported "Stopped" state waits for w3wp.exe to exit, which waits for every in-flight
+        # request to finish - a single hung request (deadlock, blocked query, a SignalR circuit
+        # that never drains) can block a graceful stop indefinitely. Force the issue rather than
+        # leaving every future deploy hostage to one stuck worker process.
+        Write-Warning "App pool '$AppPoolName' did not reach Stopped within $AppPoolStopTimeoutSeconds seconds - forcing its worker process(es) to exit."
+        $stuckWorkers = Get-CimInstance Win32_Process -Filter "Name = 'w3wp.exe'" |
+            Where-Object { $_.CommandLine -like "*-ap ""$AppPoolName""*" }
+        foreach ($worker in $stuckWorkers) {
+            Write-Warning "Killing stuck worker process PID $($worker.ProcessId)."
+            Stop-Process -Id $worker.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+        Start-Sleep -Seconds 3
+        if ((Get-WebAppPoolState -Name $AppPoolName).Value -ne "Stopped") {
+            throw "App pool '$AppPoolName' is still not Stopped even after forcing its worker process(es) to exit - investigate manually (check the Windows Event Log / IIS stdout log for what the stuck request was doing)."
+        }
+        break
     }
     Start-Sleep -Seconds 1
 }
