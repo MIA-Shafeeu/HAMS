@@ -26,6 +26,15 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
     public async Task<IReadOnlyList<School>> GetSchoolsAsync(CancellationToken cancellationToken = default) =>
         await dbContext.Schools.OrderBy(s => s.Name).ToListAsync(cancellationToken);
 
+    public async Task UpdateSchoolAsync(Guid id, string name, CancellationToken cancellationToken = default)
+    {
+        var school = await dbContext.Schools.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("School not found.");
+
+        school.Name = name;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreateCampusAsync(Guid schoolId, string code, string name, CancellationToken cancellationToken = default)
     {
         var campus = new Campus { Id = Guid.NewGuid(), SchoolId = schoolId, Code = code, Name = name };
@@ -36,6 +45,15 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
 
     public async Task<IReadOnlyList<Campus>> GetCampusesAsync(Guid schoolId, CancellationToken cancellationToken = default) =>
         await dbContext.Campuses.Where(c => c.SchoolId == schoolId && c.IsActive).OrderBy(c => c.Name).ToListAsync(cancellationToken);
+
+    public async Task UpdateCampusAsync(Guid id, string name, CancellationToken cancellationToken = default)
+    {
+        var campus = await dbContext.Campuses.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Campus not found.");
+
+        campus.Name = name;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     public async Task<Guid> CreateAcademicYearAsync(Guid schoolId, string code, string name, DateOnly startDate, DateOnly endDate, CancellationToken cancellationToken = default)
     {
@@ -48,6 +66,17 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
     public async Task<IReadOnlyList<AcademicYear>> GetAcademicYearsAsync(Guid schoolId, CancellationToken cancellationToken = default) =>
         await dbContext.AcademicYears.Where(a => a.SchoolId == schoolId).OrderByDescending(a => a.StartDate).ToListAsync(cancellationToken);
 
+    public async Task UpdateAcademicYearAsync(Guid id, string name, DateOnly startDate, DateOnly endDate, CancellationToken cancellationToken = default)
+    {
+        var year = await dbContext.AcademicYears.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Academic year not found.");
+
+        year.Name = name;
+        year.StartDate = startDate;
+        year.EndDate = endDate;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreateTermAsync(Guid academicYearId, string code, string name, DateOnly startDate, DateOnly endDate, int displayOrder, CancellationToken cancellationToken = default)
     {
         var term = new Term { Id = Guid.NewGuid(), AcademicYearId = academicYearId, Code = code, Name = name, StartDate = startDate, EndDate = endDate, DisplayOrder = displayOrder };
@@ -58,6 +87,18 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
 
     public async Task<IReadOnlyList<Term>> GetTermsAsync(Guid academicYearId, CancellationToken cancellationToken = default) =>
         await dbContext.Terms.Where(t => t.AcademicYearId == academicYearId).OrderBy(t => t.DisplayOrder).ToListAsync(cancellationToken);
+
+    public async Task UpdateTermAsync(Guid id, string name, DateOnly startDate, DateOnly endDate, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var term = await dbContext.Terms.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Term not found.");
+
+        term.Name = name;
+        term.StartDate = startDate;
+        term.EndDate = endDate;
+        term.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     public async Task<Guid> CreatePhaseAsync(Guid schoolId, string code, string name, int displayOrder, CancellationToken cancellationToken = default)
     {
@@ -70,6 +111,16 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
     public async Task<IReadOnlyList<Phase>> GetPhasesAsync(Guid schoolId, CancellationToken cancellationToken = default) =>
         await dbContext.Phases.Where(p => p.SchoolId == schoolId).OrderBy(p => p.DisplayOrder).ToListAsync(cancellationToken);
 
+    public async Task UpdatePhaseAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var phase = await dbContext.Phases.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Phase not found.");
+
+        phase.Name = name;
+        phase.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreateKeyStageAsync(Guid schoolId, Guid phaseId, string code, string name, int displayOrder, CancellationToken cancellationToken = default)
     {
         var keyStage = new KeyStage { Id = Guid.NewGuid(), SchoolId = schoolId, PhaseId = phaseId, Code = code, Name = name, DisplayOrder = displayOrder };
@@ -81,6 +132,16 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
     public async Task<IReadOnlyList<KeyStage>> GetKeyStagesAsync(Guid schoolId, CancellationToken cancellationToken = default) =>
         await dbContext.KeyStages.Where(k => k.SchoolId == schoolId).OrderBy(k => k.DisplayOrder).ToListAsync(cancellationToken);
 
+    public async Task UpdateKeyStageAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var keyStage = await dbContext.KeyStages.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Key stage not found.");
+
+        keyStage.Name = name;
+        keyStage.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreateGradeAsync(Guid schoolId, string code, string name, int displayOrder, CancellationToken cancellationToken = default)
     {
         var grade = new Grade { Id = Guid.NewGuid(), SchoolId = schoolId, Code = code, Name = name, DisplayOrder = displayOrder };
@@ -91,6 +152,16 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
 
     public async Task<IReadOnlyList<Grade>> GetGradesAsync(Guid schoolId, CancellationToken cancellationToken = default) =>
         await dbContext.Grades.Where(g => g.SchoolId == schoolId).OrderBy(g => g.DisplayOrder).ToListAsync(cancellationToken);
+
+    public async Task UpdateGradeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var grade = await dbContext.Grades.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Grade not found.");
+
+        grade.Name = name;
+        grade.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     public async Task SetNextGradeAsync(Guid gradeId, Guid? nextGradeId, CancellationToken cancellationToken = default)
     {
@@ -148,6 +219,31 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
 
     public async Task<IReadOnlyList<Class>> GetClassesAsync(Guid academicYearId, CancellationToken cancellationToken = default) =>
         await dbContext.Classes.Where(c => c.AcademicYearId == academicYearId).OrderBy(c => c.Name).ToListAsync(cancellationToken);
+
+    public async Task UpdateClassAsync(Guid id, string name, IReadOnlyList<Guid> gradeIds, CancellationToken cancellationToken = default)
+    {
+        if (gradeIds.Count == 0)
+        {
+            throw new InvalidOperationException("A class must have at least one grade.");
+        }
+
+        var @class = await dbContext.Classes.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Class not found.");
+
+        @class.Name = name;
+
+        var existingGrades = await dbContext.ClassGrades.Where(cg => cg.ClassId == id).ToListAsync(cancellationToken);
+        dbContext.ClassGrades.RemoveRange(existingGrades);
+        foreach (var gradeId in gradeIds)
+        {
+            dbContext.ClassGrades.Add(new ClassGrade { Id = Guid.NewGuid(), ClassId = id, GradeId = gradeId });
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetClassGradeIdsAsync(Guid classId, CancellationToken cancellationToken = default) =>
+        await dbContext.ClassGrades.Where(cg => cg.ClassId == classId).Select(cg => cg.GradeId).ToListAsync(cancellationToken);
 
     public async Task<Guid> CreateGradeKeyStageAssignmentAsync(Guid gradeId, Guid keyStageId, Guid academicYearId, DateOnly effectiveFrom, DateOnly? effectiveTo, CancellationToken cancellationToken = default)
     {

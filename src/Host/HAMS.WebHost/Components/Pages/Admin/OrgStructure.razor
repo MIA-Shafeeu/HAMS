@@ -32,8 +32,26 @@
             <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Code">@context.Code</MudTd>
-                <MudTd DataLabel="Name">@context.Name</MudTd>
-                <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectSchoolAsync(context.Id))">Manage Campuses</MudButton></MudTd>
+                @if (_editingSchoolId == context.Id)
+                {
+                    <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editSchoolName" Margin="Margin.Dense" /></MudTd>
+                    <MudTd>
+                        <MudStack Row="true" Spacing="1">
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SaveSchoolEditAsync">Save</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingSchoolId = null)">Cancel</MudButton>
+                        </MudStack>
+                    </MudTd>
+                }
+                else
+                {
+                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                    <MudTd>
+                        <MudStack Row="true" Spacing="1">
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartSchoolEdit(context))">Edit</MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectSchoolAsync(context.Id))">Manage Campuses</MudButton>
+                        </MudStack>
+                    </MudTd>
+                }
             </RowTemplate>
         </MudTable>
 
@@ -41,8 +59,25 @@
         {
             <MudText Typo="Typo.h6" Class="mb-2">Campuses — @_schools.SingleOrDefault(s => s.Id == _selectedSchoolIdForCampuses)?.Name</MudText>
             <MudTable Items="@_campuses" Dense="true" Hover="true" Class="mb-3">
-                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh></HeaderContent>
-                <RowTemplate><MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.Name</MudTd></RowTemplate>
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.Code</MudTd>
+                    @if (_editingCampusId == context.Id)
+                    {
+                        <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editCampusName" Margin="Margin.Dense" /></MudTd>
+                        <MudTd>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SaveCampusEditAsync">Save</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingCampusId = null)">Cancel</MudButton>
+                            </MudStack>
+                        </MudTd>
+                    }
+                    else
+                    {
+                        <MudTd DataLabel="Name">@context.Name</MudTd>
+                        <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartCampusEdit(context))">Edit</MudButton></MudTd>
+                    }
+                </RowTemplate>
             </MudTable>
             <MudGrid>
                 <MudItem xs="12" sm="4"><MudTextField T="string" @bind-Value="_newCampusCode" Label="Code" /></MudItem>
@@ -71,10 +106,30 @@
                 <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Start</MudTh><MudTh>End</MudTh><MudTh></MudTh></HeaderContent>
                 <RowTemplate>
                     <MudTd DataLabel="Code">@context.Code</MudTd>
-                    <MudTd DataLabel="Name">@context.Name</MudTd>
-                    <MudTd DataLabel="Start">@context.StartDate.ToString("yyyy-MM-dd")</MudTd>
-                    <MudTd DataLabel="End">@context.EndDate.ToString("yyyy-MM-dd")</MudTd>
-                    <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectAcademicYearAsync(context.Id))">Manage Terms</MudButton></MudTd>
+                    @if (_editingAcademicYearId == context.Id)
+                    {
+                        <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editYearName" Margin="Margin.Dense" /></MudTd>
+                        <MudTd DataLabel="Start"><MudDatePicker Date="_editYearStart" DateChanged="d => _editYearStart = d" Margin="Margin.Dense" /></MudTd>
+                        <MudTd DataLabel="End"><MudDatePicker Date="_editYearEnd" DateChanged="d => _editYearEnd = d" Margin="Margin.Dense" /></MudTd>
+                        <MudTd>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SaveAcademicYearEditAsync">Save</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingAcademicYearId = null)">Cancel</MudButton>
+                            </MudStack>
+                        </MudTd>
+                    }
+                    else
+                    {
+                        <MudTd DataLabel="Name">@context.Name</MudTd>
+                        <MudTd DataLabel="Start">@context.StartDate.ToString("yyyy-MM-dd")</MudTd>
+                        <MudTd DataLabel="End">@context.EndDate.ToString("yyyy-MM-dd")</MudTd>
+                        <MudTd>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartAcademicYearEdit(context))">Edit</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectAcademicYearAsync(context.Id))">Manage Terms</MudButton>
+                            </MudStack>
+                        </MudTd>
+                    }
                 </RowTemplate>
             </MudTable>
 
@@ -82,10 +137,30 @@
             {
                 <MudText Typo="Typo.h6" Class="mb-2">Terms</MudText>
                 <MudTable Items="@_terms" Dense="true" Hover="true" Class="mb-3">
-                    <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Start</MudTh><MudTh>End</MudTh></HeaderContent>
+                    <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Start</MudTh><MudTh>End</MudTh><MudTh>Order</MudTh><MudTh></MudTh></HeaderContent>
                     <RowTemplate>
-                        <MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.Name</MudTd>
-                        <MudTd DataLabel="Start">@context.StartDate.ToString("yyyy-MM-dd")</MudTd><MudTd DataLabel="End">@context.EndDate.ToString("yyyy-MM-dd")</MudTd>
+                        <MudTd DataLabel="Code">@context.Code</MudTd>
+                        @if (_editingTermId == context.Id)
+                        {
+                            <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editTermName" Margin="Margin.Dense" /></MudTd>
+                            <MudTd DataLabel="Start"><MudDatePicker Date="_editTermStart" DateChanged="d => _editTermStart = d" Margin="Margin.Dense" /></MudTd>
+                            <MudTd DataLabel="End"><MudDatePicker Date="_editTermEnd" DateChanged="d => _editTermEnd = d" Margin="Margin.Dense" /></MudTd>
+                            <MudTd DataLabel="Order"><MudNumericField T="int" @bind-Value="_editTermDisplayOrder" Margin="Margin.Dense" /></MudTd>
+                            <MudTd>
+                                <MudStack Row="true" Spacing="1">
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SaveTermEditAsync">Save</MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingTermId = null)">Cancel</MudButton>
+                                </MudStack>
+                            </MudTd>
+                        }
+                        else
+                        {
+                            <MudTd DataLabel="Name">@context.Name</MudTd>
+                            <MudTd DataLabel="Start">@context.StartDate.ToString("yyyy-MM-dd")</MudTd>
+                            <MudTd DataLabel="End">@context.EndDate.ToString("yyyy-MM-dd")</MudTd>
+                            <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+                            <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartTermEdit(context))">Edit</MudButton></MudTd>
+                        }
                     </RowTemplate>
                 </MudTable>
                 <MudGrid>
@@ -115,10 +190,31 @@
             </MudGrid>
 
             <MudTable Items="@_phases" Dense="true" Hover="true" Class="mb-4">
-                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Order</MudTh><MudTh></MudTh></HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.Name</MudTd>
-                    <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectPhaseAsync(context.Id))">Manage Key Stages</MudButton></MudTd>
+                    <MudTd DataLabel="Code">@context.Code</MudTd>
+                    @if (_editingPhaseId == context.Id)
+                    {
+                        <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editPhaseName" Margin="Margin.Dense" /></MudTd>
+                        <MudTd DataLabel="Order"><MudNumericField T="int" @bind-Value="_editPhaseDisplayOrder" Margin="Margin.Dense" /></MudTd>
+                        <MudTd>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SavePhaseEditAsync">Save</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingPhaseId = null)">Cancel</MudButton>
+                            </MudStack>
+                        </MudTd>
+                    }
+                    else
+                    {
+                        <MudTd DataLabel="Name">@context.Name</MudTd>
+                        <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+                        <MudTd>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartPhaseEdit(context))">Edit</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectPhaseAsync(context.Id))">Manage Key Stages</MudButton>
+                            </MudStack>
+                        </MudTd>
+                    }
                 </RowTemplate>
             </MudTable>
 
@@ -126,8 +222,27 @@
             {
                 <MudText Typo="Typo.h6" Class="mb-2">Key Stages</MudText>
                 <MudTable Items="@_keyStages" Dense="true" Hover="true" Class="mb-3">
-                    <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh></HeaderContent>
-                    <RowTemplate><MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.Name</MudTd></RowTemplate>
+                    <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Order</MudTh><MudTh></MudTh></HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Code">@context.Code</MudTd>
+                        @if (_editingKeyStageId == context.Id)
+                        {
+                            <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editKeyStageName" Margin="Margin.Dense" /></MudTd>
+                            <MudTd DataLabel="Order"><MudNumericField T="int" @bind-Value="_editKeyStageDisplayOrder" Margin="Margin.Dense" /></MudTd>
+                            <MudTd>
+                                <MudStack Row="true" Spacing="1">
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SaveKeyStageEditAsync">Save</MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingKeyStageId = null)">Cancel</MudButton>
+                                </MudStack>
+                            </MudTd>
+                        }
+                        else
+                        {
+                            <MudTd DataLabel="Name">@context.Name</MudTd>
+                            <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+                            <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartKeyStageEdit(context))">Edit</MudButton></MudTd>
+                        }
+                    </RowTemplate>
                 </MudTable>
                 <MudGrid>
                     <MudItem xs="12" sm="3"><MudTextField T="string" @bind-Value="_newKeyStageCode" Label="Code" /></MudItem>
@@ -210,16 +325,33 @@
             </MudGrid>
 
             <MudTable Items="@_grades" Dense="true" Hover="true">
-                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Next Grade</MudTh></HeaderContent>
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Order</MudTh><MudTh>Next Grade</MudTh><MudTh></MudTh></HeaderContent>
                 <RowTemplate>
                     <MudTd DataLabel="Code">@context.Code</MudTd>
-                    <MudTd DataLabel="Name">@context.Name</MudTd>
-                    <MudTd DataLabel="Next Grade">
-                        <MudSelect T="Guid" Value="@(context.NextGradeId ?? Guid.Empty)" ValueChanged="@(id => SetNextGradeAsync(context.Id, id))" Dense="true" Margin="Margin.Dense">
-                            <MudSelectItem T="Guid" Value="Guid.Empty">(none)</MudSelectItem>
-                            @foreach (var grade in _grades.Where(g => g.Id != context.Id)) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
-                        </MudSelect>
-                    </MudTd>
+                    @if (_editingGradeId == context.Id)
+                    {
+                        <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editGradeName" Margin="Margin.Dense" /></MudTd>
+                        <MudTd DataLabel="Order"><MudNumericField T="int" @bind-Value="_editGradeDisplayOrder" Margin="Margin.Dense" /></MudTd>
+                        <MudTd DataLabel="Next Grade">-</MudTd>
+                        <MudTd>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SaveGradeEditAsync">Save</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingGradeId = null)">Cancel</MudButton>
+                            </MudStack>
+                        </MudTd>
+                    }
+                    else
+                    {
+                        <MudTd DataLabel="Name">@context.Name</MudTd>
+                        <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+                        <MudTd DataLabel="Next Grade">
+                            <MudSelect T="Guid" Value="@(context.NextGradeId ?? Guid.Empty)" ValueChanged="@(id => SetNextGradeAsync(context.Id, id))" Dense="true" Margin="Margin.Dense">
+                                <MudSelectItem T="Guid" Value="Guid.Empty">(none)</MudSelectItem>
+                                @foreach (var grade in _grades.Where(g => g.Id != context.Id)) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
+                            </MudSelect>
+                        </MudTd>
+                        <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartGradeEdit(context))">Edit</MudButton></MudTd>
+                    }
                 </RowTemplate>
             </MudTable>
         }
@@ -253,8 +385,30 @@
             </MudGrid>
 
             <MudTable Items="@_classes" Dense="true" Hover="true">
-                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh></HeaderContent>
-                <RowTemplate><MudTd DataLabel="Code">@context.Code</MudTd><MudTd DataLabel="Name">@context.Name</MudTd></RowTemplate>
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Code">@context.Code</MudTd>
+                    @if (_editingClassId == context.Id)
+                    {
+                        <MudTd DataLabel="Name">
+                            <MudTextField T="string" @bind-Value="_editClassName" Margin="Margin.Dense" Class="mb-2" />
+                            <MudSelect T="Guid" MultiSelection="true" @bind-SelectedValues="_editClassGradeIds" Label="Grades" Dense="true" Margin="Margin.Dense">
+                                @foreach (var grade in _grades) { <MudSelectItem T="Guid" Value="@grade.Id">@grade.Name</MudSelectItem> }
+                            </MudSelect>
+                        </MudTd>
+                        <MudTd>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SaveClassEditAsync">Save</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingClassId = null)">Cancel</MudButton>
+                            </MudStack>
+                        </MudTd>
+                    }
+                    else
+                    {
+                        <MudTd DataLabel="Name">@context.Name</MudTd>
+                        <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartClassEdit(context))">Edit</MudButton></MudTd>
+                    }
+                </RowTemplate>
             </MudTable>
         }
     </MudTabPanel>
@@ -316,6 +470,39 @@
     private string _newClassName = "";
     private IReadOnlyCollection<Guid> _newClassGradeIds = [];
 
+    private Guid? _editingSchoolId;
+    private string _editSchoolName = "";
+
+    private Guid? _editingCampusId;
+    private string _editCampusName = "";
+
+    private Guid? _editingAcademicYearId;
+    private string _editYearName = "";
+    private DateTime? _editYearStart;
+    private DateTime? _editYearEnd;
+
+    private Guid? _editingTermId;
+    private string _editTermName = "";
+    private DateTime? _editTermStart;
+    private DateTime? _editTermEnd;
+    private int _editTermDisplayOrder;
+
+    private Guid? _editingPhaseId;
+    private string _editPhaseName = "";
+    private int _editPhaseDisplayOrder;
+
+    private Guid? _editingKeyStageId;
+    private string _editKeyStageName = "";
+    private int _editKeyStageDisplayOrder;
+
+    private Guid? _editingGradeId;
+    private string _editGradeName = "";
+    private int _editGradeDisplayOrder;
+
+    private Guid? _editingClassId;
+    private string _editClassName = "";
+    private IReadOnlyCollection<Guid> _editClassGradeIds = [];
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -347,6 +534,38 @@
     {
         _selectedSchoolIdForCampuses = schoolId;
         _campuses = await OrgAdmin.GetCampusesAsync(schoolId);
+    }
+
+    private void StartSchoolEdit(OrgSchool school)
+    {
+        _editingSchoolId = school.Id;
+        _editSchoolName = school.Name;
+    }
+
+    private async Task SaveSchoolEditAsync()
+    {
+        if (_editingSchoolId is not { } id) return;
+
+        await OrgAdmin.UpdateSchoolAsync(id, _editSchoolName);
+        _editingSchoolId = null;
+        Snackbar.Add("School updated.", Severity.Success);
+        _schools = await OrgAdmin.GetSchoolsAsync();
+    }
+
+    private void StartCampusEdit(OrgCampus campus)
+    {
+        _editingCampusId = campus.Id;
+        _editCampusName = campus.Name;
+    }
+
+    private async Task SaveCampusEditAsync()
+    {
+        if (_editingCampusId is not { } id) return;
+
+        await OrgAdmin.UpdateCampusAsync(id, _editCampusName);
+        _editingCampusId = null;
+        Snackbar.Add("Campus updated.", Severity.Success);
+        _campuses = await OrgAdmin.GetCampusesAsync(_selectedSchoolIdForCampuses);
     }
 
     private async Task CreateCampusAsync()
@@ -393,6 +612,24 @@
         _terms = await OrgAdmin.GetTermsAsync(academicYearId);
     }
 
+    private void StartAcademicYearEdit(OrgAcademicYear year)
+    {
+        _editingAcademicYearId = year.Id;
+        _editYearName = year.Name;
+        _editYearStart = year.StartDate.ToDateTime(TimeOnly.MinValue);
+        _editYearEnd = year.EndDate.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private async Task SaveAcademicYearEditAsync()
+    {
+        if (_editingAcademicYearId is not { } id || _editYearStart is not { } start || _editYearEnd is not { } end) return;
+
+        await OrgAdmin.UpdateAcademicYearAsync(id, _editYearName, DateOnly.FromDateTime(start), DateOnly.FromDateTime(end));
+        _editingAcademicYearId = null;
+        Snackbar.Add("Academic year updated.", Severity.Success);
+        _academicYears = await OrgAdmin.GetAcademicYearsAsync(_selectedSchoolIdForYears);
+    }
+
     private async Task CreateTermAsync()
     {
         if (_selectedAcademicYearIdForTerms == Guid.Empty || string.IsNullOrWhiteSpace(_newTermCode) || _newTermStart is not { } start || _newTermEnd is not { } end)
@@ -405,6 +642,25 @@
         _newTermCode = "";
         _newTermName = "";
         Snackbar.Add("Term created.", Severity.Success);
+        _terms = await OrgAdmin.GetTermsAsync(_selectedAcademicYearIdForTerms);
+    }
+
+    private void StartTermEdit(OrgTerm term)
+    {
+        _editingTermId = term.Id;
+        _editTermName = term.Name;
+        _editTermStart = term.StartDate.ToDateTime(TimeOnly.MinValue);
+        _editTermEnd = term.EndDate.ToDateTime(TimeOnly.MinValue);
+        _editTermDisplayOrder = term.DisplayOrder;
+    }
+
+    private async Task SaveTermEditAsync()
+    {
+        if (_editingTermId is not { } id || _editTermStart is not { } start || _editTermEnd is not { } end) return;
+
+        await OrgAdmin.UpdateTermAsync(id, _editTermName, DateOnly.FromDateTime(start), DateOnly.FromDateTime(end), _editTermDisplayOrder);
+        _editingTermId = null;
+        Snackbar.Add("Term updated.", Severity.Success);
         _terms = await OrgAdmin.GetTermsAsync(_selectedAcademicYearIdForTerms);
     }
 
@@ -437,6 +693,23 @@
         _keyStages = (await OrgAdmin.GetKeyStagesAsync(_selectedSchoolIdForPhases)).Where(k => k.PhaseId == phaseId).ToList();
     }
 
+    private void StartPhaseEdit(OrgPhase phase)
+    {
+        _editingPhaseId = phase.Id;
+        _editPhaseName = phase.Name;
+        _editPhaseDisplayOrder = phase.DisplayOrder;
+    }
+
+    private async Task SavePhaseEditAsync()
+    {
+        if (_editingPhaseId is not { } id) return;
+
+        await OrgAdmin.UpdatePhaseAsync(id, _editPhaseName, _editPhaseDisplayOrder);
+        _editingPhaseId = null;
+        Snackbar.Add("Phase updated.", Severity.Success);
+        _phases = await OrgAdmin.GetPhasesAsync(_selectedSchoolIdForPhases);
+    }
+
     private async Task CreateKeyStageAsync()
     {
         if (_selectedSchoolIdForPhases == Guid.Empty || _selectedPhaseId == Guid.Empty || string.IsNullOrWhiteSpace(_newKeyStageCode))
@@ -449,6 +722,23 @@
         _newKeyStageCode = "";
         _newKeyStageName = "";
         Snackbar.Add("Key stage created.", Severity.Success);
+        _keyStages = (await OrgAdmin.GetKeyStagesAsync(_selectedSchoolIdForPhases)).Where(k => k.PhaseId == _selectedPhaseId).ToList();
+    }
+
+    private void StartKeyStageEdit(OrgKeyStage keyStage)
+    {
+        _editingKeyStageId = keyStage.Id;
+        _editKeyStageName = keyStage.Name;
+        _editKeyStageDisplayOrder = keyStage.DisplayOrder;
+    }
+
+    private async Task SaveKeyStageEditAsync()
+    {
+        if (_editingKeyStageId is not { } id) return;
+
+        await OrgAdmin.UpdateKeyStageAsync(id, _editKeyStageName, _editKeyStageDisplayOrder);
+        _editingKeyStageId = null;
+        Snackbar.Add("Key stage updated.", Severity.Success);
         _keyStages = (await OrgAdmin.GetKeyStagesAsync(_selectedSchoolIdForPhases)).Where(k => k.PhaseId == _selectedPhaseId).ToList();
     }
 
@@ -516,6 +806,23 @@
         _grades = await OrgAdmin.GetGradesAsync(_selectedSchoolIdForGrades);
     }
 
+    private void StartGradeEdit(OrgGrade grade)
+    {
+        _editingGradeId = grade.Id;
+        _editGradeName = grade.Name;
+        _editGradeDisplayOrder = grade.DisplayOrder;
+    }
+
+    private async Task SaveGradeEditAsync()
+    {
+        if (_editingGradeId is not { } id) return;
+
+        await OrgAdmin.UpdateGradeAsync(id, _editGradeName, _editGradeDisplayOrder);
+        _editingGradeId = null;
+        Snackbar.Add("Grade updated.", Severity.Success);
+        _grades = await OrgAdmin.GetGradesAsync(_selectedSchoolIdForGrades);
+    }
+
     private async Task SetNextGradeAsync(Guid gradeId, Guid nextGradeId)
     {
         try
@@ -557,6 +864,29 @@
         _newClassName = "";
         _newClassGradeIds = [];
         Snackbar.Add("Class created.", Severity.Success);
+        _classes = await OrgAdmin.GetClassesAsync(_selectedAcademicYearIdForClasses);
+    }
+
+    private async Task StartClassEdit(OrgClass @class)
+    {
+        _editingClassId = @class.Id;
+        _editClassName = @class.Name;
+        _editClassGradeIds = await OrgAdmin.GetClassGradeIdsAsync(@class.Id);
+    }
+
+    private async Task SaveClassEditAsync()
+    {
+        if (_editingClassId is not { } id) return;
+
+        if (_editClassGradeIds.Count == 0)
+        {
+            Snackbar.Add("A class must have at least one grade.", Severity.Warning);
+            return;
+        }
+
+        await OrgAdmin.UpdateClassAsync(id, _editClassName, _editClassGradeIds.ToList());
+        _editingClassId = null;
+        Snackbar.Add("Class updated.", Severity.Success);
         _classes = await OrgAdmin.GetClassesAsync(_selectedAcademicYearIdForClasses);
     }
 }
