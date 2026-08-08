@@ -48,7 +48,21 @@ the Long Polling fallback transport" in the browser console) - Long Polling stil
 is slower and noticeably less reliable for JS-interop-heavy components (date pickers, popovers):
 
 ```powershell
-Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebSockets
+Enable-WindowsOptionalFeature -Online -FeatureName IIS-ApplicationDevelopment, IIS-WebSockets
+```
+
+`IIS-WebSockets` sits under the "Application Development Features" node in the IIS feature tree -
+`Enable-WindowsOptionalFeature` refuses to enable it on its own with "One or several parent features
+are disabled can not be enabled" if `IIS-ApplicationDevelopment` isn't already on (confirmed live:
+a fresh server had `IIS-WebServerRole`/`IIS-WebServer` enabled but not `IIS-ApplicationDevelopment`,
+so the original single-feature command here silently never worked). Enabling both together in one
+call is sufficient - none of `IIS-ApplicationDevelopment`'s other children (`IIS-ASPNET45`,
+`IIS-ISAPIExtensions`/`Filter`, `IIS-CGI`, `IIS-ASP`, `IIS-ServerSideIncludes`) are needed for
+ASP.NET Core hosting via ANCM, so there's no need to enable those too. Check the whole IIS feature
+tree if you ever need to re-diagnose this:
+
+```powershell
+Get-WindowsOptionalFeature -Online | Where-Object { $_.FeatureName -like 'IIS-*' } | Select-Object FeatureName, State | Format-Table -AutoSize
 ```
 
 Restart IIS afterward (`net stop /y was` then `net start w3svc`, same as after installing the
