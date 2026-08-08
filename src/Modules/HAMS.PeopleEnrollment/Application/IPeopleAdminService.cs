@@ -28,9 +28,15 @@ public interface IPeopleAdminService
 
     Task<IReadOnlyList<Island>> GetIslandsAsync(Guid atollId, CancellationToken cancellationToken = default);
 
+    /// <summary>Resolves a single <c>Island</c> - needed to find its <see cref="Island.AtollId"/> when pre-populating an edit form's cascading Atoll/Island selectors from an existing address.</summary>
+    Task<Island?> GetIslandAsync(Guid islandId, CancellationToken cancellationToken = default);
+
     Task<Guid> CreatePersonAsync(string nameEn, string nameDv, DateOnly dateOfBirth, Address address, string? phoneNumber, string? email, CancellationToken cancellationToken = default);
 
     Task<Person?> GetPersonAsync(Guid personId, CancellationToken cancellationToken = default);
+
+    /// <summary>Corrects a <c>Person</c>'s name/date of birth/address/contact info - the only way to fix a data-entry mistake made at creation, since nothing else in the admin UI can edit these fields. Throws <see cref="InvalidOperationException"/> if not found.</summary>
+    Task UpdatePersonAsync(Guid personId, string nameEn, string nameDv, DateOnly dateOfBirth, Address address, string? phoneNumber, string? email, CancellationToken cancellationToken = default);
 
     Task<Guid> CreateStudentProfileAsync(Guid personId, string admissionNumber, DateOnly admissionDate, CancellationToken cancellationToken = default);
 

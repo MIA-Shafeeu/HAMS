@@ -73,9 +73,25 @@
                 <MudTd DataLabel="Name">@context.NameEn</MudTd>
                 <MudTd DataLabel="Admission No.">@context.AdmissionNumber</MudTd>
                 <MudTd DataLabel="Admitted">@context.AdmissionDate</MudTd>
-                <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectStudentAsync(context.PersonId))">Manage</MudButton></MudTd>
+                <MudTd>
+                    <MudStack Row="true" Spacing="1">
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartPersonEditAsync(context.PersonId))">Edit Person</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectStudentAsync(context.PersonId))">Manage</MudButton>
+                    </MudStack>
+                </MudTd>
             </RowTemplate>
         </MudTable>
+
+        @if (_editingPersonId != Guid.Empty)
+        {
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.h6" Class="mb-2">Edit Person</MudText>
+            <PersonFieldsEditor Model="_editPersonForm" Atolls="_atolls" />
+            <MudStack Row="true" Spacing="2" Class="my-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="SavePersonEditAsync">Save</MudButton>
+                <MudButton Variant="Variant.Text" OnClick="@(() => _editingPersonId = Guid.Empty)">Cancel</MudButton>
+            </MudStack>
+        }
 
         @if (_selectedStudentPersonId != Guid.Empty)
         {
@@ -192,9 +208,25 @@
                 <MudTd DataLabel="Employee No.">@context.EmployeeNumber</MudTd>
                 <MudTd DataLabel="Hired">@context.HireDate</MudTd>
                 <MudTd DataLabel="Status">@(_employmentStatuses.SingleOrDefault(s => s.Id == context.EmploymentStatusId)?.Name)</MudTd>
-                <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectStaffAsync(context.PersonId, context.Id))">Manage Qualifications</MudButton></MudTd>
+                <MudTd>
+                    <MudStack Row="true" Spacing="1">
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartPersonEditAsync(context.PersonId))">Edit Person</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => SelectStaffAsync(context.PersonId, context.Id))">Manage Qualifications</MudButton>
+                    </MudStack>
+                </MudTd>
             </RowTemplate>
         </MudTable>
+
+        @if (_editingPersonId != Guid.Empty)
+        {
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.h6" Class="mb-2">Edit Person</MudText>
+            <PersonFieldsEditor Model="_editPersonForm" Atolls="_atolls" />
+            <MudStack Row="true" Spacing="2" Class="my-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="SavePersonEditAsync">Save</MudButton>
+                <MudButton Variant="Variant.Text" OnClick="@(() => _editingPersonId = Guid.Empty)">Cancel</MudButton>
+            </MudStack>
+        }
 
         @if (_selectedStaffPersonId != Guid.Empty)
         {
@@ -223,9 +255,23 @@
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateGuardianAsync" Class="my-2">Create Guardian</MudButton>
 
         <MudTable Items="@_guardians" Dense="true" Hover="true" Class="my-4">
-            <HeaderContent><MudTh>Name</MudTh></HeaderContent>
-            <RowTemplate><MudTd DataLabel="Name">@context.NameEn</MudTd></RowTemplate>
+            <HeaderContent><MudTh>Name</MudTh><MudTh></MudTh></HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.NameEn</MudTd>
+                <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartPersonEditAsync(context.PersonId))">Edit Person</MudButton></MudTd>
+            </RowTemplate>
         </MudTable>
+
+        @if (_editingPersonId != Guid.Empty)
+        {
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.h6" Class="mb-2">Edit Person</MudText>
+            <PersonFieldsEditor Model="_editPersonForm" Atolls="_atolls" />
+            <MudStack Row="true" Spacing="2" Class="my-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="SavePersonEditAsync">Save</MudButton>
+                <MudButton Variant="Variant.Text" OnClick="@(() => _editingPersonId = Guid.Empty)">Cancel</MudButton>
+            </MudStack>
+        }
     </MudTabPanel>
 
 </MudTabs>
@@ -254,6 +300,9 @@
     private PersonFormModel _studentPersonForm = new();
     private PersonFormModel _staffPersonForm = new();
     private PersonFormModel _guardianPersonForm = new();
+
+    private Guid _editingPersonId;
+    private PersonFormModel _editPersonForm = new();
 
     private string _newAdmissionNumber = "";
     private DateTime? _newAdmissionDate;
@@ -324,6 +373,61 @@
         _newIslandCode = ""; _newIslandNameEn = ""; _newIslandNameDv = null; _newIslandDisplayOrder = 0;
         _islands = await PeopleAdmin.GetIslandsAsync(_selectedAtollId);
         Snackbar.Add("Island created.", Severity.Success);
+    }
+
+    private async Task StartPersonEditAsync(Guid personId)
+    {
+        var person = await PeopleAdmin.GetPersonAsync(personId);
+        if (person is null)
+        {
+            Snackbar.Add("Person not found.", Severity.Error);
+            return;
+        }
+
+        var island = await PeopleAdmin.GetIslandAsync(person.Address.IslandId);
+
+        _editingPersonId = personId;
+        _editPersonForm = new PersonFormModel
+        {
+            NameEn = person.NameEn,
+            NameDv = person.NameDv,
+            DateOfBirth = person.DateOfBirth.ToDateTime(TimeOnly.MinValue),
+            AtollId = island?.AtollId ?? Guid.Empty,
+            IslandId = person.Address.IslandId,
+            RoadEn = person.Address.RoadEn,
+            RoadDv = person.Address.RoadDv,
+            HouseNameEn = person.Address.HouseNameEn,
+            HouseNameDv = person.Address.HouseNameDv,
+            BuildingEn = person.Address.BuildingEn,
+            BuildingDv = person.Address.BuildingDv,
+            Floor = person.Address.Floor,
+            Apartment = person.Address.Apartment,
+            PhoneNumber = person.PhoneNumber,
+            Email = person.Email,
+        };
+    }
+
+    private async Task SavePersonEditAsync()
+    {
+        if (_editingPersonId == Guid.Empty || _editPersonForm.DateOfBirth is not { } dob)
+        {
+            Snackbar.Add("Set a date of birth.", Severity.Warning);
+            return;
+        }
+
+        await PeopleAdmin.UpdatePersonAsync(
+            _editingPersonId, _editPersonForm.NameEn, _editPersonForm.NameDv, DateOnly.FromDateTime(dob),
+            _editPersonForm.ToAddress(), _editPersonForm.PhoneNumber, _editPersonForm.Email);
+
+        _editingPersonId = Guid.Empty;
+        Snackbar.Add("Person updated.", Severity.Success);
+
+        // Any of the 3 tabs could have started this edit - refresh all three name-carrying lists
+        // rather than tracking which one, since a stale name displayed elsewhere is worse than one
+        // extra cheap read.
+        _students = await PeopleAdmin.GetStudentProfilesAsync();
+        _staff = await PeopleAdmin.GetStaffProfilesAsync();
+        _guardians = await PeopleAdmin.GetGuardianProfilesAsync();
     }
 
     private async Task CreateStudentAsync()

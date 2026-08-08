@@ -37,11 +37,25 @@
     [Parameter, EditorRequired] public IReadOnlyList<PplAtoll> Atolls { get; set; } = [];
 
     private IReadOnlyList<PplIsland> _islands = [];
+    private Guid _loadedForAtollId;
+
+    // Editing an existing person passes in a Model whose AtollId/IslandId are already set - without
+    // this, the Island dropdown would show the correct value but no options at all, since _islands
+    // otherwise only ever gets populated by the user manually re-touching the Atoll dropdown below.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Model.AtollId != Guid.Empty && Model.AtollId != _loadedForAtollId)
+        {
+            _loadedForAtollId = Model.AtollId;
+            _islands = await PeopleAdmin.GetIslandsAsync(Model.AtollId);
+        }
+    }
 
     private async Task OnAtollChangedAsync(Guid atollId)
     {
         Model.AtollId = atollId;
         Model.IslandId = Guid.Empty;
+        _loadedForAtollId = atollId;
         _islands = atollId == Guid.Empty ? [] : await PeopleAdmin.GetIslandsAsync(atollId);
     }
 }

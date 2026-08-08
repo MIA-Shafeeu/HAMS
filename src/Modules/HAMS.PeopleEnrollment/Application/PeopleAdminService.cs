@@ -28,6 +28,9 @@ internal sealed class PeopleAdminService(PeopleDbContext dbContext) : IPeopleAdm
     public async Task<IReadOnlyList<Island>> GetIslandsAsync(Guid atollId, CancellationToken cancellationToken = default) =>
         await dbContext.Islands.Where(i => i.AtollId == atollId).OrderBy(i => i.DisplayOrder).ToListAsync(cancellationToken);
 
+    public async Task<Island?> GetIslandAsync(Guid islandId, CancellationToken cancellationToken = default) =>
+        await dbContext.Islands.SingleOrDefaultAsync(i => i.Id == islandId, cancellationToken);
+
     public async Task<Guid> CreatePersonAsync(string nameEn, string nameDv, DateOnly dateOfBirth, Address address, string? phoneNumber, string? email, CancellationToken cancellationToken = default)
     {
         var person = new Person
@@ -42,6 +45,21 @@ internal sealed class PeopleAdminService(PeopleDbContext dbContext) : IPeopleAdm
 
     public async Task<Person?> GetPersonAsync(Guid personId, CancellationToken cancellationToken = default) =>
         await dbContext.People.SingleOrDefaultAsync(p => p.Id == personId, cancellationToken);
+
+    public async Task UpdatePersonAsync(Guid personId, string nameEn, string nameDv, DateOnly dateOfBirth, Address address, string? phoneNumber, string? email, CancellationToken cancellationToken = default)
+    {
+        var person = await dbContext.People.SingleOrDefaultAsync(p => p.Id == personId, cancellationToken)
+            ?? throw new InvalidOperationException("Person not found.");
+
+        person.NameEn = nameEn;
+        person.NameDv = nameDv;
+        person.DateOfBirth = dateOfBirth;
+        person.Address = address;
+        person.PhoneNumber = phoneNumber;
+        person.Email = email;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     public async Task<Guid> CreateStudentProfileAsync(Guid personId, string admissionNumber, DateOnly admissionDate, CancellationToken cancellationToken = default)
     {
