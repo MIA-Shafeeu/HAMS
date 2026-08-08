@@ -137,6 +137,16 @@ internal sealed class AssessmentConfigAdminService(AssessmentEvaluationDbContext
     public async Task<IReadOnlyList<AssessmentScheme>> GetAssessmentSchemesAsync(CancellationToken cancellationToken = default) =>
         await dbContext.AssessmentSchemes.OrderBy(s => s.DisplayOrder).ToListAsync(cancellationToken);
 
+    public async Task UpdateAssessmentSchemeAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var scheme = await dbContext.AssessmentSchemes.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Assessment scheme not found.");
+
+        scheme.Name = name;
+        scheme.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> AddAssessmentSchemeComponentAsync(
         Guid schemeId, string assessmentCategoryCode, string resultAggregationRuleCode, decimal weightPercentage, int displayOrder,
         CancellationToken cancellationToken = default)
@@ -160,6 +170,16 @@ internal sealed class AssessmentConfigAdminService(AssessmentEvaluationDbContext
     public async Task<IReadOnlyList<AssessmentSchemeComponent>> GetAssessmentSchemeComponentsAsync(Guid schemeId, CancellationToken cancellationToken = default) =>
         await dbContext.AssessmentSchemeComponents.Where(c => c.AssessmentSchemeId == schemeId).OrderBy(c => c.DisplayOrder).ToListAsync(cancellationToken);
 
+    public async Task UpdateAssessmentSchemeComponentAsync(Guid id, decimal weightPercentage, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var component = await dbContext.AssessmentSchemeComponents.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Assessment scheme component not found.");
+
+        component.WeightPercentage = weightPercentage;
+        component.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreateGradeScaleAsync(string code, string name, CancellationToken cancellationToken = default)
     {
         var scale = new GradeScale { Id = Guid.NewGuid(), Code = code, Name = name };
@@ -170,6 +190,16 @@ internal sealed class AssessmentConfigAdminService(AssessmentEvaluationDbContext
 
     public async Task<IReadOnlyList<GradeScale>> GetGradeScalesAsync(CancellationToken cancellationToken = default) =>
         await dbContext.GradeScales.OrderBy(s => s.DisplayOrder).ToListAsync(cancellationToken);
+
+    public async Task UpdateGradeScaleAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var scale = await dbContext.GradeScales.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Grade scale not found.");
+
+        scale.Name = name;
+        scale.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     public async Task<Guid> AddGradeBandAsync(
         Guid scaleId, string code, string name, decimal minPercentage, decimal maxPercentage, int rank, int displayOrder,
@@ -187,6 +217,19 @@ internal sealed class AssessmentConfigAdminService(AssessmentEvaluationDbContext
 
     public async Task<IReadOnlyList<GradeBand>> GetGradeBandsAsync(Guid scaleId, CancellationToken cancellationToken = default) =>
         await dbContext.GradeBands.Where(b => b.GradeScaleId == scaleId).OrderBy(b => b.DisplayOrder).ToListAsync(cancellationToken);
+
+    public async Task UpdateGradeBandAsync(Guid id, string name, decimal minPercentage, decimal maxPercentage, int rank, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var band = await dbContext.GradeBands.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Grade band not found.");
+
+        band.Name = name;
+        band.MinPercentage = minPercentage;
+        band.MaxPercentage = maxPercentage;
+        band.Rank = rank;
+        band.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     public async Task<Guid> CreateAssessmentAsync(
         Guid subjectId, Guid gradeId, Guid termId, Guid academicYearId, string assessmentCategoryCode, string title,
@@ -222,6 +265,31 @@ internal sealed class AssessmentConfigAdminService(AssessmentEvaluationDbContext
             .OrderBy(a => a.ScheduledDate)
             .ToListAsync(cancellationToken);
 
+    public async Task UpdateAssessmentAsync(
+        Guid id, string title, decimal maxMarks, int? durationMinutes,
+        string? externalExaminationBoardCode, string? externalSyllabusCode, DateOnly scheduledDate,
+        CancellationToken cancellationToken = default)
+    {
+        var assessment = await dbContext.Assessments.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Assessment not found.");
+
+        Guid? examBoardId = null;
+        if (externalExaminationBoardCode is not null)
+        {
+            var board = await dbContext.ExternalExaminationBoards.SingleOrDefaultAsync(b => b.Code == externalExaminationBoardCode && b.IsActive, cancellationToken)
+                ?? throw new InvalidOperationException($"No active external examination board with code '{externalExaminationBoardCode}'.");
+            examBoardId = board.Id;
+        }
+
+        assessment.Title = title;
+        assessment.MaxMarks = maxMarks;
+        assessment.DurationMinutes = durationMinutes;
+        assessment.ExternalExaminationBoardId = examBoardId;
+        assessment.ExternalSyllabusCode = externalSyllabusCode;
+        assessment.ScheduledDate = scheduledDate;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreateEvaluationPeriodAsync(Guid academicYearId, string code, string name, DateOnly startDate, DateOnly endDate, int displayOrder, CancellationToken cancellationToken = default)
     {
         var period = new EvaluationPeriod
@@ -237,6 +305,18 @@ internal sealed class AssessmentConfigAdminService(AssessmentEvaluationDbContext
     public async Task<IReadOnlyList<EvaluationPeriod>> GetEvaluationPeriodsAsync(Guid academicYearId, CancellationToken cancellationToken = default) =>
         await dbContext.EvaluationPeriods.Where(p => p.AcademicYearId == academicYearId).OrderBy(p => p.DisplayOrder).ToListAsync(cancellationToken);
 
+    public async Task UpdateEvaluationPeriodAsync(Guid id, string name, DateOnly startDate, DateOnly endDate, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var period = await dbContext.EvaluationPeriods.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Evaluation period not found.");
+
+        period.Name = name;
+        period.StartDate = startDate;
+        period.EndDate = endDate;
+        period.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CreatePromotionPolicyAsync(string code, string name, int minimumRank, int minimumSubjectsRequiredToClear, CancellationToken cancellationToken = default)
     {
         var policy = new PromotionPolicy
@@ -251,4 +331,15 @@ internal sealed class AssessmentConfigAdminService(AssessmentEvaluationDbContext
 
     public async Task<IReadOnlyList<PromotionPolicy>> GetPromotionPoliciesAsync(CancellationToken cancellationToken = default) =>
         await dbContext.PromotionPolicies.OrderBy(p => p.Code).ToListAsync(cancellationToken);
+
+    public async Task UpdatePromotionPolicyAsync(Guid id, string name, int minimumRank, int minimumSubjectsRequiredToClear, CancellationToken cancellationToken = default)
+    {
+        var policy = await dbContext.PromotionPolicies.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Promotion policy not found.");
+
+        policy.Name = name;
+        policy.MinimumRank = minimumRank;
+        policy.MinimumSubjectsRequiredToClear = minimumSubjectsRequiredToClear;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

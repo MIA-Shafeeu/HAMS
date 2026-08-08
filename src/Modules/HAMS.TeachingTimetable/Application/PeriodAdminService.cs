@@ -16,4 +16,16 @@ internal sealed class PeriodAdminService(TeachingTimetableDbContext dbContext) :
 
     public async Task<IReadOnlyList<Period>> GetPeriodsAsync(Guid schoolId, CancellationToken cancellationToken = default) =>
         await dbContext.Periods.Where(p => p.SchoolId == schoolId).OrderBy(p => p.DisplayOrder).ToListAsync(cancellationToken);
+
+    public async Task UpdatePeriodAsync(Guid id, string name, TimeOnly startTime, TimeOnly endTime, int displayOrder, CancellationToken cancellationToken = default)
+    {
+        var period = await dbContext.Periods.FindAsync([id], cancellationToken)
+            ?? throw new InvalidOperationException("Period not found.");
+
+        period.Name = name;
+        period.StartTime = startTime;
+        period.EndTime = endTime;
+        period.DisplayOrder = displayOrder;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

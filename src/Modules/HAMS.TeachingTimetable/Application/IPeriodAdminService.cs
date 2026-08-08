@@ -13,4 +13,7 @@ public interface IPeriodAdminService
     Task<Guid> CreatePeriodAsync(Guid schoolId, string code, string name, TimeOnly startTime, TimeOnly endTime, int displayOrder, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Period>> GetPeriodsAsync(Guid schoolId, CancellationToken cancellationToken = default);
+
+    /// <summary>Renames/reschedules/reorders a <c>Period</c>. Code stays fixed. Throws <see cref="InvalidOperationException"/> if not found.</summary>
+    Task UpdatePeriodAsync(Guid id, string name, TimeOnly startTime, TimeOnly endTime, int displayOrder, CancellationToken cancellationToken = default);
 }

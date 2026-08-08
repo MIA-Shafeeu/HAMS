@@ -170,12 +170,30 @@
 
         <MudTabPanel Text="Periods">
             <MudTable Items="@_periods" Dense="true" Hover="true" Class="mb-4">
-                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Start</MudTh><MudTh>End</MudTh></HeaderContent>
+                <HeaderContent><MudTh>Code</MudTh><MudTh>Name</MudTh><MudTh>Start</MudTh><MudTh>End</MudTh><MudTh>Order</MudTh><MudTh></MudTh></HeaderContent>
                 <RowTemplate>
                     <MudTd DataLabel="Code">@context.Code</MudTd>
-                    <MudTd DataLabel="Name">@context.Name</MudTd>
-                    <MudTd DataLabel="Start">@context.StartTime</MudTd>
-                    <MudTd DataLabel="End">@context.EndTime</MudTd>
+                    @if (_editingPeriodId == context.Id)
+                    {
+                        <MudTd DataLabel="Name"><MudTextField T="string" @bind-Value="_editPeriodName" Margin="Margin.Dense" /></MudTd>
+                        <MudTd DataLabel="Start"><MudTextField T="TimeOnly?" @bind-Value="_editPeriodStart" InputType="InputType.Time" Converter="_timeOnlyConverter" Margin="Margin.Dense" /></MudTd>
+                        <MudTd DataLabel="End"><MudTextField T="TimeOnly?" @bind-Value="_editPeriodEnd" InputType="InputType.Time" Converter="_timeOnlyConverter" Margin="Margin.Dense" /></MudTd>
+                        <MudTd DataLabel="Order"><MudNumericField T="int" @bind-Value="_editPeriodDisplayOrder" Margin="Margin.Dense" /></MudTd>
+                        <MudTd>
+                            <MudStack Row="true" Spacing="1">
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Success" OnClick="SavePeriodEditAsync">Save</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingPeriodId = null)">Cancel</MudButton>
+                            </MudStack>
+                        </MudTd>
+                    }
+                    else
+                    {
+                        <MudTd DataLabel="Name">@context.Name</MudTd>
+                        <MudTd DataLabel="Start">@context.StartTime</MudTd>
+                        <MudTd DataLabel="End">@context.EndTime</MudTd>
+                        <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+                        <MudTd><MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => StartPeriodEdit(context))">Edit</MudButton></MudTd>
+                    }
                 </RowTemplate>
             </MudTable>
             <MudGrid>
@@ -271,6 +289,12 @@
     private TimeOnly? _newPeriodStart;
     private TimeOnly? _newPeriodEnd;
     private int _newPeriodDisplayOrder;
+
+    private Guid? _editingPeriodId;
+    private string _editPeriodName = "";
+    private TimeOnly? _editPeriodStart;
+    private TimeOnly? _editPeriodEnd;
+    private int _editPeriodDisplayOrder;
 
     // MudTextField's own DefaultConverter<TimeOnly?> cannot parse a native <input type="time">
     // value back into a TimeOnly (confirmed: it throws on every "HH:mm" string tried) - the picker
@@ -446,6 +470,29 @@
         _newPeriodCode = ""; _newPeriodName = ""; _newPeriodStart = null; _newPeriodEnd = null; _newPeriodDisplayOrder = 0;
         _periods = await PeriodAdmin.GetPeriodsAsync(_selectedSchoolId);
         Snackbar.Add("Period created.", Severity.Success);
+    }
+
+    private void StartPeriodEdit(Period period)
+    {
+        _editingPeriodId = period.Id;
+        _editPeriodName = period.Name;
+        _editPeriodStart = period.StartTime;
+        _editPeriodEnd = period.EndTime;
+        _editPeriodDisplayOrder = period.DisplayOrder;
+    }
+
+    private async Task SavePeriodEditAsync()
+    {
+        if (_editingPeriodId is not { } id || _editPeriodStart is null || _editPeriodEnd is null)
+        {
+            Snackbar.Add("Set a start and end time.", Severity.Warning);
+            return;
+        }
+
+        await PeriodAdmin.UpdatePeriodAsync(id, _editPeriodName, _editPeriodStart.Value, _editPeriodEnd.Value, _editPeriodDisplayOrder);
+        _editingPeriodId = null;
+        Snackbar.Add("Period updated.", Severity.Success);
+        _periods = await PeriodAdmin.GetPeriodsAsync(_selectedSchoolId);
     }
 
     private async Task OnClassChangedForTimetableAsync(Guid classId)
