@@ -1,0 +1,111 @@
+@page "/dashboard"
+@model HAMS.WebHost.Pages.Admin.DashboardModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4 mb-0">Dashboard</h1>
+
+    @if (Model.AcademicYears.Count > 0)
+    {
+        <form method="get" style="min-width: 220px">
+            <select class="form-select" name="AcademicYearId" onchange="this.form.submit()">
+                <option value="">(Select an academic year)</option>
+                @foreach (var year in Model.AcademicYears)
+                {
+                    <option value="@year.AcademicYearId" selected="@(Model.AcademicYearId == year.AcademicYearId)">@year.Name</option>
+                }
+            </select>
+        </form>
+    }
+</div>
+
+@if (Model.AcademicYears.Count == 0)
+{
+    <div class="alert alert-info">No enrolment data exists yet — the dashboard has nothing to summarize until at least one student is enrolled.</div>
+}
+else if (Model.Snapshot is { } snapshot)
+{
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="p-3 bg-white border rounded hams-stat-card">
+                <div class="text-secondary small">Active Students</div>
+                <div class="hams-stat-value">@snapshot.TotalActiveStudents</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="p-3 bg-white border rounded hams-stat-card">
+                <div class="text-secondary small">Attendance Rate (30 days)</div>
+                <div class="hams-stat-value">@snapshot.AttendanceLast30Days.PresentRatePercent.ToString("0.#")%</div>
+                <div class="text-secondary small">@snapshot.AttendanceLast30Days.PresentCount of @snapshot.AttendanceLast30Days.TotalRecords records</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="p-3 bg-white border rounded hams-stat-card">
+                <div class="text-secondary small">Open Intervention Cases</div>
+                <div class="hams-stat-value">@snapshot.InterventionCasesByType.Sum(c => c.OpenCount)</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <div class="p-3 bg-white border rounded hams-stat-card">
+                <div class="text-secondary small">Promotion Decisions</div>
+                <div class="hams-stat-value">@snapshot.PromotionDecisions.PromotedCount / @(snapshot.PromotionDecisions.PromotedCount + snapshot.PromotionDecisions.NotPromotedCount)</div>
+                <div class="text-secondary small">promoted of recorded decisions</div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <div class="p-3 bg-white border rounded">
+                <h2 class="h6 mb-2">Enrolment by Grade</h2>
+                @if (snapshot.EnrollmentByGrade.Count == 0)
+                {
+                    <div class="text-secondary small">No active enrolments for this academic year.</div>
+                }
+                else
+                {
+                    var maxCount = snapshot.EnrollmentByGrade.Max(e => e.StudentCount);
+                    @foreach (var grade in snapshot.EnrollmentByGrade)
+                    {
+                        var percent = maxCount == 0 ? 0 : 100.0 * grade.StudentCount / maxCount;
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>@grade.GradeName</span>
+                                <span class="text-secondary">@grade.StudentCount</span>
+                            </div>
+                            <div class="progress" role="progressbar" style="height: 0.75rem">
+                                <div class="progress-bar" style="width: @percent.ToString("0.#")%"></div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <div class="p-3 bg-white border rounded">
+                <h2 class="h6 mb-2">Intervention Cases by Type</h2>
+                @if (snapshot.InterventionCasesByType.Count == 0)
+                {
+                    <div class="text-secondary small">No intervention cases recorded for this academic year.</div>
+                }
+                else
+                {
+                    <table class="table table-hover table-sm">
+                        <thead><tr><th>Type</th><th>Open</th><th>Closed</th></tr></thead>
+                        <tbody>
+                            @foreach (var item in snapshot.InterventionCasesByType)
+                            {
+                                <tr>
+                                    <td>@item.InterventionTypeName</td>
+                                    <td>@item.OpenCount</td>
+                                    <td>@item.ClosedCount</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+}
