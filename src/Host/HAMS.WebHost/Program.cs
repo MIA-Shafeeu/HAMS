@@ -44,6 +44,28 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
+// Blazor Server's SignalR circuit was running on 100% framework defaults (15s keep-alive ping,
+// 30s client timeout), tuned for a direct connection - this app instead sits behind a Cloudflare
+// Tunnel hop, and real users are sometimes on flaky island/government-network connections. If
+// anything in that path (the tunnel, an intermediate proxy) has an idle-connection timeout close
+// to that 15s ping interval, or the round-trip is just slow, the circuit can silently drop and
+// reconnect - which tears down and recreates the ENTIRE rendered DOM, explaining reports of every
+// field (not just one component type) losing focus/input mid-interaction. Ping more often so the
+// connection never looks idle to an intermediate hop, and give reconnection far more slack before
+// giving up, so a several-second network hiccup reconnects silently instead of forcing a full
+// page reload.
+builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
+{
+    options.KeepAliveInterval = TimeSpan.FromSeconds(5);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+});
+builder.Services.Configure<Microsoft.AspNetCore.Components.Server.CircuitOptions>(options =>
+{
+    options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(5);
+    options.DisconnectedCircuitMaxRetained = 200;
+    options.JSInteropDefaultCallTimeout = TimeSpan.FromSeconds(60);
+});
+
 // Phase 12's Blazor Server admin UI: flows the Cookie-authenticated ClaimsPrincipal (see
 // IdentityAccessModule's .AddCookie call) into every interactive component via the standard
 // [CascadingParameter] Task<AuthenticationState> mechanism — deliberately NOT ICurrentUser's
