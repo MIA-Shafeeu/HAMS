@@ -1,0 +1,242 @@
+@page "/intervention-cases"
+@model HAMS.WebHost.Pages.Staff.InterventionCasesModel
+@using HAMS.Intervention.Domain
+@using HAMS.Platform.Access.Domain
+@{
+    ViewData["Title"] = "Intervention Cases";
+}
+
+<h1 class="h4 mb-4">Intervention Cases</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-12 col-sm-6 col-md-3">
+                <form method="get">
+                    <label class="form-label">School</label>
+                    <select class="form-select" name="SchoolId" onchange="this.form.submit()">
+                        <option value="">(Select a school)</option>
+                        @foreach (var school in Model.Schools)
+                        {
+                            <option value="@school.Id" selected="@(Model.SchoolId == school.Id)">@school.Name</option>
+                        }
+                    </select>
+                </form>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <form method="get">
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <label class="form-label">Academic year</label>
+                    <select class="form-select" name="AcademicYearId" onchange="this.form.submit()" disabled="@(Model.AcademicYears.Count == 0)">
+                        <option value="">(Select an academic year)</option>
+                        @foreach (var year in Model.AcademicYears)
+                        {
+                            <option value="@year.Id" selected="@(Model.AcademicYearId == year.Id)">@year.Name</option>
+                        }
+                    </select>
+                </form>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <form method="get">
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                    <label class="form-label">Class</label>
+                    <select class="form-select" name="ClassId" onchange="this.form.submit()" disabled="@(Model.Classes.Count == 0)">
+                        <option value="">(Select a class)</option>
+                        @foreach (var classOption in Model.Classes)
+                        {
+                            <option value="@classOption.Id" selected="@(Model.ClassId == classOption.Id)">@classOption.Name</option>
+                        }
+                    </select>
+                </form>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <form method="get">
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                    <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                    <label class="form-label">Student</label>
+                    <select class="form-select" name="StudentId" onchange="this.form.submit()" disabled="@(Model.Roster.Count == 0)">
+                        <option value="">(Select a student)</option>
+                        @foreach (var student in Model.Roster)
+                        {
+                            <option value="@student.StudentPersonId" selected="@(Model.StudentId == student.StudentPersonId)">@student.NameEn</option>
+                        }
+                    </select>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.StudentId == Guid.Empty)
+{
+    <div class="alert alert-info">Choose a school, academic year, class and student to continue.</div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="h6 mb-2">Open New Case</h2>
+            <form method="post" asp-page-handler="OpenCase" class="row g-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                <input type="hidden" name="StudentId" value="@Model.StudentId" />
+                <input type="hidden" name="SelectedCaseId" value="@Model.SelectedCaseId" />
+                <div class="col-12 col-sm-4">
+                    <select class="form-select" asp-for="NewCase.SubjectId">
+                        <option value="">(Select a subject)</option>
+                        @foreach (var subject in Model.Subjects)
+                        {
+                            <option value="@subject.Id">@subject.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-4">
+                    <select class="form-select" asp-for="NewCase.InterventionTypeId">
+                        <option value="">(Select an intervention type)</option>
+                        @foreach (var type in Model.InterventionTypes)
+                        {
+                            <option value="@type.Id">@type.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-4">
+                    <select class="form-select" asp-for="NewCase.ConfidentialityTierCode">
+                        <option value="@ConfidentialityTierCodes.Restricted">Restricted</option>
+                        <option value="@ConfidentialityTierCodes.Safeguarding">Safeguarding</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary mt-2">Open Case</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="h6 mb-2">Cases</h2>
+            @if (Model.Cases.Count == 0)
+            {
+                <p class="text-secondary mb-0">No intervention cases for this student.</p>
+            }
+            else
+            {
+                <table class="table table-hover table-sm align-middle mb-0">
+                    <thead><tr><th>Subject</th><th>Opened</th><th>Status</th><th>Closed</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var caseItem in Model.Cases)
+                        {
+                            <tr>
+                                <td>@caseItem.SubjectName</td>
+                                <td>@caseItem.Case.OpenedDate.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    @if (caseItem.Case.Status == InterventionCaseStatus.Open)
+                                    {
+                                        <span class="badge bg-info">Open</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">Closed</span>
+                                    }
+                                </td>
+                                <td>@(caseItem.Case.ClosedDate?.ToString("yyyy-MM-dd") ?? "—")</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       href="?SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&ClassId=@Model.ClassId&StudentId=@Model.StudentId&SelectedCaseId=@caseItem.Case.Id">
+                                        View Details
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    @if (Model.SelectedCaseId is { } caseId)
+    {
+        <div class="card">
+            <div class="card-body">
+                @if (!Model.SelectedCaseAuthorized)
+                {
+                    <div class="alert alert-danger mb-0">You do not have a confidentiality grant covering this case.</div>
+                }
+                else
+                {
+                    <h2 class="h6 mb-2">Support Plans</h2>
+                    @if (Model.Plans.Count == 0)
+                    {
+                        <p class="text-secondary mb-3">No plans recorded yet.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-hover table-sm align-middle mb-3">
+                            <thead><tr><th>Description</th><th>Start</th><th>Target</th></tr></thead>
+                            <tbody>
+                                @foreach (var plan in Model.Plans)
+                                {
+                                    <tr>
+                                        <td>@plan.Description</td>
+                                        <td>@plan.StartDate.ToString("yyyy-MM-dd")</td>
+                                        <td>@plan.TargetDate.ToString("yyyy-MM-dd")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                    <form method="post" asp-page-handler="AddPlan" class="row g-2 mb-4">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="caseId" value="@caseId" />
+                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                        <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                        <input type="hidden" name="StudentId" value="@Model.StudentId" />
+                        <input type="hidden" name="SelectedCaseId" value="@caseId" />
+                        <div class="col-12 col-sm-6"><input class="form-control" asp-for="NewPlan.Description" placeholder="New plan description" /></div>
+                        <div class="col-6 col-sm-3"><input type="date" class="form-control" asp-for="NewPlan.StartDate" /></div>
+                        <div class="col-6 col-sm-3"><input type="date" class="form-control" asp-for="NewPlan.TargetDate" /></div>
+                        <div class="col-12"><button type="submit" class="btn btn-primary mt-2">Add Plan</button></div>
+                    </form>
+
+                    <h2 class="h6 mb-2">Reassessment Attempts</h2>
+                    @if (Model.ReassessmentAttempts.Count == 0)
+                    {
+                        <p class="text-secondary mb-3">No reassessment attempts recorded yet.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-hover table-sm align-middle mb-3">
+                            <thead><tr><th>Recorded</th></tr></thead>
+                            <tbody>
+                                @foreach (var attempt in Model.ReassessmentAttempts)
+                                {
+                                    <tr><td>@attempt.RecordedAtUtc.ToString("yyyy-MM-dd HH:mm")</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+
+                    @if (Model.SelectedCaseStatus == InterventionCaseStatus.Open)
+                    {
+                        <form method="post" asp-page-handler="CloseCase">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="caseId" value="@caseId" />
+                            <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                            <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                            <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                            <input type="hidden" name="StudentId" value="@Model.StudentId" />
+                            <input type="hidden" name="SelectedCaseId" value="@caseId" />
+                            <button type="submit" class="btn btn-secondary">Close Case</button>
+                        </form>
+                    }
+                }
+            </div>
+        </div>
+    }
+}
