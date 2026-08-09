@@ -1,0 +1,207 @@
+@page "/behaviour-incidents"
+@model HAMS.WebHost.Pages.Staff.BehaviourIncidentsModel
+@using HAMS.Platform.Access.Domain
+@using HAMS.Platform.Workflow.Domain
+@{
+    ViewData["Title"] = "Behaviour Incidents";
+
+    string StatusBadgeClass(WorkflowStatus status) => status switch
+    {
+        WorkflowStatus.Approved => "badge text-bg-success",
+        WorkflowStatus.Rejected => "badge text-bg-danger",
+        WorkflowStatus.Returned => "badge text-bg-warning",
+        _ => "badge text-bg-secondary",
+    };
+}
+
+<h1 class="h4 mb-4">Behaviour &amp; Pastoral</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label">School</label>
+                <select class="form-select" name="SchoolId" onchange="this.form.submit()">
+                    <option value="">(Select a school)</option>
+                    @foreach (var school in Model.Schools)
+                    {
+                        <option value="@school.Id" selected="@(Model.SchoolId == school.Id)">@school.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label">Academic year</label>
+                <select class="form-select" name="AcademicYearId" onchange="this.form.submit()" disabled="@(Model.AcademicYears.Count == 0)">
+                    <option value="">(Select an academic year)</option>
+                    @foreach (var year in Model.AcademicYears)
+                    {
+                        <option value="@year.Id" selected="@(Model.AcademicYearId == year.Id)">@year.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label">Class</label>
+                <select class="form-select" name="ClassId" onchange="this.form.submit()" disabled="@(Model.Classes.Count == 0)">
+                    <option value="">(Select a class)</option>
+                    @foreach (var classOption in Model.Classes)
+                    {
+                        <option value="@classOption.Id" selected="@(Model.ClassId == classOption.Id)">@classOption.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label">Student</label>
+                <select class="form-select" name="StudentId" onchange="this.form.submit()" disabled="@(Model.Roster.Count == 0)">
+                    <option value="">(Select a student)</option>
+                    @foreach (var student in Model.Roster)
+                    {
+                        <option value="@student.StudentPersonId" selected="@(Model.StudentId == student.StudentPersonId)">@student.NameEn</option>
+                    }
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.StudentId == Guid.Empty)
+{
+    <div class="alert alert-info">Choose a school, academic year, class and student to continue.</div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="h6 mb-3">Record New Incident</h2>
+            <form method="post" asp-page-handler="Record" class="row g-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                <input type="hidden" name="StudentId" value="@Model.StudentId" />
+
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" asp-for="NewIncident.CategoryId">
+                        <option value="">(Select a category)</option>
+                        @foreach (var category in Model.Categories)
+                        {
+                            <option value="@category.Id">@category.Name @(category.IsPositive ? "(+)" : "")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label class="form-label">Confidentiality tier</label>
+                    <select class="form-select" asp-for="NewIncident.ConfidentialityTierCode">
+                        <option value="">(Select a tier)</option>
+                        <option value="@ConfidentialityTierCodes.Restricted">Restricted</option>
+                        <option value="@ConfidentialityTierCodes.Safeguarding">Safeguarding</option>
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label class="form-label">Occurred date</label>
+                    <input type="date" class="form-control" asp-for="NewIncident.OccurredDate" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" rows="3" asp-for="NewIncident.Description"></textarea>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary mt-2">Record Incident</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h2 class="h6 mb-3">Incident History</h2>
+            @if (Model.Incidents.Count == 0)
+            {
+                <p class="text-secondary">No behaviour incidents recorded for this student.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var incident in Model.Incidents)
+                            {
+                                <tr>
+                                    <td>@incident.OccurredDate.ToString("yyyy-MM-dd")</td>
+                                    <td>@incident.CategoryName</td>
+                                    <td>@incident.Description</td>
+                                    <td><span class="@StatusBadgeClass(incident.Status)">@incident.Status</span></td>
+                                    <td>
+                                        @if (incident.Status == WorkflowStatus.Draft || incident.Status == WorkflowStatus.Returned)
+                                        {
+                                            <form method="post" asp-page-handler="Submit" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@incident.Id" />
+                                                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                                <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                                                <input type="hidden" name="StudentId" value="@Model.StudentId" />
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">Submit</button>
+                                            </form>
+                                        }
+                                        else if (incident.Status == WorkflowStatus.Submitted)
+                                        {
+                                            <form method="post" asp-page-handler="BeginReview" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@incident.Id" />
+                                                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                                <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                                                <input type="hidden" name="StudentId" value="@Model.StudentId" />
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">Begin Review</button>
+                                            </form>
+                                        }
+                                        else if (incident.Status == WorkflowStatus.UnderReview)
+                                        {
+                                            <form method="post" asp-page-handler="Approve" class="d-inline me-1">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@incident.Id" />
+                                                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                                <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                                                <input type="hidden" name="StudentId" value="@Model.StudentId" />
+                                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                            </form>
+                                            <form method="post" asp-page-handler="Reject" class="d-inline me-1">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@incident.Id" />
+                                                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                                <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                                                <input type="hidden" name="StudentId" value="@Model.StudentId" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
+                                            </form>
+                                            <form method="post" asp-page-handler="Return" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@incident.Id" />
+                                                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                                <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                                                <input type="hidden" name="StudentId" value="@Model.StudentId" />
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary">Return</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
