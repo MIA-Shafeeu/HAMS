@@ -1,0 +1,153 @@
+@page "/admin/staff-accounts-roles"
+@model HAMS.WebHost.Pages.Admin.StaffAccountsRolesModel
+@using HAMS.IdentityAccess.Domain
+@{
+    ViewData["Title"] = "Staff Accounts & Roles";
+    string TabClass(string tab) => Model.Tab == tab ? "nav-link active" : "nav-link";
+    string PaneClass(string tab) => Model.Tab == tab ? "tab-pane fade show active" : "tab-pane fade";
+}
+
+<h1 class="h4 mb-4">System Administration — Staff Accounts &amp; Roles</h1>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item"><a class="@TabClass("accounts")" href="?tab=accounts&AccountsPersonId=@Model.AccountsPersonId">Staff Accounts</a></li>
+    <li class="nav-item"><a class="@TabClass("roles")" href="?tab=roles&RolesPersonId=@Model.RolesPersonId">Roles</a></li>
+</ul>
+
+<div class="tab-content">
+
+    @* ---------------- Staff Accounts ---------------- *@
+    <div class="@PaneClass("accounts")">
+        <table class="table table-hover table-sm align-middle mb-4">
+            <thead><tr><th>Name</th><th>Employee No.</th><th>Username</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var staff in Model.Staff)
+                {
+                    var account = Model.AccountsByPersonId.GetValueOrDefault(staff.PersonId);
+                    <tr>
+                        <td>@staff.NameEn</td>
+                        <td>@staff.EmployeeNumber</td>
+                        <td>@(account?.UserName ?? "—")</td>
+                        <td>@(account?.Status.ToString() ?? "No account")</td>
+                        <td><a class="btn btn-sm btn-outline-primary" href="?tab=accounts&AccountsPersonId=@staff.PersonId">Manage</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.AccountsPersonId != Guid.Empty)
+        {
+            var selectedStaff = Model.Staff.SingleOrDefault(s => s.PersonId == Model.AccountsPersonId);
+            var account = Model.AccountsByPersonId.GetValueOrDefault(Model.AccountsPersonId);
+            <hr class="my-4" />
+            <h2 class="h6 mb-2">@selectedStaff?.NameEn</h2>
+
+            @if (account is null)
+            {
+                <p class="text-muted mb-2">No login account exists yet for this staff member.</p>
+                <form method="post" asp-page-handler="CreateAccount" class="row g-2 mb-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="AccountsPersonId" value="@Model.AccountsPersonId" />
+                    <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewAccount.UserName" placeholder="Username" /></div>
+                    <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewAccount.Email" placeholder="Email (optional)" /></div>
+                    <div class="col-12 col-sm-3"><input type="password" class="form-control" asp-for="NewAccount.Password" placeholder="Initial Password" /></div>
+                    <div class="col-12 col-sm-3"><button type="submit" class="btn btn-primary w-100">Create Account</button></div>
+                </form>
+            }
+            else
+            {
+                <div class="row g-2 mb-4">
+                    <div class="col-12 col-sm-6">
+                        <form method="post" asp-page-handler="ResetPassword" class="d-flex gap-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="AccountsPersonId" value="@Model.AccountsPersonId" />
+                            <input type="password" class="form-control" asp-for="ResetPassword" placeholder="New Password" />
+                            <button type="submit" class="btn btn-primary text-nowrap">Reset Password</button>
+                        </form>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <form method="post" asp-page-handler="SetAccountStatus" class="d-flex align-items-center gap-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="AccountsPersonId" value="@Model.AccountsPersonId" />
+                            <label class="form-label mb-0 text-nowrap">Account Status</label>
+                            <select class="form-select" name="status" onchange="this.form.submit()">
+                                <option value="@AccountStatus.Active" selected="@(account.Status == AccountStatus.Active)">Active</option>
+                                <option value="@AccountStatus.Suspended" selected="@(account.Status == AccountStatus.Suspended)">Suspended</option>
+                                <option value="@AccountStatus.Disabled" selected="@(account.Status == AccountStatus.Disabled)">Disabled</option>
+                            </select>
+                        </form>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    @* ---------------- Roles ---------------- *@
+    <div class="@PaneClass("roles")">
+        <form method="get" class="mb-4">
+            <input type="hidden" name="tab" value="roles" />
+            <select class="form-select" name="RolesPersonId" onchange="this.form.submit()">
+                <option value="">(Select a staff member)</option>
+                @foreach (var staff in Model.Staff)
+                {
+                    <option value="@staff.PersonId" selected="@(Model.RolesPersonId == staff.PersonId)">@staff.NameEn</option>
+                }
+            </select>
+        </form>
+
+        @if (Model.RolesPersonId != Guid.Empty)
+        {
+            <table class="table table-hover table-sm align-middle mb-3">
+                <thead><tr><th>Role</th><th>School</th><th>From</th><th>To</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var entry in Model.Assignments)
+                    {
+                        <tr>
+                            <td>@(Model.Roles.SingleOrDefault(r => r.Id == entry.RoleId)?.Name ?? entry.RoleId.ToString())</td>
+                            <td>@(entry.SchoolId is null ? "All Schools" : (Model.Schools.SingleOrDefault(s => s.Id == entry.SchoolId)?.Name ?? entry.SchoolId.ToString()))</td>
+                            <td>@entry.EffectiveFrom</td>
+                            <td>@entry.EffectiveTo</td>
+                            <td>
+                                @if (entry.EffectiveTo is null)
+                                {
+                                    <form method="post" asp-page-handler="RevokeRole" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="RolesPersonId" value="@Model.RolesPersonId" />
+                                        <input type="hidden" name="assignmentId" value="@entry.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Revoke (today)</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <form method="post" asp-page-handler="AssignRole" class="row g-2 mb-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="RolesPersonId" value="@Model.RolesPersonId" />
+                <div class="col-12 col-sm-3">
+                    <select class="form-select" asp-for="NewRoleAssignment.RoleId">
+                        <option value="">(Select a role)</option>
+                        @foreach (var role in Model.Roles)
+                        {
+                            <option value="@role.Id">@role.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-3">
+                    <select class="form-select" asp-for="NewRoleAssignment.SchoolId">
+                        <option value="">All Schools</option>
+                        @foreach (var school in Model.Schools)
+                        {
+                            <option value="@school.Id">@school.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-3"><input type="date" class="form-control" asp-for="NewRoleAssignment.EffectiveFrom" /></div>
+                <div class="col-12 col-sm-3"><button type="submit" class="btn btn-primary w-100">Assign Role</button></div>
+            </form>
+        }
+    </div>
+
+</div>
