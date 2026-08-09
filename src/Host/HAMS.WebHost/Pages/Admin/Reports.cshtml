@@ -1,0 +1,71 @@
+@page "/reports"
+@model HAMS.WebHost.Pages.Admin.ReportsModel
+@{
+    ViewData["Title"] = "Regulatory Reports";
+}
+
+<h1 class="h4 mb-4">Regulatory Reports</h1>
+
+@if (Model.AcademicYears.Count == 0)
+{
+    <div class="alert alert-info">No enrolment data exists yet — there's nothing to export until at least one student is enrolled.</div>
+}
+else
+{
+    <form method="get" class="row g-2 mb-4">
+        <div class="col-12 col-sm-4" style="max-width:300px">
+            <select class="form-select" name="AcademicYearId" onchange="this.form.submit()">
+                <option value="">(Select an academic year)</option>
+                @foreach (var year in Model.AcademicYears)
+                {
+                    <option value="@year.AcademicYearId" selected="@(Model.AcademicYearId == year.AcademicYearId)">@year.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-12 col-sm-3">
+            <label class="form-label">From</label>
+            <input type="date" class="form-control" name="AttendanceFrom" value="@Model.AttendanceFrom.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+        </div>
+        <div class="col-12 col-sm-3">
+            <label class="form-label">To</label>
+            <input type="date" class="form-control" name="AttendanceTo" value="@Model.AttendanceTo.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+        </div>
+    </form>
+
+    <div class="row g-3">
+        <div class="col-12 col-md-4">
+            <div class="p-3 bg-white border rounded h-100">
+                <h2 class="h6">Student Roster</h2>
+                <p class="text-secondary small mb-3">
+                    Every currently active enrolment for the selected academic year — admission number, name, grade, and class.
+                </p>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-primary" href="@Model.BuildRosterUrl("Csv")" target="_blank">CSV</a>
+                    <a class="btn btn-outline-primary" href="@Model.BuildRosterUrl("Xlsx")" target="_blank">Excel</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="p-3 bg-white border rounded h-100">
+                <h2 class="h6">Attendance Summary</h2>
+                <p class="text-secondary small mb-3">Every daily attendance mark within the selected date range.</p>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-primary" href="@Model.BuildAttendanceUrl("Csv")" target="_blank">CSV</a>
+                    <a class="btn btn-outline-primary" href="@Model.BuildAttendanceUrl("Xlsx")" target="_blank">Excel</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="p-3 bg-white border rounded h-100">
+                <h2 class="h6">Promotion Decisions</h2>
+                <p class="text-secondary small mb-3">Every recorded promotion/progression decision for the selected academic year.</p>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-primary" href="@Model.BuildPromotionUrl("Csv")" target="_blank">CSV</a>
+                    <a class="btn btn-outline-primary" href="@Model.BuildPromotionUrl("Xlsx")" target="_blank">Excel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
