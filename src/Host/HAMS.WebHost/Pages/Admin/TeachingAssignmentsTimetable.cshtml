@@ -1,0 +1,415 @@
+@page "/admin/teaching-assignments-timetable"
+@model HAMS.WebHost.Pages.Admin.TeachingAssignmentsTimetableModel
+@{
+    ViewData["Title"] = "Teaching Assignments & Timetable";
+    string TabClass(string tab) => Model.Tab == tab ? "nav-link active" : "nav-link";
+    string PaneClass(string tab) => Model.Tab == tab ? "tab-pane fade show active" : "tab-pane fade";
+}
+
+<h1 class="h4 mb-4">System Administration — Teaching Assignments &amp; Timetable</h1>
+
+<form method="get" class="row g-2 mb-4">
+    <input type="hidden" name="tab" value="@Model.Tab" />
+    <div class="col-12 col-sm-4">
+        <select class="form-select" name="SchoolId" onchange="this.form.submit()">
+            <option value="">(Select a school)</option>
+            @foreach (var school in Model.Schools)
+            {
+                <option value="@school.Id" selected="@(Model.SchoolId == school.Id)">@school.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-4">
+        <select class="form-select" name="AcademicYearId" onchange="this.form.submit()" disabled="@(Model.AcademicYears.Count == 0)">
+            <option value="">(Select an academic year)</option>
+            @foreach (var year in Model.AcademicYears)
+            {
+                <option value="@year.Id" selected="@(Model.AcademicYearId == year.Id)">@year.Name</option>
+            }
+        </select>
+    </div>
+</form>
+
+@if (Model.Schools.Count == 0)
+{
+    <div class="alert alert-info">No schools yet — create one on the Org &amp; Academic Structure page first.</div>
+}
+
+@if (Model.AcademicYearId != Guid.Empty)
+{
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item"><a class="@TabClass("subject")" href="?tab=subject&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&SubjectTeachingClassId=@Model.SubjectTeachingClassId">Subject Teaching</a></li>
+        <li class="nav-item"><a class="@TabClass("classTeacher")" href="?tab=classTeacher&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&ClassTeacherClassId=@Model.ClassTeacherClassId">Class Teacher</a></li>
+        <li class="nav-item"><a class="@TabClass("leadingTeacher")" href="?tab=leadingTeacher&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&LeadingTeacherSubjectId=@Model.LeadingTeacherSubjectId">Leading Teacher</a></li>
+        <li class="nav-item"><a class="@TabClass("periods")" href="?tab=periods&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId">Periods</a></li>
+        <li class="nav-item"><a class="@TabClass("timetable")" href="?tab=timetable&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&TimetableClassId=@Model.TimetableClassId">Timetable</a></li>
+    </ul>
+
+    <div class="tab-content">
+
+        @* ---------------- Subject Teaching ---------------- *@
+        <div class="@PaneClass("subject")">
+            <form method="get" class="mb-4">
+                <input type="hidden" name="tab" value="subject" />
+                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                <select class="form-select" name="SubjectTeachingClassId" onchange="this.form.submit()">
+                    <option value="">(Select a class)</option>
+                    @foreach (var cls in Model.Classes)
+                    {
+                        <option value="@cls.Id" selected="@(Model.SubjectTeachingClassId == cls.Id)">@cls.Name</option>
+                    }
+                </select>
+            </form>
+
+            @if (Model.SubjectTeachingClassId != Guid.Empty)
+            {
+                <table class="table table-hover table-sm align-middle mb-4">
+                    <thead><tr><th>Staff</th><th>Subject</th><th>From</th><th>To</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var assignment in Model.SubjectTeachingAssignments)
+                        {
+                            <tr>
+                                <td>@Model.StaffName(assignment.StaffPersonId)</td>
+                                <td>@Model.SubjectName(assignment.SubjectId)</td>
+                                <td>@assignment.EffectiveFrom</td>
+                                <td>@assignment.EffectiveTo</td>
+                                <td>
+                                    @if (assignment.EffectiveTo is null)
+                                    {
+                                        <form method="post" asp-page-handler="EndSubjectTeaching" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                            <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                            <input type="hidden" name="SubjectTeachingClassId" value="@Model.SubjectTeachingClassId" />
+                                            <input type="hidden" name="assignmentId" value="@assignment.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">End (today)</button>
+                                        </form>
+                                        <a class="btn btn-sm btn-outline-secondary" href="?tab=subject&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&SubjectTeachingClassId=@Model.SubjectTeachingClassId&SubstitutionTargetAssignmentId=@assignment.Id">Substitute</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <form method="post" asp-page-handler="AssignSubjectTeaching" class="row g-2 mb-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                    <input type="hidden" name="SubjectTeachingClassId" value="@Model.SubjectTeachingClassId" />
+                    <div class="col-12 col-sm-3">
+                        <select class="form-select" asp-for="NewSubjectTeaching.StaffPersonId">
+                            <option value="">(Select a staff member)</option>
+                            @foreach (var staff in Model.Staff)
+                            {
+                                <option value="@staff.PersonId">@staff.NameEn</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-3">
+                        <select class="form-select" asp-for="NewSubjectTeaching.SubjectId">
+                            <option value="">(Select a subject)</option>
+                            @foreach (var subject in Model.Subjects)
+                            {
+                                <option value="@subject.Id">@subject.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-3"><input type="date" class="form-control" asp-for="NewSubjectTeaching.EffectiveFrom" /></div>
+                    <div class="col-12 col-sm-3"><button type="submit" class="btn btn-primary w-100">Assign</button></div>
+                </form>
+
+                var substitutionTarget = Model.SubstitutionTargetAssignmentId != Guid.Empty
+                    ? Model.SubjectTeachingAssignments.SingleOrDefault(a => a.Id == Model.SubstitutionTargetAssignmentId)
+                    : null;
+                if (substitutionTarget is not null)
+                {
+                    <div class="alert alert-info">Create a single-day substitution for @Model.StaffName(substitutionTarget.StaffPersonId)'s assignment.</div>
+                    <form method="post" asp-page-handler="CreateSubstitution" class="row g-2 mb-4">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                        <input type="hidden" name="SubjectTeachingClassId" value="@Model.SubjectTeachingClassId" />
+                        <input type="hidden" name="SubstitutionTargetAssignmentId" value="@Model.SubstitutionTargetAssignmentId" />
+                        <div class="col-12 col-sm-3">
+                            <select class="form-select" asp-for="NewSubstitution.SubstituteStaffPersonId">
+                                <option value="">(Select a substitute staff member)</option>
+                                @foreach (var staff in Model.Staff)
+                                {
+                                    <option value="@staff.PersonId">@staff.NameEn</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12 col-sm-3"><input type="date" class="form-control" asp-for="NewSubstitution.SubstitutionDate" /></div>
+                        <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewSubstitution.Reason" placeholder="Reason (optional)" /></div>
+                        <div class="col-12 col-sm-2"><button type="submit" class="btn btn-secondary w-100">Create</button></div>
+                    </form>
+                }
+            }
+        </div>
+
+        @* ---------------- Class Teacher ---------------- *@
+        <div class="@PaneClass("classTeacher")">
+            <form method="get" class="mb-4">
+                <input type="hidden" name="tab" value="classTeacher" />
+                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                <select class="form-select" name="ClassTeacherClassId" onchange="this.form.submit()">
+                    <option value="">(Select a class)</option>
+                    @foreach (var cls in Model.Classes)
+                    {
+                        <option value="@cls.Id" selected="@(Model.ClassTeacherClassId == cls.Id)">@cls.Name</option>
+                    }
+                </select>
+            </form>
+
+            @if (Model.ClassTeacherClassId != Guid.Empty)
+            {
+                <table class="table table-hover table-sm align-middle mb-4">
+                    <thead><tr><th>Staff</th><th>From</th><th>To</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var assignment in Model.ClassTeacherAssignments)
+                        {
+                            <tr>
+                                <td>@Model.StaffName(assignment.StaffPersonId)</td>
+                                <td>@assignment.EffectiveFrom</td>
+                                <td>@assignment.EffectiveTo</td>
+                                <td>
+                                    @if (assignment.EffectiveTo is null)
+                                    {
+                                        <form method="post" asp-page-handler="EndClassTeacher" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                            <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                            <input type="hidden" name="ClassTeacherClassId" value="@Model.ClassTeacherClassId" />
+                                            <input type="hidden" name="assignmentId" value="@assignment.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">End (today)</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <form method="post" asp-page-handler="AssignClassTeacher" class="row g-2 mb-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                    <input type="hidden" name="ClassTeacherClassId" value="@Model.ClassTeacherClassId" />
+                    <div class="col-12 col-sm-4">
+                        <select class="form-select" asp-for="NewClassTeacher.StaffPersonId">
+                            <option value="">(Select a staff member)</option>
+                            @foreach (var staff in Model.Staff)
+                            {
+                                <option value="@staff.PersonId">@staff.NameEn</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-4"><input type="date" class="form-control" asp-for="NewClassTeacher.EffectiveFrom" /></div>
+                    <div class="col-12 col-sm-4"><button type="submit" class="btn btn-primary w-100">Assign</button></div>
+                </form>
+            }
+        </div>
+
+        @* ---------------- Leading Teacher ---------------- *@
+        <div class="@PaneClass("leadingTeacher")">
+            <form method="get" class="mb-4">
+                <input type="hidden" name="tab" value="leadingTeacher" />
+                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                <select class="form-select" name="LeadingTeacherSubjectId" onchange="this.form.submit()">
+                    <option value="">(Select a subject)</option>
+                    @foreach (var subject in Model.Subjects)
+                    {
+                        <option value="@subject.Id" selected="@(Model.LeadingTeacherSubjectId == subject.Id)">@subject.Name</option>
+                    }
+                </select>
+            </form>
+
+            @if (Model.LeadingTeacherSubjectId != Guid.Empty)
+            {
+                <table class="table table-hover table-sm align-middle mb-4">
+                    <thead><tr><th>Staff</th><th>From</th><th>To</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var assignment in Model.LeadingTeacherAssignments)
+                        {
+                            <tr>
+                                <td>@Model.StaffName(assignment.StaffPersonId)</td>
+                                <td>@assignment.EffectiveFrom</td>
+                                <td>@assignment.EffectiveTo</td>
+                                <td>
+                                    @if (assignment.EffectiveTo is null)
+                                    {
+                                        <form method="post" asp-page-handler="EndLeadingTeacher" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                            <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                            <input type="hidden" name="LeadingTeacherSubjectId" value="@Model.LeadingTeacherSubjectId" />
+                                            <input type="hidden" name="assignmentId" value="@assignment.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">End (today)</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <form method="post" asp-page-handler="AssignLeadingTeacher" class="row g-2 mb-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                    <input type="hidden" name="LeadingTeacherSubjectId" value="@Model.LeadingTeacherSubjectId" />
+                    <div class="col-12 col-sm-4">
+                        <select class="form-select" asp-for="NewLeadingTeacher.StaffPersonId">
+                            <option value="">(Select a staff member)</option>
+                            @foreach (var staff in Model.Staff)
+                            {
+                                <option value="@staff.PersonId">@staff.NameEn</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-4"><input type="date" class="form-control" asp-for="NewLeadingTeacher.EffectiveFrom" /></div>
+                    <div class="col-12 col-sm-4"><button type="submit" class="btn btn-primary w-100">Assign</button></div>
+                </form>
+            }
+        </div>
+
+        @* ---------------- Periods ---------------- *@
+        <div class="@PaneClass("periods")">
+            <table class="table table-hover table-sm align-middle mb-4">
+                <thead><tr><th>Code</th><th>Name</th><th>Start</th><th>End</th><th>Order</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var period in Model.Periods)
+                    {
+                        <tr>
+                            <td>@period.Code</td>
+                            @if (Model.EditPeriodId == period.Id)
+                            {
+                                <td><input form="editPeriod-@period.Id" class="form-control form-control-sm" name="EditPeriodForm.Name" value="@period.Name" /></td>
+                                <td><input form="editPeriod-@period.Id" type="time" class="form-control form-control-sm" name="EditPeriodForm.StartTime" value="@period.StartTime.ToString("HH:mm")" /></td>
+                                <td><input form="editPeriod-@period.Id" type="time" class="form-control form-control-sm" name="EditPeriodForm.EndTime" value="@period.EndTime.ToString("HH:mm")" /></td>
+                                <td><input form="editPeriod-@period.Id" type="number" class="form-control form-control-sm" name="EditPeriodForm.DisplayOrder" value="@period.DisplayOrder" /></td>
+                                <td>
+                                    <form id="editPeriod-@period.Id" method="post" asp-page-handler="SavePeriodEdit" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                        <input type="hidden" name="EditPeriodForm.Id" value="@period.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=periods&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId">Cancel</a>
+                                </td>
+                            }
+                            else
+                            {
+                                <td>@period.Name</td>
+                                <td>@period.StartTime.ToString("HH:mm")</td>
+                                <td>@period.EndTime.ToString("HH:mm")</td>
+                                <td>@period.DisplayOrder</td>
+                                <td><a class="btn btn-sm btn-outline-primary" href="?tab=periods&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&EditPeriodId=@period.Id">Edit</a></td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (Model.SchoolId != Guid.Empty)
+            {
+                <form method="post" asp-page-handler="CreatePeriod" class="row g-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                    <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewPeriod.Code" placeholder="Code" /></div>
+                    <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewPeriod.Name" placeholder="Name" /></div>
+                    <div class="col-6 col-sm-2"><input type="time" class="form-control" asp-for="NewPeriod.StartTime" /></div>
+                    <div class="col-6 col-sm-2"><input type="time" class="form-control" asp-for="NewPeriod.EndTime" /></div>
+                    <div class="col-6 col-sm-1"><input type="number" class="form-control" asp-for="NewPeriod.DisplayOrder" placeholder="Order" /></div>
+                    <div class="col-6 col-sm-2"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+                </form>
+            }
+        </div>
+
+        @* ---------------- Timetable ---------------- *@
+        <div class="@PaneClass("timetable")">
+            <form method="get" class="mb-4">
+                <input type="hidden" name="tab" value="timetable" />
+                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                <select class="form-select" name="TimetableClassId" onchange="this.form.submit()">
+                    <option value="">(Select a class)</option>
+                    @foreach (var cls in Model.Classes)
+                    {
+                        <option value="@cls.Id" selected="@(Model.TimetableClassId == cls.Id)">@cls.Name</option>
+                    }
+                </select>
+            </form>
+
+            @if (Model.TimetableClassId != Guid.Empty)
+            {
+                <table class="table table-hover table-sm align-middle mb-4">
+                    <thead><tr><th>Day</th><th>Period</th><th>Subject</th><th>Staff</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var entry in Model.TimetableEntries)
+                        {
+                            var teacherAssignment = Model.TimetableSubjectTeachingAssignments.SingleOrDefault(a => a.Id == entry.TeachingAssignmentId);
+                            <tr>
+                                <td>@entry.DayOfWeek</td>
+                                <td>@Model.PeriodName(entry.PeriodId)</td>
+                                <td>@Model.SubjectName(entry.SubjectId)</td>
+                                <td>@(teacherAssignment is not null ? Model.StaffName(teacherAssignment.StaffPersonId) : "—")</td>
+                                <td>
+                                    <form method="post" asp-page-handler="RemoveTimetableEntry" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                        <input type="hidden" name="TimetableClassId" value="@Model.TimetableClassId" />
+                                        <input type="hidden" name="timetableEntryId" value="@entry.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <form method="post" asp-page-handler="ScheduleTimetableEntry" class="row g-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                    <input type="hidden" name="TimetableClassId" value="@Model.TimetableClassId" />
+                    <div class="col-12 col-sm-2">
+                        <select class="form-select" asp-for="NewTimetableEntry.DayOfWeek">
+                            @foreach (var day in Enum.GetValues<DayOfWeek>())
+                            {
+                                <option value="@day">@day</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-2">
+                        <select class="form-select" asp-for="NewTimetableEntry.PeriodId">
+                            <option value="">(Select a period)</option>
+                            @foreach (var period in Model.Periods)
+                            {
+                                <option value="@period.Id">@period.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-4">
+                        <select class="form-select" asp-for="NewTimetableEntry.TeachingAssignmentId">
+                            <option value="">(Select a teaching assignment)</option>
+                            @foreach (var a in Model.TimetableSubjectTeachingAssignments.Where(a => a.EffectiveTo is null))
+                            {
+                                <option value="@a.Id">@Model.SubjectName(a.SubjectId) — @Model.StaffName(a.StaffPersonId)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-4"><button type="submit" class="btn btn-primary w-100">Schedule</button></div>
+                </form>
+            }
+        </div>
+
+    </div>
+}
