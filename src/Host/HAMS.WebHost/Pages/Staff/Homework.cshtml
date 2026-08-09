@@ -1,0 +1,172 @@
+@page "/homework"
+@model HAMS.WebHost.Pages.Staff.HomeworkModel
+@{
+    ViewData["Title"] = "Homework";
+}
+
+<h1 class="h4 mb-4">Homework</h1>
+
+<form method="get" class="row g-2 mb-4">
+    <div class="col-12 col-sm-6 col-md-3">
+        <label class="form-label">School</label>
+        <select class="form-select" name="SchoolId" onchange="this.form.submit()">
+            <option value="">(Select a school)</option>
+            @foreach (var school in Model.Schools)
+            {
+                <option value="@school.Id" selected="@(Model.SchoolId == school.Id)">@school.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-6 col-md-3">
+        <label class="form-label">Academic year</label>
+        <select class="form-select" name="AcademicYearId" onchange="this.form.submit()" disabled="@(Model.AcademicYears.Count == 0)">
+            <option value="">(Select an academic year)</option>
+            @foreach (var year in Model.AcademicYears)
+            {
+                <option value="@year.Id" selected="@(Model.AcademicYearId == year.Id)">@year.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-6 col-md-3">
+        <label class="form-label">Class</label>
+        <select class="form-select" name="ClassId" onchange="this.form.submit()" disabled="@(Model.Classes.Count == 0)">
+            <option value="">(Select a class)</option>
+            @foreach (var classOption in Model.Classes)
+            {
+                <option value="@classOption.Id" selected="@(Model.ClassId == classOption.Id)">@classOption.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-6 col-md-3">
+        <label class="form-label">Subject</label>
+        <select class="form-select" name="SubjectId" onchange="this.form.submit()" disabled="@(Model.Subjects.Count == 0)">
+            <option value="">(Select a subject)</option>
+            @foreach (var subject in Model.Subjects)
+            {
+                <option value="@subject.Id" selected="@(Model.SubjectId == subject.Id)">@subject.Name</option>
+            }
+        </select>
+    </div>
+</form>
+
+@if (Model.ClassId == Guid.Empty)
+{
+    <div class="alert alert-info">Choose a school, academic year and class to continue.</div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="h6 mb-2">Assign New Homework</h2>
+            <form method="post" asp-page-handler="CreateHomework" class="row g-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                <input type="hidden" name="SelectedAssignmentId" value="@Model.SelectedAssignmentId" />
+                <div class="col-12 col-sm-6"><input class="form-control" asp-for="NewHomework.TitleEn" placeholder="Title (English)" /></div>
+                <div class="col-12 col-sm-6"><input class="form-control" asp-for="NewHomework.TitleDv" placeholder="Title (Dhivehi)" /></div>
+                <div class="col-12 col-sm-6"><textarea class="form-control" rows="3" asp-for="NewHomework.InstructionsEn" placeholder="Instructions (English)"></textarea></div>
+                <div class="col-12 col-sm-6"><textarea class="form-control" rows="3" asp-for="NewHomework.InstructionsDv" placeholder="Instructions (Dhivehi)"></textarea></div>
+                <div class="col-6 col-sm-4">
+                    <label class="form-label">Assigned date</label>
+                    <input type="date" class="form-control" asp-for="NewHomework.AssignedDate" />
+                </div>
+                <div class="col-6 col-sm-4">
+                    <label class="form-label">Due date</label>
+                    <input type="date" class="form-control" asp-for="NewHomework.DueDate" />
+                </div>
+                <div class="col-12 col-sm-4">
+                    <label class="form-label">Max score</label>
+                    <input type="number" class="form-control" asp-for="NewHomework.MaxScore" placeholder="Optional" />
+                </div>
+                <div class="col-12"><button type="submit" class="btn btn-primary mt-2">Assign Homework</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="h6 mb-2">Assigned Homework</h2>
+            @if (Model.HomeworkItems.Count == 0)
+            {
+                <p class="text-secondary mb-0">No homework assigned to this class yet.</p>
+            }
+            else
+            {
+                <table class="table table-hover table-sm align-middle mb-0">
+                    <thead><tr><th>Title</th><th>Assigned</th><th>Due</th><th>Max Score</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var item in Model.HomeworkItems)
+                        {
+                            <tr class="@(Model.SelectedAssignmentId == item.Id ? "table-active" : "")">
+                                <td>@item.TitleEn</td>
+                                <td>@item.AssignedDate.ToString("yyyy-MM-dd")</td>
+                                <td>@item.DueDate.ToString("yyyy-MM-dd")</td>
+                                <td>@(item.MaxScore?.ToString() ?? "—")</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       href="?SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&ClassId=@Model.ClassId&SubjectId=@Model.SubjectId&SelectedAssignmentId=@item.Id">
+                                        View Submissions
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    @if (Model.SelectedAssignmentId is { } homeworkId)
+    {
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6 mb-2">Submissions</h2>
+                @if (Model.SubmissionRows.Count == 0)
+                {
+                    <p class="text-secondary mb-0">No student in this class has submitted yet.</p>
+                }
+                else
+                {
+                    <table class="table table-hover table-sm align-middle mb-0">
+                        <thead>
+                            <tr><th>Student</th><th>Status</th><th>Submitted</th><th>Score</th><th>Feedback</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.SubmissionRows)
+                            {
+                                <tr>
+                                    <td>@row.StudentName</td>
+                                    <td>@row.Status</td>
+                                    <td>@row.SubmittedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>
+                                        <input form="grade-@row.SubmissionId" type="number" class="form-control form-control-sm"
+                                               name="GradeForm.Score" value="@row.Score" />
+                                    </td>
+                                    <td>
+                                        <input form="grade-@row.SubmissionId" class="form-control form-control-sm"
+                                               name="GradeForm.FeedbackText" value="@row.FeedbackText" />
+                                    </td>
+                                    <td>
+                                        <form id="grade-@row.SubmissionId" method="post" asp-page-handler="GradeSubmission" class="d-flex">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                            <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                            <input type="hidden" name="ClassId" value="@Model.ClassId" />
+                                            <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                                            <input type="hidden" name="SelectedAssignmentId" value="@homeworkId" />
+                                            <input type="hidden" name="GradeForm.SubmissionId" value="@row.SubmissionId" />
+                                            <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    }
+}
