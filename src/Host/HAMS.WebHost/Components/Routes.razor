@@ -1,6 +1,10 @@
 @using HAMS.WebHost.Components.Account
 
-<Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Client._Imports).Assembly }" NotFoundPage="typeof(Pages.NotFound)">
+@* NotFoundPage used to reference the (now-migrated-to-Razor-Pages) Pages.NotFound component by
+   type. Blazor's own 404 handling is unused now - app.UseStatusCodePagesWithReExecute("/not-found",
+   ...) in Program.cs re-executes any 404 (from this router or from a Razor Page) to the new
+   Pages/NotFound.cshtml uniformly, so no NotFoundPage parameter is needed here at all. *@
+<Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Client._Imports).Assembly }">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
             <NotAuthorized Context="authState">
