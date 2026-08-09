@@ -39,50 +39,30 @@ using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add services to the container. Server-rendered ("Interactive Server") components are gone as of
+// the frontend migration - every former staff/admin Blazor page is now a classic Razor Page (see
+// the frontend migration plan: MudBlazor's client-side circuit/focus-trap layer was an unfixable
+// source of focus/click-reliability bugs, and Razor Pages structurally can't have that bug class).
+// AddInteractiveWebAssemblyComponents() stays - the guardian/student portal (HAMS.WebHost.Client)
+// is a real, separate WASM app with its own pages, out of scope for this migration.
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
-// Classic server-rendered Razor Pages, added alongside the existing Blazor registrations above as
-// the app migrates its staff/admin UI off Blazor Server + MudBlazor (see the frontend migration
-// plan) — the two hosting models coexist on independent route trees during the page-by-page
-// rollout; each page migrates as an atomic swap (delete the .razor file, add the .cshtml pair
-// claiming the same route) rather than a big-bang cutover.
+// Razor Pages now serves the entire staff/admin surface.
 builder.Services.AddRazorPages();
 
-// Blazor Server's SignalR circuit was running on 100% framework defaults (15s keep-alive ping,
-// 30s client timeout), tuned for a direct connection - this app instead sits behind a Cloudflare
-// Tunnel hop, and real users are sometimes on flaky island/government-network connections. If
-// anything in that path (the tunnel, an intermediate proxy) has an idle-connection timeout close
-// to that 15s ping interval, or the round-trip is just slow, the circuit can silently drop and
-// reconnect - which tears down and recreates the ENTIRE rendered DOM, explaining reports of every
-// field (not just one component type) losing focus/input mid-interaction. Ping more often so the
-// connection never looks idle to an intermediate hop, and give reconnection far more slack before
-// giving up, so a several-second network hiccup reconnects silently instead of forcing a full
-// page reload.
-builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
-{
-    options.KeepAliveInterval = TimeSpan.FromSeconds(5);
-    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
-});
-builder.Services.Configure<Microsoft.AspNetCore.Components.Server.CircuitOptions>(options =>
-{
-    options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(5);
-    options.DisconnectedCircuitMaxRetained = 200;
-    options.JSInteropDefaultCallTimeout = TimeSpan.FromSeconds(60);
-});
-
-// Phase 12's Blazor Server admin UI: flows the Cookie-authenticated ClaimsPrincipal (see
-// IdentityAccessModule's .AddCookie call) into every interactive component via the standard
-// [CascadingParameter] Task<AuthenticationState> mechanism — deliberately NOT ICurrentUser's
-// IHttpContextAccessor, which isn't reliably populated once a Server-render circuit is running.
+// Flows the Cookie-authenticated ClaimsPrincipal into the portal's WASM components during their
+// server-side prerender pass via the standard [CascadingParameter] Task<AuthenticationState>
+// mechanism (the portal's own client-side pass then resolves its guardian/student auth state from
+// PortalAuthenticationStateProvider instead, registered below).
 builder.Services.AddCascadingAuthenticationState();
+// The guardian/student portal (HAMS.WebHost.Client) uses MudBlazor throughout - still needed here
+// too, since Blazor Web Apps instantiate a WASM component's services from the SERVER's DI
+// container during its server-side prerender pass (see the portal service registrations below).
 builder.Services.AddMudServices();
 
-// Real admin gating for the admin-only Blazor pages (Dashboard/Audit Log/Regulatory Reports) — see
-// SystemOrSchoolAdminPolicy.cs's own remarks for why a bare [Authorize] wasn't enough and a
-// scheme-restricted one doesn't work on a Razor component.
+// Real admin gating for the admin-only Razor Pages (Dashboard/Audit Log/Regulatory Reports) — see
+// SystemOrSchoolAdminPolicy.cs's own remarks for why a bare [Authorize] wasn't enough.
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(SystemOrSchoolAdminPolicy.Name, policy => policy.Requirements.Add(SystemOrSchoolAdminRequirement.Instance))
     .AddPolicy(StaffPolicy.Name, policy => policy.RequireClaim(HamsClaimTypes.IsStaff, "true"));
@@ -191,7 +171,6 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(HAMS.WebHost.Client._Imports).Assembly);
 app.MapRazorPages();

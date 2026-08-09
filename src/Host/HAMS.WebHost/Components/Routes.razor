@@ -6,7 +6,12 @@
    Pages/NotFound.cshtml uniformly, so no NotFoundPage parameter is needed here at all. *@
 <Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Client._Imports).Assembly }">
     <Found Context="routeData">
-        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+        @* MainLayout (the staff/admin Blazor Server shell) was deleted once every staff/admin page
+           had migrated to Razor Pages - every remaining routable component is a guardian/student
+           portal page, and all of them declare their own @layout PortalLayout explicitly, so this
+           fallback is never actually hit in practice. Points at PortalLayout rather than leaving a
+           dangling reference to the deleted MainLayout. *@
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Client.Layout.PortalLayout)">
             <NotAuthorized Context="authState">
                 @* Authenticated-but-forbidden must NOT redirect to login — that's just an
                    authenticated user hitting the login page again, which sends them straight back
