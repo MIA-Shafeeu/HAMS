@@ -1,0 +1,96 @@
+@page "/audit-log"
+@model HAMS.WebHost.Pages.Admin.AuditLogModel
+@using HAMS.Platform.Audit.Domain
+@{
+    ViewData["Title"] = "Audit Log";
+}
+
+<h1 class="h4 mb-4">Audit Log</h1>
+
+<form method="get" class="p-3 bg-white border rounded mb-4">
+    <div class="row g-2">
+        <div class="col-12 col-sm-6 col-md-3">
+            <label class="form-label">From date</label>
+            <input type="date" class="form-control" name="FromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <label class="form-label">To date</label>
+            <input type="date" class="form-control" name="ToDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <label class="form-label">Action</label>
+            <select class="form-select" name="Action">
+                <option value="">(Any action)</option>
+                @foreach (var action in Enum.GetValues<AuditAction>())
+                {
+                    <option value="@action" selected="@(Model.Action == action)">@action</option>
+                }
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+            <label class="form-label">Entity type</label>
+            <select class="form-select" name="EntityType">
+                <option value="">(Any entity type)</option>
+                @foreach (var entityType in Model.EntityTypes)
+                {
+                    <option value="@entityType" selected="@(Model.EntityType == entityType)">@entityType</option>
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label">Search summary text</label>
+            <input type="text" class="form-control" name="SearchText" value="@Model.SearchText" />
+        </div>
+        <div class="col-12 col-md-6 d-flex align-items-end justify-content-end gap-2">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a class="btn btn-outline-secondary" href="?">Clear</a>
+        </div>
+    </div>
+</form>
+
+<table class="table table-hover table-sm table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Occurred</th>
+            <th>Action</th>
+            <th>Entity</th>
+            <th>Actor</th>
+            <th>Summary</th>
+            <th>IP Address</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var entry in Model.Entries)
+        {
+            <tr>
+                <td>@entry.OccurredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                <td><span class="@AuditLogModel.ActionBadgeClass(entry.Action)">@entry.Action</span></td>
+                <td>@entry.EntityType @(string.IsNullOrEmpty(entry.EntityId) ? "" : $"#{entry.EntityId}")</td>
+                <td>@(entry.ActorPersonId?.ToString() ?? "(system)")</td>
+                <td>@entry.Summary</td>
+                <td>@(entry.IpAddress ?? "—")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Entries.Count == 0)
+{
+    <div class="alert alert-info">No audit entries match the current filters.</div>
+}
+
+@if (Model.TotalPages > 1)
+{
+    <nav>
+        <ul class="pagination">
+            @for (var p = 1; p <= Model.TotalPages; p++)
+            {
+                <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                    <a class="page-link" href="?FromDate=@Model.FromDate&ToDate=@Model.ToDate&Action=@Model.Action&EntityType=@Model.EntityType&SearchText=@Model.SearchText&PageNumber=@p&PageSize=@Model.PageSize">@p</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+<div class="text-secondary small">@Model.TotalCount total entries</div>
