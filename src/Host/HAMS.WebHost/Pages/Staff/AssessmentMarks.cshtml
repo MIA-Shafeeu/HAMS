@@ -1,0 +1,261 @@
+@page "/assessment-marks"
+@model HAMS.WebHost.Pages.Staff.AssessmentMarksModel
+@using HAMS.Platform.Workflow.Domain
+@{
+    ViewData["Title"] = "Assessment Marks & Moderation";
+    string StatusBadgeClass(WorkflowStatus status) => status switch
+    {
+        WorkflowStatus.Approved => "badge bg-success",
+        WorkflowStatus.Rejected => "badge bg-danger",
+        WorkflowStatus.Escalated => "badge bg-warning text-dark",
+        WorkflowStatus.Returned => "badge bg-warning text-dark",
+        _ => "badge bg-secondary",
+    };
+}
+
+<h1 class="h4 mb-4">Assessment Marks &amp; Moderation</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-12 col-sm-6 col-md-2">
+                <select class="form-select" name="SchoolId" onchange="this.form.submit()">
+                    <option value="">(Select a school)</option>
+                    @foreach (var school in Model.Schools)
+                    {
+                        <option value="@school.Id" selected="@(Model.SchoolId == school.Id)">@school.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <select class="form-select" name="AcademicYearId" onchange="this.form.submit()" disabled="@(Model.AcademicYears.Count == 0)">
+                    <option value="">(Select an academic year)</option>
+                    @foreach (var year in Model.AcademicYears)
+                    {
+                        <option value="@year.Id" selected="@(Model.AcademicYearId == year.Id)">@year.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <select class="form-select" name="GradeId" onchange="this.form.submit()" disabled="@(Model.Grades.Count == 0)">
+                    <option value="">(Select a grade)</option>
+                    @foreach (var grade in Model.Grades)
+                    {
+                        <option value="@grade.Id" selected="@(Model.GradeId == grade.Id)">@grade.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <select class="form-select" name="TermId" onchange="this.form.submit()" disabled="@(Model.Terms.Count == 0)">
+                    <option value="">(Select a term)</option>
+                    @foreach (var term in Model.Terms)
+                    {
+                        <option value="@term.Id" selected="@(Model.TermId == term.Id)">@term.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <select class="form-select" name="SubjectId" onchange="this.form.submit()" disabled="@(Model.Subjects.Count == 0)">
+                    <option value="">(Select a subject)</option>
+                    @foreach (var subject in Model.Subjects)
+                    {
+                        <option value="@subject.Id" selected="@(Model.SubjectId == subject.Id)">@subject.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <select class="form-select" name="AssessmentId" onchange="this.form.submit()" disabled="@(Model.Assessments.Count == 0)">
+                    <option value="">(Select an assessment)</option>
+                    @foreach (var assessment in Model.Assessments)
+                    {
+                        <option value="@assessment.Id" selected="@(Model.AssessmentId == assessment.Id)">@assessment.Title</option>
+                    }
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.Schools.Count == 0)
+{
+    <div class="alert alert-info">No schools yet — create one on the Org &amp; Academic Structure page first.</div>
+}
+
+@if (Model.AssessmentId == Guid.Empty)
+{
+    <div class="alert alert-info">Choose a school, year, grade, term, subject and assessment to continue.</div>
+}
+else if (Model.PolicyId is null)
+{
+    <div class="alert alert-warning">This grade has no published key-stage policy for this academic year — marks cannot be recorded yet.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Raw</th>
+                    <th>Adjusted</th>
+                    <th>Moderated</th>
+                    <th>Final</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td>@row.StudentName</td>
+                        <td>
+                            @if (row.ResultId is null)
+                            {
+                                <form method="post" asp-page-handler="RecordMark" class="d-flex gap-1">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                    <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                    <input type="hidden" name="TermId" value="@Model.TermId" />
+                                    <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                                    <input type="hidden" name="AssessmentId" value="@Model.AssessmentId" />
+                                    <input type="hidden" name="studentPersonId" value="@row.StudentPersonId" />
+                                    <input type="number" step="0.01" name="rawMark" class="form-control form-control-sm" style="max-width: 90px" />
+                                    <button type="submit" class="btn btn-sm btn-primary text-nowrap">Record</button>
+                                </form>
+                            }
+                            else
+                            {
+                                @(row.RawMark?.ToString() ?? "—")
+                            }
+                        </td>
+                        <td>@(row.AdjustedMark?.ToString() ?? "—")</td>
+                        <td>@(row.ModeratedMark?.ToString() ?? "—")</td>
+                        <td>@(row.FinalMark?.ToString() ?? "—")</td>
+                        <td>
+                            @if (row.ResultId is not null)
+                            {
+                                <span class="@StatusBadgeClass(row.Status)">@row.Status</span>
+                            }
+                        </td>
+                        <td>
+                            @if (row.ResultId is null)
+                            {
+                                @* Nothing here — the Raw column above already holds this row's only available action (Record). *@
+                            }
+                            else if (row.Status == WorkflowStatus.Draft || row.Status == WorkflowStatus.Returned)
+                            {
+                                <form method="post" asp-page-handler="Submit">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                    <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                    <input type="hidden" name="TermId" value="@Model.TermId" />
+                                    <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                                    <input type="hidden" name="AssessmentId" value="@Model.AssessmentId" />
+                                    <input type="hidden" name="resultId" value="@row.ResultId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Submit</button>
+                                </form>
+                            }
+                            else if (row.Status == WorkflowStatus.Submitted)
+                            {
+                                <form method="post" asp-page-handler="BeginReview">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                    <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                    <input type="hidden" name="TermId" value="@Model.TermId" />
+                                    <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                                    <input type="hidden" name="AssessmentId" value="@Model.AssessmentId" />
+                                    <input type="hidden" name="resultId" value="@row.ResultId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Begin Review</button>
+                                </form>
+                            }
+                            else if (row.Status == WorkflowStatus.UnderReview)
+                            {
+                                <div class="d-flex flex-wrap gap-1">
+                                    <form method="post" asp-page-handler="Approve">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                        <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                        <input type="hidden" name="TermId" value="@Model.TermId" />
+                                        <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                                        <input type="hidden" name="AssessmentId" value="@Model.AssessmentId" />
+                                        <input type="hidden" name="resultId" value="@row.ResultId" />
+                                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Reject">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                        <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                        <input type="hidden" name="TermId" value="@Model.TermId" />
+                                        <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                                        <input type="hidden" name="AssessmentId" value="@Model.AssessmentId" />
+                                        <input type="hidden" name="resultId" value="@row.ResultId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Return">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                        <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                        <input type="hidden" name="TermId" value="@Model.TermId" />
+                                        <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                                        <input type="hidden" name="AssessmentId" value="@Model.AssessmentId" />
+                                        <input type="hidden" name="resultId" value="@row.ResultId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">Return</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Escalate">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                        <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                        <input type="hidden" name="TermId" value="@Model.TermId" />
+                                        <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                                        <input type="hidden" name="AssessmentId" value="@Model.AssessmentId" />
+                                        <input type="hidden" name="resultId" value="@row.ResultId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">Escalate</button>
+                                    </form>
+                                </div>
+                            }
+                            else if (row.Status == WorkflowStatus.Escalated)
+                            {
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <form method="post" asp-page-handler="Approve">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                        <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                        <input type="hidden" name="TermId" value="@Model.TermId" />
+                                        <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                                        <input type="hidden" name="AssessmentId" value="@Model.AssessmentId" />
+                                        <input type="hidden" name="resultId" value="@row.ResultId" />
+                                        <button type="submit" class="btn btn-sm btn-success" disabled="@(!Model.IsAdmin)">Approve</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Reject">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                        <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                        <input type="hidden" name="TermId" value="@Model.TermId" />
+                                        <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                                        <input type="hidden" name="AssessmentId" value="@Model.AssessmentId" />
+                                        <input type="hidden" name="resultId" value="@row.ResultId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" disabled="@(!Model.IsAdmin)">Reject</button>
+                                    </form>
+                                    @if (!Model.IsAdmin)
+                                    {
+                                        <span class="text-secondary small">Escalated — only an administrator can decide this.</span>
+                                    }
+                                </div>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
