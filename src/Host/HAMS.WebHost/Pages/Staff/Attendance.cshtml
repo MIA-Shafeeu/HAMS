@@ -1,0 +1,98 @@
+@page "/attendance"
+@model HAMS.WebHost.Pages.Staff.AttendanceModel
+@{
+    ViewData["Title"] = "Daily Attendance";
+}
+
+<h1 class="h4 mb-4">Daily Attendance</h1>
+
+<form method="get" class="row g-2 mb-4">
+    <div class="col-12 col-sm-6 col-md-3">
+        <label class="form-label">School</label>
+        <select class="form-select" name="SchoolId" onchange="this.form.submit()">
+            <option value="">(Select a school)</option>
+            @foreach (var school in Model.Schools)
+            {
+                <option value="@school.Id" selected="@(Model.SchoolId == school.Id)">@school.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-6 col-md-3">
+        <label class="form-label">Academic year</label>
+        <select class="form-select" name="AcademicYearId" onchange="this.form.submit()" disabled="@(Model.AcademicYears.Count == 0)">
+            <option value="">(Select an academic year)</option>
+            @foreach (var year in Model.AcademicYears)
+            {
+                <option value="@year.Id" selected="@(Model.AcademicYearId == year.Id)">@year.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-6 col-md-3">
+        <label class="form-label">Class</label>
+        <select class="form-select" name="ClassId" onchange="this.form.submit()" disabled="@(Model.Classes.Count == 0)">
+            <option value="">(Select a class)</option>
+            @foreach (var cls in Model.Classes)
+            {
+                <option value="@cls.Id" selected="@(Model.ClassId == cls.Id)">@cls.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-6 col-md-3">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-control" name="Date" value="@Model.Date.ToString("yyyy-MM-dd")" onchange="this.form.submit()" />
+    </div>
+</form>
+
+@if (Model.ClassId == Guid.Empty)
+{
+    <div class="alert alert-info">Choose a school, academic year and class to load the roster.</div>
+}
+else if (Model.Roster.Count == 0)
+{
+    <div class="alert alert-info">No students are currently enrolled in this class.</div>
+}
+else
+{
+    <form method="post" asp-page-handler="SaveAttendance">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+        <input type="hidden" name="ClassId" value="@Model.ClassId" />
+        <input type="hidden" name="Date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+
+        <table class="table table-hover table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Admission No</th>
+                    <th>Student</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < Model.Roster.Count; i++)
+                {
+                    var entry = Model.Roster[i];
+                    <tr>
+                        <td>@entry.AdmissionNumber</td>
+                        <td>@entry.NameEn</td>
+                        <td>
+                            <input type="hidden" name="Rows[@i].StudentPersonId" value="@entry.StudentPersonId" />
+                            <select class="form-select form-select-sm" name="Rows[@i].StatusCode">
+                                @foreach (var status in Model.Statuses)
+                                {
+                                    <option value="@status.Code" selected="@(entry.StatusCode == status.Code)">@status.Name</option>
+                                }
+                            </select>
+                        </td>
+                        <td>
+                            <input class="form-control form-control-sm" name="Rows[@i].Notes" placeholder="Optional" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button type="submit" class="btn btn-primary mt-2">Save Attendance</button>
+    </form>
+}
