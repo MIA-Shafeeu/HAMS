@@ -1,0 +1,427 @@
+@page "/admin/people-enrollment"
+@model HAMS.WebHost.Pages.Admin.PeopleEnrollmentModel
+@using HAMS.PeopleEnrollment.Domain
+@{
+    ViewData["Title"] = "People & Enrollment";
+    string TabClass(string tab) => Model.Tab == tab ? "nav-link active" : "nav-link";
+    string PaneClass(string tab) => Model.Tab == tab ? "tab-pane fade show active" : "tab-pane fade";
+}
+
+<h1 class="h4 mb-4">System Administration — People &amp; Enrollment</h1>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item"><a class="@TabClass("atolls")" href="?tab=atolls&AtollsSelectedAtollId=@Model.AtollsSelectedAtollId">Atolls &amp; Islands</a></li>
+    <li class="nav-item"><a class="@TabClass("students")" href="?tab=students&StudentsSelectedPersonId=@Model.StudentsSelectedPersonId&StudentsEnrollSchoolId=@Model.StudentsEnrollSchoolId&StudentsEnrollAcademicYearId=@Model.StudentsEnrollAcademicYearId">Students</a></li>
+    <li class="nav-item"><a class="@TabClass("staff")" href="?tab=staff&StaffSelectedPersonId=@Model.StaffSelectedPersonId&StaffSelectedProfileId=@Model.StaffSelectedProfileId">Staff</a></li>
+    <li class="nav-item"><a class="@TabClass("guardians")" href="?tab=guardians">Guardians</a></li>
+</ul>
+
+<div class="tab-content">
+
+    @* ---------------- Atolls & Islands ---------------- *@
+    <div class="@PaneClass("atolls")">
+        <form method="post" asp-page-handler="CreateAtoll" class="row g-2 mb-4">
+            @Html.AntiForgeryToken()
+            <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewAtoll.Code" placeholder="Code" /></div>
+            <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewAtoll.NameEn" placeholder="Name (English)" /></div>
+            <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewAtoll.NameDv" placeholder="Name (Dhivehi)" /></div>
+            <div class="col-6 col-sm-2"><input type="number" class="form-control" asp-for="NewAtoll.DisplayOrder" placeholder="Order" /></div>
+            <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+        </form>
+
+        <table class="table table-hover table-sm align-middle mb-4">
+            <thead><tr><th>Code</th><th>Name</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var atoll in Model.Atolls)
+                {
+                    <tr>
+                        <td>@atoll.Code</td>
+                        <td>@atoll.NameEn</td>
+                        <td><a class="btn btn-sm btn-outline-primary" href="?tab=atolls&AtollsSelectedAtollId=@atoll.Id">Manage Islands</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.AtollsSelectedAtollId != Guid.Empty)
+        {
+            var selectedAtoll = Model.Atolls.SingleOrDefault(a => a.Id == Model.AtollsSelectedAtollId);
+            <h2 class="h6 mb-2">Islands — @selectedAtoll?.NameEn</h2>
+            <table class="table table-hover table-sm align-middle mb-3">
+                <thead><tr><th>Code</th><th>Name</th></tr></thead>
+                <tbody>
+                    @foreach (var island in Model.Islands)
+                    {
+                        <tr><td>@island.Code</td><td>@island.NameEn</td></tr>
+                    }
+                </tbody>
+            </table>
+            <form method="post" asp-page-handler="CreateIsland" class="row g-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="AtollsSelectedAtollId" value="@Model.AtollsSelectedAtollId" />
+                <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewIsland.Code" placeholder="Code" /></div>
+                <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewIsland.NameEn" placeholder="Name (English)" /></div>
+                <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewIsland.NameDv" placeholder="Name (Dhivehi)" /></div>
+                <div class="col-6 col-sm-2"><input type="number" class="form-control" asp-for="NewIsland.DisplayOrder" placeholder="Order" /></div>
+                <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+            </form>
+        }
+    </div>
+
+    @* ---------------- Students ---------------- *@
+    <div class="@PaneClass("students")">
+        <h2 class="h6 mb-2">Create Student</h2>
+        <form method="post" asp-page-handler="CreateStudent">
+            @Html.AntiForgeryToken()
+            <partial name="Shared/_PersonFields" for="NewStudentPerson" />
+            <div class="row g-2 my-2">
+                <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewStudentAdmissionNumber" placeholder="Admission Number" /></div>
+                <div class="col-12 col-sm-4"><input type="date" class="form-control" asp-for="NewStudentAdmissionDate" /></div>
+                <div class="col-12 col-sm-4"><button type="submit" class="btn btn-primary w-100">Create Student</button></div>
+            </div>
+        </form>
+
+        <table class="table table-hover table-sm align-middle my-4">
+            <thead><tr><th>Name</th><th>Admission No.</th><th>Admitted</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var student in Model.Students)
+                {
+                    <tr>
+                        <td>@student.NameEn</td>
+                        <td>@student.AdmissionNumber</td>
+                        <td>@student.AdmissionDate.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-primary" href="?tab=students&StudentsEditPersonId=@student.PersonId&StudentsSelectedPersonId=@Model.StudentsSelectedPersonId&StudentsEnrollSchoolId=@Model.StudentsEnrollSchoolId&StudentsEnrollAcademicYearId=@Model.StudentsEnrollAcademicYearId">Edit Person</a>
+                            <a class="btn btn-sm btn-outline-primary" href="?tab=students&StudentsSelectedPersonId=@student.PersonId">Manage</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.StudentsEditPersonId is not null)
+        {
+            <hr class="my-4" />
+            <h2 class="h6 mb-2">Edit Person</h2>
+            <form method="post" asp-page-handler="SaveStudentPersonEdit">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="StudentsEditPersonId" value="@Model.StudentsEditPersonId" />
+                <input type="hidden" name="StudentsSelectedPersonId" value="@Model.StudentsSelectedPersonId" />
+                <input type="hidden" name="StudentsEnrollSchoolId" value="@Model.StudentsEnrollSchoolId" />
+                <input type="hidden" name="StudentsEnrollAcademicYearId" value="@Model.StudentsEnrollAcademicYearId" />
+                <partial name="Shared/_PersonFields" for="EditStudentPersonForm" />
+                <div class="d-flex gap-2 my-2">
+                    <button type="submit" class="btn btn-success">Save</button>
+                    <a class="btn btn-outline-secondary" href="?tab=students&StudentsSelectedPersonId=@Model.StudentsSelectedPersonId&StudentsEnrollSchoolId=@Model.StudentsEnrollSchoolId&StudentsEnrollAcademicYearId=@Model.StudentsEnrollAcademicYearId">Cancel</a>
+                </div>
+            </form>
+        }
+
+        @if (Model.StudentsSelectedPersonId != Guid.Empty)
+        {
+            var selectedStudent = Model.Students.SingleOrDefault(s => s.PersonId == Model.StudentsSelectedPersonId);
+            <hr class="my-4" />
+            <h2 class="h6 mb-2">Enrollment — @selectedStudent?.NameEn</h2>
+            <table class="table table-hover table-sm align-middle mb-3">
+                <thead><tr><th>Grade</th><th>Class</th><th>From</th><th>To</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var enrollment in Model.Enrollments)
+                    {
+                        <tr>
+                            <td>@(Model.GradesForEnroll.SingleOrDefault(g => g.Id == enrollment.GradeId)?.Name ?? enrollment.GradeId.ToString())</td>
+                            <td>@(Model.ClassesForEnroll.SingleOrDefault(c => c.Id == enrollment.ClassId)?.Name ?? enrollment.ClassId.ToString())</td>
+                            <td>@enrollment.EffectiveFrom.ToString("yyyy-MM-dd")</td>
+                            <td>@(enrollment.EffectiveTo?.ToString("yyyy-MM-dd"))</td>
+                            <td>
+                                @if (enrollment.EffectiveTo is null)
+                                {
+                                    <form method="post" asp-page-handler="EndEnrollment" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="enrollmentId" value="@enrollment.Id" />
+                                        <input type="hidden" name="StudentsSelectedPersonId" value="@Model.StudentsSelectedPersonId" />
+                                        <input type="hidden" name="StudentsEnrollSchoolId" value="@Model.StudentsEnrollSchoolId" />
+                                        <input type="hidden" name="StudentsEnrollAcademicYearId" value="@Model.StudentsEnrollAcademicYearId" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">End (today)</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <form method="get" class="row g-2 mb-3">
+                <input type="hidden" name="tab" value="students" />
+                <input type="hidden" name="StudentsSelectedPersonId" value="@Model.StudentsSelectedPersonId" />
+                <div class="col-12 col-sm-6">
+                    <select class="form-select" name="StudentsEnrollSchoolId" onchange="this.form.submit()">
+                        <option value="">(Select a school)</option>
+                        @foreach (var school in Model.Schools)
+                        {
+                            <option value="@school.Id" selected="@(Model.StudentsEnrollSchoolId == school.Id)">@school.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6">
+                    <select class="form-select" name="StudentsEnrollAcademicYearId" onchange="this.form.submit()" disabled="@(Model.YearsForEnroll.Count == 0)">
+                        <option value="">(Select an academic year)</option>
+                        @foreach (var year in Model.YearsForEnroll)
+                        {
+                            <option value="@year.Id" selected="@(Model.StudentsEnrollAcademicYearId == year.Id)">@year.Name</option>
+                        }
+                    </select>
+                </div>
+            </form>
+
+            @if (Model.StudentsEnrollAcademicYearId != Guid.Empty)
+            {
+                <form method="post" asp-page-handler="Enroll" class="row g-2 mb-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="StudentsSelectedPersonId" value="@Model.StudentsSelectedPersonId" />
+                    <input type="hidden" name="StudentsEnrollSchoolId" value="@Model.StudentsEnrollSchoolId" />
+                    <input type="hidden" name="StudentsEnrollAcademicYearId" value="@Model.StudentsEnrollAcademicYearId" />
+                    <div class="col-12 col-sm-3">
+                        <select class="form-select" name="EnrollGradeId">
+                            <option value="">(Select a grade)</option>
+                            @foreach (var grade in Model.GradesForEnroll)
+                            {
+                                <option value="@grade.Id">@grade.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-3">
+                        <select class="form-select" name="EnrollClassId">
+                            <option value="">(Select a class)</option>
+                            @foreach (var cls in Model.ClassesForEnroll)
+                            {
+                                <option value="@cls.Id">@cls.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-3"><input type="date" class="form-control" asp-for="EnrollEffectiveFrom" /></div>
+                    <div class="col-12 col-sm-3"><button type="submit" class="btn btn-primary w-100">Enroll</button></div>
+                </form>
+            }
+
+            <h2 class="h6 mb-2">Guardian Relationships</h2>
+            <table class="table table-hover table-sm align-middle mb-3">
+                <thead><tr><th>Guardian</th><th>Type</th><th>Legal Auth.</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var relationship in Model.GuardianRelationships)
+                    {
+                        <tr>
+                            <td>@(Model.Guardians.SingleOrDefault(g => g.PersonId == relationship.GuardianPersonId)?.NameEn ?? relationship.GuardianPersonId.ToString())</td>
+                            <td>@(Model.RelationshipTypes.SingleOrDefault(t => t.Id == relationship.RelationshipTypeId)?.Name ?? relationship.RelationshipTypeId.ToString())</td>
+                            <td>@(relationship.HasLegalAuthority ? "Yes" : "No")</td>
+                            <td>@relationship.VerificationStatus</td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    @if (relationship.VerificationStatus == GuardianVerificationStatus.Pending)
+                                    {
+                                        <form method="post" asp-page-handler="VerifyRelationship" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="relationshipId" value="@relationship.Id" />
+                                            <input type="hidden" name="StudentsSelectedPersonId" value="@Model.StudentsSelectedPersonId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-success">Verify</button>
+                                        </form>
+                                        <form method="post" asp-page-handler="RejectRelationship" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="relationshipId" value="@relationship.Id" />
+                                            <input type="hidden" name="StudentsSelectedPersonId" value="@Model.StudentsSelectedPersonId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
+                                        </form>
+                                    }
+                                    @if (relationship.EffectiveTo is null)
+                                    {
+                                        <form method="post" asp-page-handler="CloseRelationship" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="relationshipId" value="@relationship.Id" />
+                                            <input type="hidden" name="StudentsSelectedPersonId" value="@Model.StudentsSelectedPersonId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Close (today)</button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <form method="post" asp-page-handler="EstablishRelationship" class="mb-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="StudentsSelectedPersonId" value="@Model.StudentsSelectedPersonId" />
+                <div class="row g-2 mb-2">
+                    <div class="col-12 col-sm-3">
+                        <select class="form-select" name="NewRelationship.GuardianPersonId">
+                            <option value="">(Select a guardian)</option>
+                            @foreach (var guardian in Model.Guardians)
+                            {
+                                <option value="@guardian.PersonId">@guardian.NameEn</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-3">
+                        <select class="form-select" name="NewRelationship.RelationshipTypeId">
+                            <option value="">(Select a relationship type)</option>
+                            @foreach (var type in Model.RelationshipTypes)
+                            {
+                                <option value="@type.Id">@type.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-3"><input type="date" class="form-control" asp-for="NewRelationship.EffectiveFrom" /></div>
+                    <div class="col-12 col-sm-3"><button type="submit" class="btn btn-primary w-100">Establish</button></div>
+                </div>
+                <div class="row g-2">
+                    <div class="col-6 col-sm-2 form-check">
+                        <input class="form-check-input" type="checkbox" name="NewRelationship.HasLegalAuthority" value="true" id="relLegalAuthority" />
+                        <label class="form-check-label" for="relLegalAuthority">Legal Authority</label>
+                    </div>
+                    <div class="col-6 col-sm-2 form-check">
+                        <input class="form-check-input" type="checkbox" name="NewRelationship.CanViewAcademic" value="true" id="relViewAcademic" />
+                        <label class="form-check-label" for="relViewAcademic">View Academic</label>
+                    </div>
+                    <div class="col-6 col-sm-2 form-check">
+                        <input class="form-check-input" type="checkbox" name="NewRelationship.CanViewAttendance" value="true" id="relViewAttendance" />
+                        <label class="form-check-label" for="relViewAttendance">View Attendance</label>
+                    </div>
+                    <div class="col-6 col-sm-2 form-check">
+                        <input class="form-check-input" type="checkbox" name="NewRelationship.CanViewBehaviour" value="true" id="relViewBehaviour" />
+                        <label class="form-check-label" for="relViewBehaviour">View Behaviour</label>
+                    </div>
+                    <div class="col-6 col-sm-2 form-check">
+                        <input class="form-check-input" type="checkbox" name="NewRelationship.CanViewIntervention" value="true" id="relViewIntervention" />
+                        <label class="form-check-label" for="relViewIntervention">View Intervention</label>
+                    </div>
+                    <div class="col-6 col-sm-2 form-check">
+                        <input class="form-check-input" type="checkbox" name="NewRelationship.CanReceiveNotifications" value="true" id="relNotifications" />
+                        <label class="form-check-label" for="relNotifications">Notifications</label>
+                    </div>
+                </div>
+            </form>
+        }
+    </div>
+
+    @* ---------------- Staff ---------------- *@
+    <div class="@PaneClass("staff")">
+        <h2 class="h6 mb-2">Create Staff Member</h2>
+        <form method="post" asp-page-handler="CreateStaff">
+            @Html.AntiForgeryToken()
+            <partial name="Shared/_PersonFields" for="NewStaffPerson" />
+            <div class="row g-2 my-2">
+                <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewStaffEmployeeNumber" placeholder="Employee Number" /></div>
+                <div class="col-12 col-sm-3"><input type="date" class="form-control" asp-for="NewStaffHireDate" /></div>
+                <div class="col-12 col-sm-3">
+                    <select class="form-select" name="NewStaffEmploymentStatusId">
+                        <option value="">(Select an employment status)</option>
+                        @foreach (var status in Model.EmploymentStatuses)
+                        {
+                            <option value="@status.Id">@status.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-3"><button type="submit" class="btn btn-primary w-100">Create Staff</button></div>
+            </div>
+        </form>
+
+        <table class="table table-hover table-sm align-middle my-4">
+            <thead><tr><th>Name</th><th>Employee No.</th><th>Hired</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var s in Model.Staff)
+                {
+                    <tr>
+                        <td>@s.NameEn</td>
+                        <td>@s.EmployeeNumber</td>
+                        <td>@s.HireDate.ToString("yyyy-MM-dd")</td>
+                        <td>@(Model.EmploymentStatuses.SingleOrDefault(x => x.Id == s.EmploymentStatusId)?.Name)</td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-primary" href="?tab=staff&StaffEditPersonId=@s.PersonId&StaffSelectedPersonId=@Model.StaffSelectedPersonId&StaffSelectedProfileId=@Model.StaffSelectedProfileId">Edit Person</a>
+                            <a class="btn btn-sm btn-outline-primary" href="?tab=staff&StaffSelectedPersonId=@s.PersonId&StaffSelectedProfileId=@s.Id">Manage Qualifications</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.StaffEditPersonId is not null)
+        {
+            <hr class="my-4" />
+            <h2 class="h6 mb-2">Edit Person</h2>
+            <form method="post" asp-page-handler="SaveStaffPersonEdit">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="StaffEditPersonId" value="@Model.StaffEditPersonId" />
+                <input type="hidden" name="StaffSelectedPersonId" value="@Model.StaffSelectedPersonId" />
+                <input type="hidden" name="StaffSelectedProfileId" value="@Model.StaffSelectedProfileId" />
+                <partial name="Shared/_PersonFields" for="EditStaffPersonForm" />
+                <div class="d-flex gap-2 my-2">
+                    <button type="submit" class="btn btn-success">Save</button>
+                    <a class="btn btn-outline-secondary" href="?tab=staff&StaffSelectedPersonId=@Model.StaffSelectedPersonId&StaffSelectedProfileId=@Model.StaffSelectedProfileId">Cancel</a>
+                </div>
+            </form>
+        }
+
+        @if (Model.StaffSelectedPersonId != Guid.Empty)
+        {
+            var selectedStaff = Model.Staff.SingleOrDefault(x => x.PersonId == Model.StaffSelectedPersonId);
+            <hr class="my-4" />
+            <h2 class="h6 mb-2">Qualifications — @selectedStaff?.NameEn</h2>
+            <table class="table table-hover table-sm align-middle mb-3">
+                <thead><tr><th>Title</th><th>Institution</th><th>Year</th></tr></thead>
+                <tbody>
+                    @foreach (var qualification in Model.Qualifications)
+                    {
+                        <tr><td>@qualification.Title</td><td>@qualification.AwardingInstitution</td><td>@qualification.YearAwarded</td></tr>
+                    }
+                </tbody>
+            </table>
+            <form method="post" asp-page-handler="AddQualification" class="row g-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="StaffSelectedPersonId" value="@Model.StaffSelectedPersonId" />
+                <input type="hidden" name="StaffSelectedProfileId" value="@Model.StaffSelectedProfileId" />
+                <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewQualification.Title" placeholder="Title" /></div>
+                <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewQualification.Institution" placeholder="Awarding Institution (optional)" /></div>
+                <div class="col-6 col-sm-2"><input type="number" class="form-control" asp-for="NewQualification.YearAwarded" placeholder="Year (optional)" /></div>
+                <div class="col-6 col-sm-2"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+            </form>
+        }
+    </div>
+
+    @* ---------------- Guardians ---------------- *@
+    <div class="@PaneClass("guardians")">
+        <h2 class="h6 mb-2">Create Guardian</h2>
+        <form method="post" asp-page-handler="CreateGuardian">
+            @Html.AntiForgeryToken()
+            <partial name="Shared/_PersonFields" for="NewGuardianPerson" />
+            <button type="submit" class="btn btn-primary my-2">Create Guardian</button>
+        </form>
+
+        <table class="table table-hover table-sm align-middle my-4">
+            <thead><tr><th>Name</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var guardian in Model.Guardians)
+                {
+                    <tr>
+                        <td>@guardian.NameEn</td>
+                        <td><a class="btn btn-sm btn-outline-primary" href="?tab=guardians&GuardiansEditPersonId=@guardian.PersonId">Edit Person</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.GuardiansEditPersonId is not null)
+        {
+            <hr class="my-4" />
+            <h2 class="h6 mb-2">Edit Person</h2>
+            <form method="post" asp-page-handler="SaveGuardianPersonEdit">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="GuardiansEditPersonId" value="@Model.GuardiansEditPersonId" />
+                <partial name="Shared/_PersonFields" for="EditGuardianPersonForm" />
+                <div class="d-flex gap-2 my-2">
+                    <button type="submit" class="btn btn-success">Save</button>
+                    <a class="btn btn-outline-secondary" href="?tab=guardians">Cancel</a>
+                </div>
+            </form>
+        }
+    </div>
+
+</div>

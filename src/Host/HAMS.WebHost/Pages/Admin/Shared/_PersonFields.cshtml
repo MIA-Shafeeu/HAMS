@@ -1,0 +1,56 @@
+@model HAMS.WebHost.Pages.Admin.Shared.PersonFieldsInput
+@*
+    Person Name/Address field set, shared by the Student/Staff/Guardian create forms and every tab's
+    own edit-person form in PeopleEnrollment.cshtml (6 instances, via <partial name="_PersonFields"
+    for="XxxPerson" />). Deliberately has no <form> tag and no @Html.AntiForgeryToken() of its own -
+    it always renders inside the CALLING page's own <form>, whose own token and asp-page-handler do
+    the actual submit.
+
+    The Atoll/Island cascade is the one dropdown pair on this whole page that genuinely needs the
+    hams-site.js AJAX cascade (data-hams-cascade-*) rather than OrgStructure's simpler full-page GET
+    reload: this partial sits inside a bigger Create/Edit-person form with a dozen sibling fields
+    (Name, address, phone...) already filled in, and a full-page reload on Atoll change would blow
+    all of that away. Every <select> still uses a plain name/id (never asp-for) so the manually
+    written `selected` markers stay in full control, matching every other select on this page.
+*@
+
+<div class="row g-2">
+    <div class="col-12 col-sm-4"><input class="form-control" asp-for="NameEn" placeholder="Name (English)" /></div>
+    <div class="col-12 col-sm-4"><input class="form-control" asp-for="NameDv" placeholder="Name (Dhivehi)" /></div>
+    <div class="col-12 col-sm-4"><input type="date" class="form-control" asp-for="DateOfBirth" /></div>
+
+    <div class="col-12 col-sm-3">
+        <select class="form-select" name="@Html.NameFor(m => m.AtollId)" id="@Html.IdFor(m => m.AtollId)"
+                data-hams-cascade-target="@Html.IdFor(m => m.IslandId)"
+                data-hams-cascade-url="@Url.Page(null, "Islands")"
+                data-hams-cascade-param="atollId"
+                data-hams-placeholder="(Select an atoll)">
+            <option value="">(Select an atoll)</option>
+            @foreach (var atoll in Model.Atolls)
+            {
+                <option value="@atoll.Id" selected="@(Model.AtollId == atoll.Id)">@atoll.NameEn</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-3">
+        <select class="form-select" name="@Html.NameFor(m => m.IslandId)" id="@Html.IdFor(m => m.IslandId)" data-hams-placeholder="(Select an island)">
+            <option value="">(Select an island)</option>
+            @foreach (var island in Model.Islands)
+            {
+                <option value="@island.Id" selected="@(Model.IslandId == island.Id)">@island.NameEn</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-3"><input class="form-control" asp-for="RoadEn" placeholder="Road (English)" /></div>
+    <div class="col-12 col-sm-3"><input class="form-control" asp-for="RoadDv" placeholder="Road (Dhivehi)" /></div>
+
+    <div class="col-12 col-sm-3"><input class="form-control" asp-for="HouseNameEn" placeholder="House Name (English)" /></div>
+    <div class="col-12 col-sm-3"><input class="form-control" asp-for="HouseNameDv" placeholder="House Name (Dhivehi)" /></div>
+    <div class="col-6 col-sm-2"><input class="form-control" asp-for="BuildingEn" placeholder="Building EN (optional)" /></div>
+    <div class="col-6 col-sm-2"><input class="form-control" asp-for="BuildingDv" placeholder="Building DV (optional)" /></div>
+    <div class="col-6 col-sm-1"><input class="form-control" asp-for="Floor" placeholder="Floor" /></div>
+    <div class="col-6 col-sm-1"><input class="form-control" asp-for="Apartment" placeholder="Apt." /></div>
+
+    <div class="col-12 col-sm-6"><input class="form-control" asp-for="PhoneNumber" placeholder="Phone (optional)" /></div>
+    <div class="col-12 col-sm-6"><input class="form-control" asp-for="Email" placeholder="Email (optional)" /></div>
+</div>
