@@ -1,0 +1,490 @@
+@page "/admin/assessment-evaluation-config"
+@model HAMS.WebHost.Pages.Admin.AssessmentEvaluationConfigModel
+@{
+    ViewData["Title"] = "Assessment & Evaluation Configuration";
+    string TabClass(string tab) => Model.Tab == tab ? "nav-link active" : "nav-link";
+    string PaneClass(string tab) => Model.Tab == tab ? "tab-pane fade show active" : "tab-pane fade";
+}
+
+<h1 class="h4 mb-4">System Administration — Assessment &amp; Evaluation Configuration</h1>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item"><a class="@TabClass("schemes")" href="?tab=schemes&SelectedSchemeId=@Model.SelectedSchemeId">Assessment Schemes</a></li>
+    <li class="nav-item"><a class="@TabClass("scales")" href="?tab=scales&SelectedGradeScaleId=@Model.SelectedGradeScaleId">Grade Scales</a></li>
+    <li class="nav-item"><a class="@TabClass("periods")" href="?tab=periods&SchoolId=@Model.SchoolId&AcademicYearIdForPeriods=@Model.AcademicYearIdForPeriods">Evaluation Periods</a></li>
+    <li class="nav-item"><a class="@TabClass("policies")" href="?tab=policies">Promotion Policies</a></li>
+    <li class="nav-item"><a class="@TabClass("assessments")" href="?tab=assessments&SchoolId=@Model.SchoolId&AcademicYearIdForAssessments=@Model.AcademicYearIdForAssessments&TermId=@Model.TermId&GradeId=@Model.GradeId&SubjectId=@Model.SubjectId">Assessments</a></li>
+</ul>
+
+<div class="tab-content">
+
+    @* ---------------- Assessment Schemes ---------------- *@
+    <div class="@PaneClass("schemes")">
+        <form method="post" asp-page-handler="CreateScheme" class="row g-2 mb-4">
+            @Html.AntiForgeryToken()
+            <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewScheme.Code" placeholder="Code" /></div>
+            <div class="col-12 col-sm-6"><input class="form-control" asp-for="NewScheme.Name" placeholder="Name" /></div>
+            <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+        </form>
+
+        <table class="table table-hover table-sm align-middle mb-4">
+            <thead><tr><th>Code</th><th>Name</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var scheme in Model.Schemes)
+                {
+                    <tr>
+                        <td>@scheme.Code</td>
+                        @if (Model.EditSchemeId == scheme.Id)
+                        {
+                            <td>
+                                <form method="post" asp-page-handler="SaveSchemeEdit" class="d-flex gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="SelectedSchemeId" value="@Model.SelectedSchemeId" />
+                                    <input type="hidden" name="EditSchemeForm.Id" value="@scheme.Id" />
+                                    <input class="form-control form-control-sm" name="EditSchemeForm.Name" value="@scheme.Name" />
+                                    <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=schemes&SelectedSchemeId=@Model.SelectedSchemeId">Cancel</a>
+                                </form>
+                            </td>
+                            <td></td>
+                        }
+                        else
+                        {
+                            <td>@scheme.Name</td>
+                            <td>
+                                <a class="btn btn-sm btn-outline-primary" href="?tab=schemes&SelectedSchemeId=@Model.SelectedSchemeId&EditSchemeId=@scheme.Id">Edit</a>
+                                <a class="btn btn-sm btn-outline-primary" href="?tab=schemes&SelectedSchemeId=@scheme.Id">Manage Components</a>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.SelectedSchemeId != Guid.Empty)
+        {
+            var selectedScheme = Model.Schemes.SingleOrDefault(s => s.Id == Model.SelectedSchemeId);
+            <h2 class="h6 mb-2">Components — @selectedScheme?.Name</h2>
+            <table class="table table-hover table-sm align-middle mb-3">
+                <thead><tr><th>Category</th><th>Aggregation Rule</th><th>Weight %</th><th>Order</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var component in Model.SchemeComponents)
+                    {
+                        <tr>
+                            <td>@(Model.Categories.SingleOrDefault(c => c.Id == component.AssessmentCategoryId)?.Name)</td>
+                            <td>@(Model.AggregationRules.SingleOrDefault(r => r.Id == component.ResultAggregationRuleId)?.Name)</td>
+                            @if (Model.EditComponentId == component.Id)
+                            {
+                                <td><input form="editComponent-@component.Id" type="number" step="0.01" class="form-control form-control-sm" name="EditComponentForm.WeightPercentage" value="@component.WeightPercentage" /></td>
+                                <td><input form="editComponent-@component.Id" type="number" class="form-control form-control-sm" name="EditComponentForm.DisplayOrder" value="@component.DisplayOrder" /></td>
+                                <td>
+                                    <form id="editComponent-@component.Id" method="post" asp-page-handler="SaveComponentEdit" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SelectedSchemeId" value="@Model.SelectedSchemeId" />
+                                        <input type="hidden" name="EditComponentForm.Id" value="@component.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=schemes&SelectedSchemeId=@Model.SelectedSchemeId">Cancel</a>
+                                </td>
+                            }
+                            else
+                            {
+                                <td>@component.WeightPercentage</td>
+                                <td>@component.DisplayOrder</td>
+                                <td><a class="btn btn-sm btn-outline-primary" href="?tab=schemes&SelectedSchemeId=@Model.SelectedSchemeId&EditComponentId=@component.Id">Edit</a></td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <form method="post" asp-page-handler="AddComponent" class="row g-2 mb-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SelectedSchemeId" value="@Model.SelectedSchemeId" />
+                <div class="col-12 col-sm-3">
+                    <select class="form-select" asp-for="NewComponent.AssessmentCategoryCode">
+                        <option value="">(Select a category)</option>
+                        @foreach (var category in Model.Categories)
+                        {
+                            <option value="@category.Code">@category.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-3">
+                    <select class="form-select" asp-for="NewComponent.ResultAggregationRuleCode">
+                        <option value="">(Select an aggregation rule)</option>
+                        @foreach (var rule in Model.AggregationRules)
+                        {
+                            <option value="@rule.Code">@rule.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-sm-2"><input type="number" step="0.01" class="form-control" asp-for="NewComponent.WeightPercentage" placeholder="Weight %" /></div>
+                <div class="col-6 col-sm-2"><input type="number" class="form-control" asp-for="NewComponent.DisplayOrder" placeholder="Order" /></div>
+                <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+            </form>
+        }
+    </div>
+
+    @* ---------------- Grade Scales ---------------- *@
+    <div class="@PaneClass("scales")">
+        <form method="post" asp-page-handler="CreateScale" class="row g-2 mb-4">
+            @Html.AntiForgeryToken()
+            <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewScale.Code" placeholder="Code" /></div>
+            <div class="col-12 col-sm-6"><input class="form-control" asp-for="NewScale.Name" placeholder="Name" /></div>
+            <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+        </form>
+
+        <table class="table table-hover table-sm align-middle mb-4">
+            <thead><tr><th>Code</th><th>Name</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var scale in Model.GradeScales)
+                {
+                    <tr>
+                        <td>@scale.Code</td>
+                        @if (Model.EditScaleId == scale.Id)
+                        {
+                            <td>
+                                <form method="post" asp-page-handler="SaveScaleEdit" class="d-flex gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="SelectedGradeScaleId" value="@Model.SelectedGradeScaleId" />
+                                    <input type="hidden" name="EditScaleForm.Id" value="@scale.Id" />
+                                    <input class="form-control form-control-sm" name="EditScaleForm.Name" value="@scale.Name" />
+                                    <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=scales&SelectedGradeScaleId=@Model.SelectedGradeScaleId">Cancel</a>
+                                </form>
+                            </td>
+                            <td></td>
+                        }
+                        else
+                        {
+                            <td>@scale.Name</td>
+                            <td>
+                                <a class="btn btn-sm btn-outline-primary" href="?tab=scales&SelectedGradeScaleId=@Model.SelectedGradeScaleId&EditScaleId=@scale.Id">Edit</a>
+                                <a class="btn btn-sm btn-outline-primary" href="?tab=scales&SelectedGradeScaleId=@scale.Id">Manage Bands</a>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.SelectedGradeScaleId != Guid.Empty)
+        {
+            var selectedScale = Model.GradeScales.SingleOrDefault(s => s.Id == Model.SelectedGradeScaleId);
+            <h2 class="h6 mb-2">Bands — @selectedScale?.Name</h2>
+            <table class="table table-hover table-sm align-middle mb-3">
+                <thead><tr><th>Code</th><th>Name</th><th>Min %</th><th>Max %</th><th>Rank</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var band in Model.GradeBands)
+                    {
+                        <tr>
+                            <td>@band.Code</td>
+                            @if (Model.EditBandId == band.Id)
+                            {
+                                <td><input form="editBand-@band.Id" class="form-control form-control-sm" name="EditBandForm.Name" value="@band.Name" /></td>
+                                <td><input form="editBand-@band.Id" type="number" step="0.01" class="form-control form-control-sm" name="EditBandForm.MinPercentage" value="@band.MinPercentage" /></td>
+                                <td><input form="editBand-@band.Id" type="number" step="0.01" class="form-control form-control-sm" name="EditBandForm.MaxPercentage" value="@band.MaxPercentage" /></td>
+                                <td><input form="editBand-@band.Id" type="number" class="form-control form-control-sm" name="EditBandForm.Rank" value="@band.Rank" /></td>
+                                <td>
+                                    <form id="editBand-@band.Id" method="post" asp-page-handler="SaveBandEdit" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SelectedGradeScaleId" value="@Model.SelectedGradeScaleId" />
+                                        <input type="hidden" name="EditBandForm.Id" value="@band.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=scales&SelectedGradeScaleId=@Model.SelectedGradeScaleId">Cancel</a>
+                                </td>
+                            }
+                            else
+                            {
+                                <td>@band.Name</td>
+                                <td>@band.MinPercentage</td>
+                                <td>@band.MaxPercentage</td>
+                                <td>@band.Rank</td>
+                                <td><a class="btn btn-sm btn-outline-primary" href="?tab=scales&SelectedGradeScaleId=@Model.SelectedGradeScaleId&EditBandId=@band.Id">Edit</a></td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <form method="post" asp-page-handler="AddBand" class="row g-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SelectedGradeScaleId" value="@Model.SelectedGradeScaleId" />
+                <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewBand.Code" placeholder="Code" /></div>
+                <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewBand.Name" placeholder="Name" /></div>
+                <div class="col-6 col-sm-2"><input type="number" step="0.01" class="form-control" asp-for="NewBand.MinPercentage" placeholder="Min %" /></div>
+                <div class="col-6 col-sm-2"><input type="number" step="0.01" class="form-control" asp-for="NewBand.MaxPercentage" placeholder="Max %" /></div>
+                <div class="col-6 col-sm-2"><input type="number" class="form-control" asp-for="NewBand.Rank" placeholder="Rank" /></div>
+                <div class="col-6 col-sm-2"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+            </form>
+        }
+    </div>
+
+    @* ---------------- Evaluation Periods ---------------- *@
+    <div class="@PaneClass("periods")">
+        <form method="get" class="row g-2 mb-4">
+            <input type="hidden" name="tab" value="periods" />
+            <div class="col-12 col-sm-6">
+                <select class="form-select" name="SchoolId" onchange="this.form.submit()">
+                    <option value="">(Select a school)</option>
+                    @foreach (var school in Model.Schools)
+                    {
+                        <option value="@school.Id" selected="@(Model.SchoolId == school.Id)">@school.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6">
+                <select class="form-select" name="AcademicYearIdForPeriods" onchange="this.form.submit()" disabled="@(Model.AcademicYears.Count == 0)">
+                    <option value="">(Select an academic year)</option>
+                    @foreach (var year in Model.AcademicYears)
+                    {
+                        <option value="@year.Id" selected="@(Model.AcademicYearIdForPeriods == year.Id)">@year.Name</option>
+                    }
+                </select>
+            </div>
+        </form>
+        @if (Model.Schools.Count == 0)
+        {
+            <div class="alert alert-info">No schools yet — create one on the Org &amp; Academic Structure page first.</div>
+        }
+
+        @if (Model.AcademicYearIdForPeriods != Guid.Empty)
+        {
+            <table class="table table-hover table-sm align-middle mb-4">
+                <thead><tr><th>Code</th><th>Name</th><th>Start</th><th>End</th><th>Order</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var period in Model.EvaluationPeriods)
+                    {
+                        <tr>
+                            <td>@period.Code</td>
+                            @if (Model.EditPeriodId == period.Id)
+                            {
+                                <td><input form="editPeriod-@period.Id" class="form-control form-control-sm" name="EditPeriodForm.Name" value="@period.Name" /></td>
+                                <td><input form="editPeriod-@period.Id" type="date" class="form-control form-control-sm" name="EditPeriodForm.StartDate" value="@period.StartDate.ToString("yyyy-MM-dd")" /></td>
+                                <td><input form="editPeriod-@period.Id" type="date" class="form-control form-control-sm" name="EditPeriodForm.EndDate" value="@period.EndDate.ToString("yyyy-MM-dd")" /></td>
+                                <td><input form="editPeriod-@period.Id" type="number" class="form-control form-control-sm" name="EditPeriodForm.DisplayOrder" value="@period.DisplayOrder" /></td>
+                                <td>
+                                    <form id="editPeriod-@period.Id" method="post" asp-page-handler="SavePeriodEdit" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                        <input type="hidden" name="AcademicYearIdForPeriods" value="@Model.AcademicYearIdForPeriods" />
+                                        <input type="hidden" name="EditPeriodForm.Id" value="@period.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=periods&SchoolId=@Model.SchoolId&AcademicYearIdForPeriods=@Model.AcademicYearIdForPeriods">Cancel</a>
+                                </td>
+                            }
+                            else
+                            {
+                                <td>@period.Name</td>
+                                <td>@period.StartDate.ToString("yyyy-MM-dd")</td>
+                                <td>@period.EndDate.ToString("yyyy-MM-dd")</td>
+                                <td>@period.DisplayOrder</td>
+                                <td><a class="btn btn-sm btn-outline-primary" href="?tab=periods&SchoolId=@Model.SchoolId&AcademicYearIdForPeriods=@Model.AcademicYearIdForPeriods&EditPeriodId=@period.Id">Edit</a></td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <form method="post" asp-page-handler="CreatePeriod" class="row g-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                <input type="hidden" name="AcademicYearIdForPeriods" value="@Model.AcademicYearIdForPeriods" />
+                <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewPeriod.Code" placeholder="Code" /></div>
+                <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewPeriod.Name" placeholder="Name" /></div>
+                <div class="col-6 col-sm-2"><input type="date" class="form-control" asp-for="NewPeriod.StartDate" /></div>
+                <div class="col-6 col-sm-2"><input type="date" class="form-control" asp-for="NewPeriod.EndDate" /></div>
+                <div class="col-6 col-sm-1"><input type="number" class="form-control" asp-for="NewPeriod.DisplayOrder" placeholder="Order" /></div>
+                <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+            </form>
+        }
+    </div>
+
+    @* ---------------- Promotion Policies ---------------- *@
+    <div class="@PaneClass("policies")">
+        <form method="post" asp-page-handler="CreatePolicy" class="row g-2 mb-4">
+            @Html.AntiForgeryToken()
+            <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewPolicy.Code" placeholder="Code" /></div>
+            <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewPolicy.Name" placeholder="Name" /></div>
+            <div class="col-6 col-sm-3"><input type="number" class="form-control" asp-for="NewPolicy.MinimumRank" placeholder="Min. Rank" /></div>
+            <div class="col-6 col-sm-3"><input type="number" class="form-control" asp-for="NewPolicy.MinimumSubjects" placeholder="Min. Subjects to Clear" /></div>
+            <div class="col-12 col-sm-1"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+        </form>
+
+        <table class="table table-hover table-sm align-middle">
+            <thead><tr><th>Code</th><th>Name</th><th>Min. Rank</th><th>Min. Subjects</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var policy in Model.PromotionPolicies)
+                {
+                    <tr>
+                        <td>@policy.Code</td>
+                        @if (Model.EditPolicyId == policy.Id)
+                        {
+                            <td><input form="editPolicy-@policy.Id" class="form-control form-control-sm" name="EditPolicyForm.Name" value="@policy.Name" /></td>
+                            <td><input form="editPolicy-@policy.Id" type="number" class="form-control form-control-sm" name="EditPolicyForm.MinimumRank" value="@policy.MinimumRank" /></td>
+                            <td><input form="editPolicy-@policy.Id" type="number" class="form-control form-control-sm" name="EditPolicyForm.MinimumSubjects" value="@policy.MinimumSubjectsRequiredToClear" /></td>
+                            <td>
+                                <form id="editPolicy-@policy.Id" method="post" asp-page-handler="SavePolicyEdit" class="d-flex gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="EditPolicyForm.Id" value="@policy.Id" />
+                                    <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                </form>
+                                <a class="btn btn-sm btn-outline-secondary" href="?tab=policies">Cancel</a>
+                            </td>
+                        }
+                        else
+                        {
+                            <td>@policy.Name</td>
+                            <td>@policy.MinimumRank</td>
+                            <td>@policy.MinimumSubjectsRequiredToClear</td>
+                            <td><a class="btn btn-sm btn-outline-primary" href="?tab=policies&EditPolicyId=@policy.Id">Edit</a></td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* ---------------- Assessments ---------------- *@
+    <div class="@PaneClass("assessments")">
+        <form method="get" class="row g-2 mb-4">
+            <input type="hidden" name="tab" value="assessments" />
+            <div class="col-12 col-sm-3">
+                <select class="form-select" name="SchoolId" onchange="this.form.submit()">
+                    <option value="">(Select a school)</option>
+                    @foreach (var school in Model.Schools)
+                    {
+                        <option value="@school.Id" selected="@(Model.SchoolId == school.Id)">@school.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-3">
+                <select class="form-select" name="AcademicYearIdForAssessments" onchange="this.form.submit()" disabled="@(Model.AcademicYears.Count == 0)">
+                    <option value="">(Select an academic year)</option>
+                    @foreach (var year in Model.AcademicYears)
+                    {
+                        <option value="@year.Id" selected="@(Model.AcademicYearIdForAssessments == year.Id)">@year.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-3">
+                <select class="form-select" name="TermId" onchange="this.form.submit()" disabled="@(Model.Terms.Count == 0)">
+                    <option value="">(Select a term)</option>
+                    @foreach (var term in Model.Terms)
+                    {
+                        <option value="@term.Id" selected="@(Model.TermId == term.Id)">@term.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-3">
+                <select class="form-select" name="GradeId" onchange="this.form.submit()" disabled="@(Model.Grades.Count == 0)">
+                    <option value="">(Select a grade)</option>
+                    @foreach (var grade in Model.Grades)
+                    {
+                        <option value="@grade.Id" selected="@(Model.GradeId == grade.Id)">@grade.Name</option>
+                    }
+                </select>
+            </div>
+        </form>
+        @if (Model.Schools.Count == 0)
+        {
+            <div class="alert alert-info">No schools yet — create one on the Org &amp; Academic Structure page first.</div>
+        }
+
+        @if (Model.TermId != Guid.Empty && Model.GradeId != Guid.Empty)
+        {
+            <form method="get" class="mb-4">
+                <input type="hidden" name="tab" value="assessments" />
+                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                <input type="hidden" name="AcademicYearIdForAssessments" value="@Model.AcademicYearIdForAssessments" />
+                <input type="hidden" name="TermId" value="@Model.TermId" />
+                <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                <select class="form-select" name="SubjectId" onchange="this.form.submit()">
+                    <option value="">(Select a subject)</option>
+                    @foreach (var subject in Model.Subjects)
+                    {
+                        <option value="@subject.Id" selected="@(Model.SubjectId == subject.Id)">@subject.Name</option>
+                    }
+                </select>
+            </form>
+
+            @if (Model.SubjectId != Guid.Empty)
+            {
+                <table class="table table-hover table-sm align-middle mb-4">
+                    <thead><tr><th>Title</th><th>Category</th><th>Max Marks</th><th>Duration</th><th>Scheduled</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var assessment in Model.Assessments)
+                        {
+                            <tr>
+                                @if (Model.EditAssessmentId == assessment.Id)
+                                {
+                                    <td><input form="editAssessment-@assessment.Id" class="form-control form-control-sm" name="EditAssessmentForm.Title" value="@assessment.Title" /></td>
+                                    <td>@(Model.Categories.SingleOrDefault(c => c.Id == assessment.AssessmentCategoryId)?.Name)</td>
+                                    <td><input form="editAssessment-@assessment.Id" type="number" step="0.01" class="form-control form-control-sm" name="EditAssessmentForm.MaxMarks" value="@assessment.MaxMarks" /></td>
+                                    <td><input form="editAssessment-@assessment.Id" type="number" class="form-control form-control-sm" name="EditAssessmentForm.DurationMinutes" value="@assessment.DurationMinutes" /></td>
+                                    <td><input form="editAssessment-@assessment.Id" type="date" class="form-control form-control-sm" name="EditAssessmentForm.ScheduledDate" value="@assessment.ScheduledDate.ToString("yyyy-MM-dd")" /></td>
+                                    <td>
+                                        <form id="editAssessment-@assessment.Id" method="post" asp-page-handler="SaveAssessmentEdit" class="d-flex gap-2">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                            <input type="hidden" name="AcademicYearIdForAssessments" value="@Model.AcademicYearIdForAssessments" />
+                                            <input type="hidden" name="TermId" value="@Model.TermId" />
+                                            <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                            <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                                            <input type="hidden" name="EditAssessmentForm.Id" value="@assessment.Id" />
+                                            <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                        </form>
+                                        <a class="btn btn-sm btn-outline-secondary" href="?tab=assessments&SchoolId=@Model.SchoolId&AcademicYearIdForAssessments=@Model.AcademicYearIdForAssessments&TermId=@Model.TermId&GradeId=@Model.GradeId&SubjectId=@Model.SubjectId">Cancel</a>
+                                    </td>
+                                }
+                                else
+                                {
+                                    <td>@assessment.Title</td>
+                                    <td>@(Model.Categories.SingleOrDefault(c => c.Id == assessment.AssessmentCategoryId)?.Name)</td>
+                                    <td>@assessment.MaxMarks</td>
+                                    <td>@assessment.DurationMinutes</td>
+                                    <td>@assessment.ScheduledDate.ToString("yyyy-MM-dd")</td>
+                                    <td><a class="btn btn-sm btn-outline-primary" href="?tab=assessments&SchoolId=@Model.SchoolId&AcademicYearIdForAssessments=@Model.AcademicYearIdForAssessments&TermId=@Model.TermId&GradeId=@Model.GradeId&SubjectId=@Model.SubjectId&EditAssessmentId=@assessment.Id">Edit</a></td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <form method="post" asp-page-handler="CreateAssessment" class="row g-2 mb-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <input type="hidden" name="AcademicYearIdForAssessments" value="@Model.AcademicYearIdForAssessments" />
+                    <input type="hidden" name="TermId" value="@Model.TermId" />
+                    <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                    <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                    <div class="col-12 col-sm-3">
+                        <select class="form-select" asp-for="NewAssessment.AssessmentCategoryCode">
+                            <option value="">(Select a category)</option>
+                            @foreach (var category in Model.Categories)
+                            {
+                                <option value="@category.Code">@category.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewAssessment.Title" placeholder="Title" /></div>
+                    <div class="col-6 col-sm-2"><input type="number" step="0.01" class="form-control" asp-for="NewAssessment.MaxMarks" placeholder="Max Marks" /></div>
+                    <div class="col-6 col-sm-3"><input type="number" class="form-control" asp-for="NewAssessment.DurationMinutes" placeholder="Duration (min, optional)" /></div>
+                    <div class="col-12 col-sm-3">
+                        <select class="form-select" asp-for="NewAssessment.ExternalExaminationBoardCode">
+                            <option value="">(External board — optional)</option>
+                            @foreach (var board in Model.ExamBoards)
+                            {
+                                <option value="@board.Code">@board.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewAssessment.ExternalSyllabusCode" placeholder="External Syllabus Code (optional)" /></div>
+                    <div class="col-12 col-sm-3"><input type="date" class="form-control" asp-for="NewAssessment.ScheduledDate" /></div>
+                    <div class="col-12 col-sm-3"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+                </form>
+            }
+        }
+    </div>
+
+</div>
