@@ -1,0 +1,297 @@
+@page "/lesson-planning"
+@model HAMS.WebHost.Pages.Staff.LessonPlanningModel
+@{
+    ViewData["Title"] = "Lesson Planning";
+}
+
+<h1 class="h4 mb-4">Scheme of Work &amp; Lesson Planning</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label">School</label>
+                <select class="form-select" name="SchoolId" onchange="this.form.submit()">
+                    <option value="">(Select a school)</option>
+                    @foreach (var school in Model.Schools)
+                    {
+                        <option value="@school.Id" selected="@(Model.SchoolId == school.Id)">@school.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label">Academic year</label>
+                <select class="form-select" name="AcademicYearId" onchange="this.form.submit()" disabled="@(Model.AcademicYears.Count == 0)">
+                    <option value="">(Select an academic year)</option>
+                    @foreach (var year in Model.AcademicYears)
+                    {
+                        <option value="@year.Id" selected="@(Model.AcademicYearId == year.Id)">@year.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label">Grade</label>
+                <select class="form-select" name="GradeId" onchange="this.form.submit()" disabled="@(Model.Grades.Count == 0)">
+                    <option value="">(Select a grade)</option>
+                    @foreach (var grade in Model.Grades)
+                    {
+                        <option value="@grade.Id" selected="@(Model.GradeId == grade.Id)">@grade.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <label class="form-label">Subject</label>
+                <select class="form-select" name="SubjectId" onchange="this.form.submit()" disabled="@(Model.Subjects.Count == 0)">
+                    <option value="">(Select a subject)</option>
+                    @foreach (var subject in Model.Subjects)
+                    {
+                        <option value="@subject.Id" selected="@(Model.SubjectId == subject.Id)">@subject.Name</option>
+                    }
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.SubjectId == Guid.Empty || Model.GradeId == Guid.Empty || Model.AcademicYearId == Guid.Empty)
+{
+    <div class="alert alert-info">Choose a school, academic year, grade and subject to continue.</div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="h6 mb-2">Schemes of Work</h2>
+            @if (Model.Schemes.Count == 0)
+            {
+                <p class="text-secondary mb-3">No schemes of work yet for this subject, grade and year.</p>
+            }
+            else
+            {
+                <table class="table table-hover table-sm align-middle mb-3">
+                    <thead><tr><th>Title</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var scheme in Model.Schemes)
+                        {
+                            <tr>
+                                <td>@scheme.Title</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       href="?SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&GradeId=@Model.GradeId&SubjectId=@Model.SubjectId&SelectedSchemeId=@scheme.Id">
+                                        Open
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            <form method="post" asp-page-handler="CreateScheme" class="row g-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                <input type="hidden" name="SelectedSchemeId" value="@Model.SelectedSchemeId" />
+                <input type="hidden" name="SelectedSchemeItemId" value="@Model.SelectedSchemeItemId" />
+                <input type="hidden" name="SelectedTopicId" value="@Model.SelectedTopicId" />
+                <div class="col-12 col-sm-8"><input class="form-control" asp-for="NewScheme.Title" placeholder="New scheme title" /></div>
+                <div class="col-12 col-sm-4"><button type="submit" class="btn btn-primary w-100">Create Scheme</button></div>
+            </form>
+        </div>
+    </div>
+
+    @if (Model.SelectedSchemeId is { } schemeId)
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h6 mb-2">Curriculum Items in this Scheme</h2>
+                @if (Model.Items.Count == 0)
+                {
+                    <p class="text-secondary mb-3">No items yet in this scheme.</p>
+                }
+                else
+                {
+                    <table class="table table-hover table-sm align-middle mb-3">
+                        <thead><tr><th>Learning Outcome Id</th><th>Week</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var item in Model.Items)
+                            {
+                                <tr>
+                                    <td>@item.LearningOutcomeId</td>
+                                    <td>@item.PlannedWeekNumber</td>
+                                    <td>
+                                        <a class="btn btn-sm btn-outline-primary"
+                                           href="?SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&GradeId=@Model.GradeId&SubjectId=@Model.SubjectId&SelectedSchemeId=@schemeId&SelectedSchemeItemId=@item.Id">
+                                            Open
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                <form method="post" asp-page-handler="AddItem" class="row g-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                    <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                    <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                    <input type="hidden" name="SelectedSchemeId" value="@schemeId" />
+                    <input type="hidden" name="SelectedSchemeItemId" value="@Model.SelectedSchemeItemId" />
+                    <input type="hidden" name="SelectedTopicId" value="@Model.SelectedTopicId" />
+                    <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewItem.LearningOutcomeId" placeholder="Learning outcome id (GUID)" /></div>
+                    <div class="col-6 col-sm-3"><input type="number" class="form-control" asp-for="NewItem.PlannedWeekNumber" placeholder="Planned week #" /></div>
+                    <div class="col-6 col-sm-3"><input type="number" class="form-control" asp-for="NewItem.DisplayOrder" placeholder="Display order" /></div>
+                    <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Add Item</button></div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (Model.SelectedSchemeItemId is { } itemId)
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h6 mb-2">Teaching Topics</h2>
+                @if (Model.Topics.Count == 0)
+                {
+                    <p class="text-secondary mb-3">No teaching topics yet for this item.</p>
+                }
+                else
+                {
+                    <table class="table table-hover table-sm align-middle mb-3">
+                        <thead><tr><th>Name</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var topic in Model.Topics)
+                            {
+                                <tr>
+                                    <td>@topic.NameEn</td>
+                                    <td>
+                                        <a class="btn btn-sm btn-outline-primary"
+                                           href="?SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&GradeId=@Model.GradeId&SubjectId=@Model.SubjectId&SelectedSchemeId=@Model.SelectedSchemeId&SelectedSchemeItemId=@itemId&SelectedTopicId=@topic.Id">
+                                            Open
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                <form method="post" asp-page-handler="CreateTopic" class="row g-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                    <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                    <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                    <input type="hidden" name="SelectedSchemeId" value="@Model.SelectedSchemeId" />
+                    <input type="hidden" name="SelectedSchemeItemId" value="@itemId" />
+                    <input type="hidden" name="SelectedTopicId" value="@Model.SelectedTopicId" />
+                    <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewTopic.NameEn" placeholder="Topic name (English)" /></div>
+                    <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewTopic.NameDv" placeholder="Topic name (Dhivehi)" /></div>
+                    <div class="col-6 col-sm-2"><input type="number" class="form-control" asp-for="NewTopic.DisplayOrder" placeholder="Display order" /></div>
+                    <div class="col-6 col-sm-2"><button type="submit" class="btn btn-primary w-100">Add Topic</button></div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (Model.SelectedTopicId is { } topicId)
+    {
+        <div class="row">
+            <div class="col-12 col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h2 class="h6 mb-2">Lesson Plans</h2>
+                        @if (Model.LessonPlans.Count == 0)
+                        {
+                            <p class="text-secondary mb-3">No lesson plans yet for this topic.</p>
+                        }
+                        else
+                        {
+                            <table class="table table-hover table-sm align-middle mb-3">
+                                <thead><tr><th>Date</th><th>Objectives</th></tr></thead>
+                                <tbody>
+                                    @foreach (var plan in Model.LessonPlans)
+                                    {
+                                        <tr>
+                                            <td>@plan.PlannedDate.ToString("yyyy-MM-dd")</td>
+                                            <td>@plan.Objectives</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        <form method="post" asp-page-handler="CreateLessonPlan">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                            <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                            <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                            <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                            <input type="hidden" name="SelectedSchemeId" value="@Model.SelectedSchemeId" />
+                            <input type="hidden" name="SelectedSchemeItemId" value="@Model.SelectedSchemeItemId" />
+                            <input type="hidden" name="SelectedTopicId" value="@topicId" />
+                            <div class="mb-2">
+                                <label class="form-label">Planned date</label>
+                                <input type="date" class="form-control" asp-for="NewPlan.PlannedDate" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label">Objectives</label>
+                                <textarea class="form-control" asp-for="NewPlan.Objectives" rows="3"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Add Lesson Plan</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h2 class="h6 mb-2">Resources</h2>
+                        @if (Model.Resources.Count == 0)
+                        {
+                            <p class="text-secondary mb-3">No resources attached yet.</p>
+                        }
+                        else
+                        {
+                            <table class="table table-hover table-sm align-middle mb-3">
+                                <thead><tr><th>Title</th><th>Link</th></tr></thead>
+                                <tbody>
+                                    @foreach (var resource in Model.Resources)
+                                    {
+                                        <tr>
+                                            <td>@resource.TitleEn</td>
+                                            <td><a href="@resource.FileReference" target="_blank" rel="noopener">@resource.FileReference</a></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        <form method="post" asp-page-handler="AddResource" class="row g-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                            <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                            <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                            <input type="hidden" name="SubjectId" value="@Model.SubjectId" />
+                            <input type="hidden" name="SelectedSchemeId" value="@Model.SelectedSchemeId" />
+                            <input type="hidden" name="SelectedSchemeItemId" value="@Model.SelectedSchemeItemId" />
+                            <input type="hidden" name="SelectedTopicId" value="@topicId" />
+                            <div class="col-12 col-sm-6"><input class="form-control" asp-for="NewResource.TitleEn" placeholder="Title (English)" /></div>
+                            <div class="col-12 col-sm-6"><input class="form-control" asp-for="NewResource.TitleDv" placeholder="Title (Dhivehi)" /></div>
+                            <div class="col-12 col-sm-6">
+                                <select class="form-select" asp-for="NewResource.ResourceTypeCode">
+                                    @foreach (var type in Model.ResourceTypes)
+                                    {
+                                        <option value="@type.Code">@type.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-12 col-sm-6"><input class="form-control" asp-for="NewResource.FileReference" placeholder="Link or file path" /></div>
+                            <div class="col-12"><button type="submit" class="btn btn-primary mt-2">Add Resource</button></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
