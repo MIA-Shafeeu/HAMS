@@ -1,0 +1,71 @@
+@page "/admin/notifications"
+@model HAMS.WebHost.Pages.Admin.NotificationMonitorModel
+@using HAMS.Platform.Notifications.Domain
+@{
+    ViewData["Title"] = "Notification Outbox";
+    string StatusBadgeClass(NotificationDeliveryStatus status) => status switch
+    {
+        NotificationDeliveryStatus.Sent => "badge text-bg-success",
+        NotificationDeliveryStatus.Failed => "badge text-bg-danger",
+        _ => "badge text-bg-secondary",
+    };
+}
+
+<h1 class="h4 mb-4">Notification Outbox Monitor</h1>
+
+<form method="get" class="row g-2 mb-4">
+    <div class="col-12 col-sm-4">
+        <select class="form-select" name="Status" onchange="this.form.submit()">
+            <option value="">(All statuses)</option>
+            <option value="@NotificationDeliveryStatus.Pending" selected="@(Model.Status == NotificationDeliveryStatus.Pending)">Pending</option>
+            <option value="@NotificationDeliveryStatus.Sent" selected="@(Model.Status == NotificationDeliveryStatus.Sent)">Sent</option>
+            <option value="@NotificationDeliveryStatus.Failed" selected="@(Model.Status == NotificationDeliveryStatus.Failed)">Failed</option>
+        </select>
+    </div>
+</form>
+
+<table class="table table-hover table-sm align-middle">
+    <thead>
+        <tr>
+            <th>Channel</th>
+            <th>Recipient</th>
+            <th>Subject</th>
+            <th>Status</th>
+            <th>Attempts</th>
+            <th>Last Error</th>
+            <th>Created</th>
+            <th>Sent</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var entry in Model.Entries)
+        {
+            <tr>
+                <td>@entry.ChannelCode</td>
+                <td>@entry.Recipient</td>
+                <td>@entry.Subject</td>
+                <td><span class="@StatusBadgeClass(entry.Status)">@entry.Status</span></td>
+                <td>@entry.AttemptCount</td>
+                <td>@entry.LastError</td>
+                <td>@entry.CreatedAtUtc.LocalDateTime.ToString("g")</td>
+                <td>@(entry.SentAtUtc?.LocalDateTime.ToString("g") ?? "—")</td>
+                <td>
+                    @if (entry.Status == NotificationDeliveryStatus.Failed)
+                    {
+                        <form method="post" asp-page-handler="Retry" asp-route-id="@entry.Id">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="Status" value="@Model.Status" />
+                            <button type="submit" class="btn btn-sm btn-outline-warning">Retry</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Entries.Count == 0)
+{
+    <div class="alert alert-info">No notification outbox entries match the current filter.</div>
+}
