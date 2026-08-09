@@ -1,0 +1,354 @@
+@page "/admin/curriculum-setup"
+@model HAMS.WebHost.Pages.Admin.CurriculumSetupModel
+@using HAMS.Platform.Common.Contracts
+@{
+    ViewData["Title"] = "Curriculum Setup";
+    string TabClass(string tab) => Model.Tab == tab ? "nav-link active" : "nav-link";
+    string PaneClass(string tab) => Model.Tab == tab ? "tab-pane fade show active" : "tab-pane fade";
+}
+
+<h1 class="h4 mb-4">System Administration — Curriculum Setup</h1>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item"><a class="@TabClass("frameworks")" href="?tab=frameworks">Curriculum Frameworks</a></li>
+    <li class="nav-item"><a class="@TabClass("learning-areas")" href="?tab=learning-areas">Learning Areas</a></li>
+    <li class="nav-item"><a class="@TabClass("subjects")" href="?tab=subjects&SubjectsSchoolId=@Model.SubjectsSchoolId">Subjects</a></li>
+    <li class="nav-item">
+        <a class="@TabClass("syllabus")" href="?tab=syllabus&SyllabusSchoolId=@Model.SyllabusSchoolId&SyllabusSubjectId=@Model.SyllabusSubjectId&SyllabusSelectedId=@Model.SyllabusSelectedId">Syllabus</a>
+    </li>
+</ul>
+
+<div class="tab-content">
+
+    @* ---------------- Curriculum Frameworks ---------------- *@
+    <div class="@PaneClass("frameworks")">
+        <form method="post" asp-page-handler="CreateFramework" class="row g-2 mb-4">
+            @Html.AntiForgeryToken()
+            <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewFramework.Code" placeholder="Code" /></div>
+            <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewFramework.Name" placeholder="Name" /></div>
+            <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewFramework.Description" placeholder="Description (optional)" /></div>
+            <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+        </form>
+
+        <table class="table table-hover table-sm align-middle">
+            <thead><tr><th>Code</th><th>Name</th><th>Description</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var framework in Model.Frameworks)
+                {
+                    <tr>
+                        <td>@framework.Code</td>
+                        @if (Model.EditFrameworkId == framework.Id)
+                        {
+                            <td><input form="editFramework-@framework.Id" class="form-control form-control-sm" name="EditFrameworkForm.Name" value="@framework.Name" /></td>
+                            <td><input form="editFramework-@framework.Id" class="form-control form-control-sm" name="EditFrameworkForm.Description" value="@framework.Description" /></td>
+                            <td>
+                                <form id="editFramework-@framework.Id" method="post" asp-page-handler="SaveFrameworkEdit" class="d-flex gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="EditFrameworkForm.Id" value="@framework.Id" />
+                                    <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                </form>
+                                <a class="btn btn-sm btn-outline-secondary" href="?tab=frameworks">Cancel</a>
+                            </td>
+                        }
+                        else
+                        {
+                            <td>@framework.Name</td>
+                            <td>@framework.Description</td>
+                            <td><a class="btn btn-sm btn-outline-primary" href="?tab=frameworks&EditFrameworkId=@framework.Id">Edit</a></td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* ---------------- Learning Areas ---------------- *@
+    <div class="@PaneClass("learning-areas")">
+        <form method="post" asp-page-handler="CreateLearningArea" class="row g-2 mb-4">
+            @Html.AntiForgeryToken()
+            <div class="col-12 col-sm-3">
+                <select class="form-select" name="NewLearningArea.CurriculumFrameworkId">
+                    <option value="">(Select a curriculum framework)</option>
+                    @foreach (var framework in Model.Frameworks)
+                    {
+                        <option value="@framework.Id">@framework.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewLearningArea.Code" placeholder="Code" /></div>
+            <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewLearningArea.Name" placeholder="Name" /></div>
+            <div class="col-6 col-sm-2"><input type="number" class="form-control" asp-for="NewLearningArea.DisplayOrder" placeholder="Order" /></div>
+            <div class="col-6 col-sm-2"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+        </form>
+
+        <table class="table table-hover table-sm align-middle">
+            <thead><tr><th>Order</th><th>Code</th><th>Name</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var area in Model.LearningAreas)
+                {
+                    <tr>
+                        @if (Model.EditLearningAreaId == area.Id)
+                        {
+                            <td><input form="editLearningArea-@area.Id" type="number" class="form-control form-control-sm" name="EditLearningAreaForm.DisplayOrder" value="@area.DisplayOrder" /></td>
+                            <td>@area.Code</td>
+                            <td><input form="editLearningArea-@area.Id" class="form-control form-control-sm" name="EditLearningAreaForm.Name" value="@area.Name" /></td>
+                            <td>
+                                <form id="editLearningArea-@area.Id" method="post" asp-page-handler="SaveLearningAreaEdit" class="d-flex gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="EditLearningAreaForm.Id" value="@area.Id" />
+                                    <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                </form>
+                                <a class="btn btn-sm btn-outline-secondary" href="?tab=learning-areas">Cancel</a>
+                            </td>
+                        }
+                        else
+                        {
+                            <td>@area.DisplayOrder</td>
+                            <td>@area.Code</td>
+                            <td>@area.Name</td>
+                            <td><a class="btn btn-sm btn-outline-primary" href="?tab=learning-areas&EditLearningAreaId=@area.Id">Edit</a></td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* ---------------- Subjects ---------------- *@
+    <div class="@PaneClass("subjects")">
+        <form method="get" class="mb-4">
+            <input type="hidden" name="tab" value="subjects" />
+            <select class="form-select" name="SubjectsSchoolId" onchange="this.form.submit()">
+                <option value="">(Select a school)</option>
+                @foreach (var school in Model.Schools)
+                {
+                    <option value="@school.Id" selected="@(Model.SubjectsSchoolId == school.Id)">@school.Name</option>
+                }
+            </select>
+        </form>
+        @if (Model.Schools.Count == 0)
+        {
+            <div class="alert alert-info">No schools yet — create one on the Org &amp; Academic Structure page first.</div>
+        }
+
+        @if (Model.SubjectsSchoolId != Guid.Empty)
+        {
+            <form method="post" asp-page-handler="CreateSubject" class="row g-2 mb-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SubjectsSchoolId" value="@Model.SubjectsSchoolId" />
+                <div class="col-12 col-sm-2">
+                    <select class="form-select" name="NewSubject.LearningAreaId">
+                        <option value="">(Select a learning area)</option>
+                        @foreach (var area in Model.LearningAreas)
+                        {
+                            <option value="@area.Id">@area.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewSubject.Code" placeholder="Code" /></div>
+                <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewSubject.Name" placeholder="Name" /></div>
+                <div class="col-6 col-sm-2">
+                    <select class="form-select" name="NewSubject.DeliveryModeId">
+                        <option value="">(Select a delivery mode)</option>
+                        @foreach (var mode in Model.DeliveryModes)
+                        {
+                            <option value="@mode.Id">@mode.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-sm-2">
+                    <select class="form-select" name="NewSubject.MediumId">
+                        <option value="">(Select a medium of instruction)</option>
+                        @foreach (var medium in Model.Mediums)
+                        {
+                            <option value="@medium.Id">@medium.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-1"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+            </form>
+
+            <table class="table table-hover table-sm align-middle">
+                <thead><tr><th>Order</th><th>Code</th><th>Name</th><th>Delivery Mode</th><th>Medium</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var subject in Model.Subjects)
+                    {
+                        <tr>
+                            @if (Model.EditSubjectId == subject.Id)
+                            {
+                                <td><input form="editSubject-@subject.Id" type="number" class="form-control form-control-sm" name="EditSubjectForm.DisplayOrder" value="@subject.DisplayOrder" /></td>
+                                <td>@subject.Code</td>
+                                <td><input form="editSubject-@subject.Id" class="form-control form-control-sm" name="EditSubjectForm.Name" value="@subject.Name" /></td>
+                                <td>
+                                    <select form="editSubject-@subject.Id" class="form-select form-select-sm" name="EditSubjectForm.DeliveryModeId">
+                                        <option value="">(Select a delivery mode)</option>
+                                        @foreach (var mode in Model.DeliveryModes)
+                                        {
+                                            <option value="@mode.Id" selected="@(subject.DeliveryModeId == mode.Id)">@mode.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <select form="editSubject-@subject.Id" class="form-select form-select-sm" name="EditSubjectForm.MediumId">
+                                        <option value="">(Select a medium of instruction)</option>
+                                        @foreach (var medium in Model.Mediums)
+                                        {
+                                            <option value="@medium.Id" selected="@(subject.DefaultMediumOfInstructionId == medium.Id)">@medium.Name</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <form id="editSubject-@subject.Id" method="post" asp-page-handler="SaveSubjectEdit" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="SubjectsSchoolId" value="@Model.SubjectsSchoolId" />
+                                        <input type="hidden" name="EditSubjectForm.Id" value="@subject.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=subjects&SubjectsSchoolId=@Model.SubjectsSchoolId">Cancel</a>
+                                </td>
+                            }
+                            else
+                            {
+                                <td>@subject.DisplayOrder</td>
+                                <td>@subject.Code</td>
+                                <td>@subject.Name</td>
+                                <td>@(Model.DeliveryModes.SingleOrDefault(m => m.Id == subject.DeliveryModeId)?.Name)</td>
+                                <td>@(Model.Mediums.SingleOrDefault(m => m.Id == subject.DefaultMediumOfInstructionId)?.Name)</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary" href="?tab=subjects&SubjectsSchoolId=@Model.SubjectsSchoolId&EditSubjectId=@subject.Id">Edit</a>
+                                    <a class="btn btn-sm btn-outline-primary" href="?tab=syllabus&SyllabusSchoolId=@Model.SubjectsSchoolId&SyllabusSubjectId=@subject.Id">Manage Syllabus</a>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    @* ---------------- Syllabus ---------------- *@
+    <div class="@PaneClass("syllabus")">
+        <div class="alert alert-info">
+            This is a thin wrapper over the existing syllabus publishing service — clone-on-publish versioning, not a curriculum-authoring tool.
+            Pick a subject from the Subjects tab ("Manage Syllabus"), or a school + subject below.
+        </div>
+
+        <form method="get" class="row g-2 mb-4">
+            <input type="hidden" name="tab" value="syllabus" />
+            <div class="col-12 col-sm-6">
+                <select class="form-select" name="SyllabusSchoolId" onchange="this.form.submit()">
+                    <option value="">(Select a school)</option>
+                    @foreach (var school in Model.Schools)
+                    {
+                        <option value="@school.Id" selected="@(Model.SyllabusSchoolId == school.Id)">@school.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6">
+                <select class="form-select" name="SyllabusSubjectId" onchange="this.form.submit()" disabled="@(Model.SyllabusSubjects.Count == 0)">
+                    <option value="">(Select a subject)</option>
+                    @foreach (var subject in Model.SyllabusSubjects)
+                    {
+                        <option value="@subject.Id" selected="@(Model.SyllabusSubjectId == subject.Id)">@subject.Name</option>
+                    }
+                </select>
+            </div>
+        </form>
+
+        @if (Model.SyllabusSubjectId != Guid.Empty)
+        {
+            <table class="table table-hover table-sm align-middle mb-4">
+                <thead><tr><th>Version</th><th>Status</th><th>Current</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var syllabus in Model.Syllabuses)
+                    {
+                        <tr>
+                            <td>@syllabus.Version</td>
+                            <td>@syllabus.Status</td>
+                            <td>@(syllabus.IsCurrent ? "Yes" : "")</td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    @if (syllabus.Status == RecordStatus.Draft)
+                                    {
+                                        <form method="post" asp-page-handler="PublishSyllabus" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="syllabusId" value="@syllabus.Id" />
+                                            <input type="hidden" name="SyllabusSchoolId" value="@Model.SyllabusSchoolId" />
+                                            <input type="hidden" name="SyllabusSubjectId" value="@Model.SyllabusSubjectId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-success">Publish</button>
+                                        </form>
+                                    }
+                                    <a class="btn btn-sm btn-outline-primary" href="?tab=syllabus&SyllabusSchoolId=@Model.SyllabusSchoolId&SyllabusSubjectId=@Model.SyllabusSubjectId&SyllabusSelectedId=@syllabus.Id">Manage</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (Model.Syllabuses.Count == 0)
+            {
+                <form method="post" asp-page-handler="CreateInitialDraft" class="mb-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SyllabusSchoolId" value="@Model.SyllabusSchoolId" />
+                    <input type="hidden" name="SyllabusSubjectId" value="@Model.SyllabusSubjectId" />
+                    <button type="submit" class="btn btn-primary">Create Initial Draft Syllabus</button>
+                </form>
+            }
+            else
+            {
+                var latest = Model.Syllabuses.OrderByDescending(s => s.Version).First();
+                <form method="post" asp-page-handler="CreateDraftRevision" class="mb-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="existingSyllabusId" value="@latest.Id" />
+                    <input type="hidden" name="SyllabusSchoolId" value="@Model.SyllabusSchoolId" />
+                    <input type="hidden" name="SyllabusSubjectId" value="@Model.SyllabusSubjectId" />
+                    <button type="submit" class="btn btn-outline-secondary">Create Draft Revision (from latest)</button>
+                </form>
+            }
+
+            @if (Model.SyllabusSelectedId != Guid.Empty)
+            {
+                var selectedSyllabus = Model.Syllabuses.SingleOrDefault(s => s.Id == Model.SyllabusSelectedId);
+                <hr class="my-4" />
+                <h2 class="h6 mb-2">Grade Applicability — Version @selectedSyllabus?.Version</h2>
+                <form method="post" asp-page-handler="AddGradeApplicability" class="row g-2 mb-3">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SyllabusSchoolId" value="@Model.SyllabusSchoolId" />
+                    <input type="hidden" name="SyllabusSubjectId" value="@Model.SyllabusSubjectId" />
+                    <input type="hidden" name="SyllabusSelectedId" value="@Model.SyllabusSelectedId" />
+                    <div class="col-12 col-sm-4">
+                        <select class="form-select" name="NewApplicabilityGradeId">
+                            <option value="">(Select a grade)</option>
+                            @foreach (var grade in Model.SyllabusGrades)
+                            {
+                                <option value="@grade.Id">@grade.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+                </form>
+                <div class="d-flex flex-wrap gap-2 mb-4">
+                    @foreach (var gradeId in Model.GradeApplicabilities.Select(a => a.GradeId))
+                    {
+                        <span class="badge text-bg-secondary">@(Model.SyllabusGrades.SingleOrDefault(g => g.Id == gradeId)?.Name ?? gradeId.ToString())</span>
+                    }
+                </div>
+
+                <h2 class="h6 mb-2">CSV Import (Strand/SubStrand/Outcome/Indicator)</h2>
+                <p class="text-body-secondary small">
+                    Header: StrandCode,StrandName,SubStrandCode,SubStrandName,OutcomeCode,OutcomeDescription,IndicatorCode,IndicatorDescription. Only valid for a Draft syllabus.
+                </p>
+                <form method="post" asp-page-handler="ImportCsv" enctype="multipart/form-data" class="row g-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SyllabusSchoolId" value="@Model.SyllabusSchoolId" />
+                    <input type="hidden" name="SyllabusSubjectId" value="@Model.SyllabusSubjectId" />
+                    <input type="hidden" name="SyllabusSelectedId" value="@Model.SyllabusSelectedId" />
+                    <div class="col-12 col-sm-6"><input type="file" class="form-control" name="CsvFile" accept=".csv" /></div>
+                    <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Import</button></div>
+                </form>
+            }
+        }
+    </div>
+
+</div>
