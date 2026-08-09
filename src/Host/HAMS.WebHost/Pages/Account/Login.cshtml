@@ -1,0 +1,40 @@
+@page "/account/login"
+@model HAMS.WebHost.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+
+<div class="account-page">
+    <div class="account-card">
+        <div class="account-brand">
+            <span class="account-brand-mark">HAMS</span>
+            <span class="account-brand-sub">Hirilandhoo Academic Management System</span>
+        </div>
+
+        <h1 class="account-title">Staff sign in</h1>
+
+        @if (Model.Error is not null)
+        {
+            <div class="account-alert" role="alert">@Model.Error</div>
+        }
+
+        <form method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="ReturnUrl" />
+
+            <div class="account-field">
+                <label asp-for="Credentials.UsernameOrEmail">Username or email</label>
+                <input asp-for="Credentials.UsernameOrEmail" autofocus />
+                <span asp-validation-for="Credentials.UsernameOrEmail" class="validation-message"></span>
+            </div>
+
+            <div class="account-field">
+                <label asp-for="Credentials.Password">Password</label>
+                <input asp-for="Credentials.Password" type="password" />
+                <span asp-validation-for="Credentials.Password" class="validation-message"></span>
+            </div>
+
+            <button type="submit" class="account-submit">Sign in</button>
+        </form>
+    </div>
+</div>

@@ -44,6 +44,13 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
+// Classic server-rendered Razor Pages, added alongside the existing Blazor registrations above as
+// the app migrates its staff/admin UI off Blazor Server + MudBlazor (see the frontend migration
+// plan) — the two hosting models coexist on independent route trees during the page-by-page
+// rollout; each page migrates as an atomic swap (delete the .razor file, add the .cshtml pair
+// claiming the same route) rather than a big-bang cutover.
+builder.Services.AddRazorPages();
+
 // Blazor Server's SignalR circuit was running on 100% framework defaults (15s keep-alive ping,
 // 30s client timeout), tuned for a direct connection - this app instead sits behind a Cloudflare
 // Tunnel hop, and real users are sometimes on flaky island/government-network connections. If
@@ -187,6 +194,7 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(HAMS.WebHost.Client._Imports).Assembly);
+app.MapRazorPages();
 
 app.MapAccountEndpoints();
 

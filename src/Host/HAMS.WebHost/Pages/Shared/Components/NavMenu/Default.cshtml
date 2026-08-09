@@ -1,0 +1,43 @@
+@model HAMS.WebHost.Pages.Shared.Components.NavMenu.NavMenuModel
+@{
+    bool IsActive(string href) => Context.Request.Path.StartsWithSegments(href);
+    string LinkClass(string href) => "nav-link hams-nav-link" + (IsActive(href) ? " active" : "");
+}
+
+<nav class="hams-sidebar-nav">
+    @if (Model.IsAdmin)
+    {
+        <a class="@LinkClass("/dashboard")" href="/dashboard">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+
+        <div class="hams-nav-group-title"><i class="bi bi-shield-lock"></i> System Administration</div>
+        <a class="@LinkClass("/admin/org-structure")" href="/admin/org-structure"><i class="bi bi-diagram-3"></i> Org &amp; Academic Structure</a>
+        <a class="@LinkClass("/admin/curriculum-setup")" href="/admin/curriculum-setup"><i class="bi bi-book"></i> Curriculum Setup</a>
+        <a class="@LinkClass("/admin/people-enrollment")" href="/admin/people-enrollment"><i class="bi bi-people"></i> People &amp; Enrollment</a>
+        <a class="@LinkClass("/admin/staff-accounts-roles")" href="/admin/staff-accounts-roles"><i class="bi bi-person-gear"></i> Staff Accounts &amp; Roles</a>
+        <a class="@LinkClass("/admin/teaching-assignments-timetable")" href="/admin/teaching-assignments-timetable"><i class="bi bi-calendar-week"></i> Teaching Assignments &amp; Timetable</a>
+        <a class="@LinkClass("/admin/assessment-evaluation-config")" href="/admin/assessment-evaluation-config"><i class="bi bi-clipboard-check"></i> Assessment &amp; Evaluation Config</a>
+        <a class="@LinkClass("/admin/reference-data")" href="/admin/reference-data"><i class="bi bi-list-ul"></i> Reference Data</a>
+        <a class="@LinkClass("/admin/notifications")" href="/admin/notifications"><i class="bi bi-bell"></i> Notification Outbox</a>
+    }
+
+    @if (Model.IsStaff)
+    {
+        <div class="hams-nav-group-title"><i class="bi bi-mortarboard"></i> Teaching</div>
+        <a class="@LinkClass("/attendance")" href="/attendance"><i class="bi bi-calendar-check"></i> Attendance</a>
+        <a class="@LinkClass("/homework")" href="/homework"><i class="bi bi-journal-text"></i> Homework</a>
+        <a class="@LinkClass("/assessment-marks")" href="/assessment-marks"><i class="bi bi-clipboard-check"></i> Assessment Marks</a>
+        <a class="@LinkClass("/behaviour-incidents")" href="/behaviour-incidents"><i class="bi bi-exclamation-triangle"></i> Behaviour</a>
+        <a class="@LinkClass("/intervention-cases")" href="/intervention-cases"><i class="bi bi-headset"></i> Intervention Cases</a>
+        <a class="@LinkClass("/lesson-planning")" href="/lesson-planning"><i class="bi bi-book"></i> Lesson Planning</a>
+        <a class="@LinkClass("/promotion-report-cards")" href="/promotion-report-cards"><i class="bi bi-award"></i> Promotion &amp; Report Cards</a>
+    }
+
+    @if (Model.IsAdmin)
+    {
+        <div class="hams-nav-group-title"><i class="bi bi-check2-square"></i> Regulatory</div>
+        <a class="@LinkClass("/audit-log")" href="/audit-log"><i class="bi bi-clock-history"></i> Audit Log</a>
+        <a class="@LinkClass("/reports")" href="/reports"><i class="bi bi-bar-chart"></i> Regulatory Reports</a>
+    }
+</nav>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] is not null ? $"{ViewData["Title"]} — HAMS" : "HAMS")</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/hams.css" />
+    <link rel="stylesheet" href="~/css/hams-layout.css" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <header class="hams-navbar navbar navbar-dark">
+        <div class="container-fluid">
+            <button class="btn hams-navbar-toggler d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#hamsSidebarOffcanvas" aria-controls="hamsSidebarOffcanvas" aria-label="Toggle navigation">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="navbar-brand mb-0">
+                HAMS <span class="hams-navbar-subtitle d-none d-sm-inline">Hirilandhoo Academic Management System</span>
+            </span>
+            <form method="post" action="/account/logout" class="ms-auto">
+                <button type="submit" class="btn btn-link hams-navbar-signout">
+                    <i class="bi bi-box-arrow-right"></i> Sign out
+                </button>
+            </form>
+        </div>
+    </header>
+
+    <div class="hams-shell">
+        <aside class="hams-sidebar d-none d-md-block">
+            @await Component.InvokeAsync("NavMenu")
+        </aside>
+
+        <div class="offcanvas offcanvas-start hams-sidebar-offcanvas d-md-none" tabindex="-1" id="hamsSidebarOffcanvas" aria-labelledby="hamsSidebarOffcanvasLabel">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title" id="hamsSidebarOffcanvasLabel">Menu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body p-0">
+                @await Component.InvokeAsync("NavMenu")
+            </div>
+        </div>
+
+        <main class="hams-main">
+            <div class="container-fluid hams-content">
+                @if (TempData["FlashMessage"] is string flashMessage)
+                {
+                    var severity = TempData["FlashSeverity"] as string ?? "success";
+                    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080">
+                        <div class="toast align-items-center text-bg-@severity border-0" role="alert" aria-live="assertive" aria-atomic="true" data-hams-autotoast>
+                            <div class="d-flex">
+                                <div class="toast-body">@flashMessage</div>
+                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                        </div>
+                    </div>
+                }
+                @RenderBody()
+            </div>
+        </main>
+    </div>
+}
+else
+{
+    @RenderBody()
+}
+
+<script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="~/js/hams-site.js"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

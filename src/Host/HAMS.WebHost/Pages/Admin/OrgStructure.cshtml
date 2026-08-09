@@ -1,0 +1,604 @@
+@page "/admin/org-structure"
+@model HAMS.WebHost.Pages.Admin.OrgStructureModel
+@using HAMS.Platform.Common.Contracts
+@{
+    ViewData["Title"] = "Org & Academic Structure";
+    string TabClass(string tab) => Model.Tab == tab ? "nav-link active" : "nav-link";
+    string PaneClass(string tab) => Model.Tab == tab ? "tab-pane fade show active" : "tab-pane fade";
+}
+
+<h1 class="h4 mb-4">System Administration — Org &amp; Academic Structure</h1>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item"><a class="@TabClass("schools")" href="?tab=schools">Schools</a></li>
+    <li class="nav-item"><a class="@TabClass("years")" href="?tab=years&YearsSchoolId=@Model.YearsSchoolId&TermsYearId=@Model.TermsYearId">Academic Years &amp; Terms</a></li>
+    <li class="nav-item"><a class="@TabClass("phases")" href="?tab=phases&PhasesSchoolId=@Model.PhasesSchoolId&SelectedPhaseId=@Model.SelectedPhaseId">Phases &amp; Key Stages</a></li>
+    <li class="nav-item"><a class="@TabClass("policies")" href="?tab=policies&PoliciesSchoolId=@Model.PoliciesSchoolId">Key Stage Policies</a></li>
+    <li class="nav-item"><a class="@TabClass("grades")" href="?tab=grades&GradesSchoolId=@Model.GradesSchoolId">Grades</a></li>
+    <li class="nav-item"><a class="@TabClass("classes")" href="?tab=classes&ClassesSchoolId=@Model.ClassesSchoolId&ClassesYearId=@Model.ClassesYearId">Classes</a></li>
+</ul>
+
+<div class="tab-content">
+
+    @* ---------------- Schools ---------------- *@
+    <div class="@PaneClass("schools")">
+        <form method="post" asp-page-handler="CreateSchool" class="row g-2 mb-4">
+            @Html.AntiForgeryToken()
+            <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewSchool.Code" placeholder="Code" /></div>
+            <div class="col-12 col-sm-6"><input class="form-control" asp-for="NewSchool.Name" placeholder="Name" /></div>
+            <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+        </form>
+
+        <table class="table table-hover table-sm align-middle mb-4">
+            <thead><tr><th>Code</th><th>Name</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var school in Model.Schools)
+                {
+                    <tr>
+                        <td>@school.Code</td>
+                        @if (Model.EditSchoolId == school.Id)
+                        {
+                            <td>
+                                <form method="post" asp-page-handler="SaveSchoolEdit" class="d-flex gap-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="CampusesSchoolId" value="@Model.CampusesSchoolId" />
+                                    <input type="hidden" name="EditSchoolForm.Id" value="@school.Id" />
+                                    <input class="form-control form-control-sm" name="EditSchoolForm.Name" value="@school.Name" />
+                                    <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=schools&CampusesSchoolId=@Model.CampusesSchoolId">Cancel</a>
+                                </form>
+                            </td>
+                            <td></td>
+                        }
+                        else
+                        {
+                            <td>@school.Name</td>
+                            <td>
+                                <a class="btn btn-sm btn-outline-primary" href="?tab=schools&CampusesSchoolId=@Model.CampusesSchoolId&EditSchoolId=@school.Id">Edit</a>
+                                <a class="btn btn-sm btn-outline-primary" href="?tab=schools&CampusesSchoolId=@school.Id">Manage Campuses</a>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (Model.CampusesSchoolId != Guid.Empty)
+        {
+            var selectedSchool = Model.Schools.SingleOrDefault(s => s.Id == Model.CampusesSchoolId);
+            <h2 class="h6 mb-2">Campuses — @selectedSchool?.Name</h2>
+            <table class="table table-hover table-sm align-middle mb-3">
+                <thead><tr><th>Code</th><th>Name</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var campus in Model.Campuses)
+                    {
+                        <tr>
+                            <td>@campus.Code</td>
+                            @if (Model.EditCampusId == campus.Id)
+                            {
+                                <td>
+                                    <form method="post" asp-page-handler="SaveCampusEdit" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="CampusesSchoolId" value="@Model.CampusesSchoolId" />
+                                        <input type="hidden" name="EditCampusForm.Id" value="@campus.Id" />
+                                        <input class="form-control form-control-sm" name="EditCampusForm.Name" value="@campus.Name" />
+                                        <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                        <a class="btn btn-sm btn-outline-secondary" href="?tab=schools&CampusesSchoolId=@Model.CampusesSchoolId">Cancel</a>
+                                    </form>
+                                </td>
+                                <td></td>
+                            }
+                            else
+                            {
+                                <td>@campus.Name</td>
+                                <td><a class="btn btn-sm btn-outline-primary" href="?tab=schools&CampusesSchoolId=@Model.CampusesSchoolId&EditCampusId=@campus.Id">Edit</a></td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <form method="post" asp-page-handler="CreateCampus" class="row g-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="CampusesSchoolId" value="@Model.CampusesSchoolId" />
+                <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewCampus.Code" placeholder="Code" /></div>
+                <div class="col-12 col-sm-6"><input class="form-control" asp-for="NewCampus.Name" placeholder="Name" /></div>
+                <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+            </form>
+        }
+    </div>
+
+    @* ---------------- Academic Years & Terms ---------------- *@
+    <div class="@PaneClass("years")">
+        <form method="get" class="mb-4">
+            <input type="hidden" name="tab" value="years" />
+            <select class="form-select" name="YearsSchoolId" onchange="this.form.submit()">
+                <option value="">(Select a school)</option>
+                @foreach (var school in Model.Schools)
+                {
+                    <option value="@school.Id" selected="@(Model.YearsSchoolId == school.Id)">@school.Name</option>
+                }
+            </select>
+        </form>
+        @if (Model.Schools.Count == 0)
+        {
+            <div class="alert alert-info">No schools yet — create one on the Schools tab first.</div>
+        }
+
+        @if (Model.YearsSchoolId != Guid.Empty)
+        {
+            <form method="post" asp-page-handler="CreateAcademicYear" class="row g-2 mb-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="YearsSchoolId" value="@Model.YearsSchoolId" />
+                <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewYear.Code" placeholder="Code" /></div>
+                <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewYear.Name" placeholder="Name" /></div>
+                <div class="col-6 col-sm-3"><input type="date" class="form-control" asp-for="NewYear.StartDate" /></div>
+                <div class="col-6 col-sm-3"><input type="date" class="form-control" asp-for="NewYear.EndDate" /></div>
+                <div class="col-12 col-sm-1"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+            </form>
+
+            <table class="table table-hover table-sm align-middle mb-4">
+                <thead><tr><th>Code</th><th>Name</th><th>Start</th><th>End</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var year in Model.YearsForYearsTab)
+                    {
+                        <tr>
+                            <td>@year.Code</td>
+                            @if (Model.EditYearId == year.Id)
+                            {
+                                <td><input form="editYear-@year.Id" class="form-control form-control-sm" name="EditYearForm.Name" value="@year.Name" /></td>
+                                <td><input form="editYear-@year.Id" type="date" class="form-control form-control-sm" name="EditYearForm.StartDate" value="@year.StartDate.ToString("yyyy-MM-dd")" /></td>
+                                <td><input form="editYear-@year.Id" type="date" class="form-control form-control-sm" name="EditYearForm.EndDate" value="@year.EndDate.ToString("yyyy-MM-dd")" /></td>
+                                <td>
+                                    <form id="editYear-@year.Id" method="post" asp-page-handler="SaveAcademicYearEdit" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="YearsSchoolId" value="@Model.YearsSchoolId" />
+                                        <input type="hidden" name="TermsYearId" value="@Model.TermsYearId" />
+                                        <input type="hidden" name="EditYearForm.Id" value="@year.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=years&YearsSchoolId=@Model.YearsSchoolId&TermsYearId=@Model.TermsYearId">Cancel</a>
+                                </td>
+                            }
+                            else
+                            {
+                                <td>@year.Name</td>
+                                <td>@year.StartDate.ToString("yyyy-MM-dd")</td>
+                                <td>@year.EndDate.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary" href="?tab=years&YearsSchoolId=@Model.YearsSchoolId&TermsYearId=@Model.TermsYearId&EditYearId=@year.Id">Edit</a>
+                                    <a class="btn btn-sm btn-outline-primary" href="?tab=years&YearsSchoolId=@Model.YearsSchoolId&TermsYearId=@year.Id">Manage Terms</a>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (Model.TermsYearId != Guid.Empty)
+            {
+                <h2 class="h6 mb-2">Terms</h2>
+                <table class="table table-hover table-sm align-middle mb-3">
+                    <thead><tr><th>Code</th><th>Name</th><th>Start</th><th>End</th><th>Order</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var term in Model.Terms)
+                        {
+                            <tr>
+                                <td>@term.Code</td>
+                                @if (Model.EditTermId == term.Id)
+                                {
+                                    <td><input form="editTerm-@term.Id" class="form-control form-control-sm" name="EditTermForm.Name" value="@term.Name" /></td>
+                                    <td><input form="editTerm-@term.Id" type="date" class="form-control form-control-sm" name="EditTermForm.StartDate" value="@term.StartDate.ToString("yyyy-MM-dd")" /></td>
+                                    <td><input form="editTerm-@term.Id" type="date" class="form-control form-control-sm" name="EditTermForm.EndDate" value="@term.EndDate.ToString("yyyy-MM-dd")" /></td>
+                                    <td><input form="editTerm-@term.Id" type="number" class="form-control form-control-sm" name="EditTermForm.DisplayOrder" value="@term.DisplayOrder" /></td>
+                                    <td>
+                                        <form id="editTerm-@term.Id" method="post" asp-page-handler="SaveTermEdit" class="d-flex gap-2">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="YearsSchoolId" value="@Model.YearsSchoolId" />
+                                            <input type="hidden" name="TermsYearId" value="@Model.TermsYearId" />
+                                            <input type="hidden" name="EditTermForm.Id" value="@term.Id" />
+                                            <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                        </form>
+                                        <a class="btn btn-sm btn-outline-secondary" href="?tab=years&YearsSchoolId=@Model.YearsSchoolId&TermsYearId=@Model.TermsYearId">Cancel</a>
+                                    </td>
+                                }
+                                else
+                                {
+                                    <td>@term.Name</td>
+                                    <td>@term.StartDate.ToString("yyyy-MM-dd")</td>
+                                    <td>@term.EndDate.ToString("yyyy-MM-dd")</td>
+                                    <td>@term.DisplayOrder</td>
+                                    <td><a class="btn btn-sm btn-outline-primary" href="?tab=years&YearsSchoolId=@Model.YearsSchoolId&TermsYearId=@Model.TermsYearId&EditTermId=@term.Id">Edit</a></td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <form method="post" asp-page-handler="CreateTerm" class="row g-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="YearsSchoolId" value="@Model.YearsSchoolId" />
+                    <input type="hidden" name="TermsYearId" value="@Model.TermsYearId" />
+                    <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewTerm.Code" placeholder="Code" /></div>
+                    <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewTerm.Name" placeholder="Name" /></div>
+                    <div class="col-6 col-sm-2"><input type="date" class="form-control" asp-for="NewTerm.StartDate" /></div>
+                    <div class="col-6 col-sm-2"><input type="date" class="form-control" asp-for="NewTerm.EndDate" /></div>
+                    <div class="col-6 col-sm-2"><input type="number" class="form-control" asp-for="NewTerm.DisplayOrder" placeholder="Order" /></div>
+                    <div class="col-6 col-sm-1"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+                </form>
+            }
+        }
+    </div>
+
+    @* ---------------- Phases & Key Stages ---------------- *@
+    <div class="@PaneClass("phases")">
+        <form method="get" class="mb-4">
+            <input type="hidden" name="tab" value="phases" />
+            <select class="form-select" name="PhasesSchoolId" onchange="this.form.submit()">
+                <option value="">(Select a school)</option>
+                @foreach (var school in Model.Schools)
+                {
+                    <option value="@school.Id" selected="@(Model.PhasesSchoolId == school.Id)">@school.Name</option>
+                }
+            </select>
+        </form>
+        @if (Model.Schools.Count == 0)
+        {
+            <div class="alert alert-info">No schools yet — create one on the Schools tab first.</div>
+        }
+
+        @if (Model.PhasesSchoolId != Guid.Empty)
+        {
+            <form method="post" asp-page-handler="CreatePhase" class="row g-2 mb-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="PhasesSchoolId" value="@Model.PhasesSchoolId" />
+                <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewPhase.Code" placeholder="Code" /></div>
+                <div class="col-12 col-sm-5"><input class="form-control" asp-for="NewPhase.Name" placeholder="Name" /></div>
+                <div class="col-8 col-sm-3"><input type="number" class="form-control" asp-for="NewPhase.DisplayOrder" placeholder="Display order" /></div>
+                <div class="col-4 col-sm-1"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+            </form>
+
+            <table class="table table-hover table-sm align-middle mb-4">
+                <thead><tr><th>Code</th><th>Name</th><th>Order</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var phase in Model.Phases)
+                    {
+                        <tr>
+                            <td>@phase.Code</td>
+                            @if (Model.EditPhaseId == phase.Id)
+                            {
+                                <td><input form="editPhase-@phase.Id" class="form-control form-control-sm" name="EditPhaseForm.Name" value="@phase.Name" /></td>
+                                <td><input form="editPhase-@phase.Id" type="number" class="form-control form-control-sm" name="EditPhaseForm.DisplayOrder" value="@phase.DisplayOrder" /></td>
+                                <td>
+                                    <form id="editPhase-@phase.Id" method="post" asp-page-handler="SavePhaseEdit" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="PhasesSchoolId" value="@Model.PhasesSchoolId" />
+                                        <input type="hidden" name="SelectedPhaseId" value="@Model.SelectedPhaseId" />
+                                        <input type="hidden" name="EditPhaseForm.Id" value="@phase.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=phases&PhasesSchoolId=@Model.PhasesSchoolId&SelectedPhaseId=@Model.SelectedPhaseId">Cancel</a>
+                                </td>
+                            }
+                            else
+                            {
+                                <td>@phase.Name</td>
+                                <td>@phase.DisplayOrder</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary" href="?tab=phases&PhasesSchoolId=@Model.PhasesSchoolId&SelectedPhaseId=@Model.SelectedPhaseId&EditPhaseId=@phase.Id">Edit</a>
+                                    <a class="btn btn-sm btn-outline-primary" href="?tab=phases&PhasesSchoolId=@Model.PhasesSchoolId&SelectedPhaseId=@phase.Id">Manage Key Stages</a>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (Model.SelectedPhaseId != Guid.Empty)
+            {
+                <h2 class="h6 mb-2">Key Stages</h2>
+                <table class="table table-hover table-sm align-middle mb-3">
+                    <thead><tr><th>Code</th><th>Name</th><th>Order</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var keyStage in Model.KeyStages)
+                        {
+                            <tr>
+                                <td>@keyStage.Code</td>
+                                @if (Model.EditKeyStageId == keyStage.Id)
+                                {
+                                    <td><input form="editKs-@keyStage.Id" class="form-control form-control-sm" name="EditKeyStageForm.Name" value="@keyStage.Name" /></td>
+                                    <td><input form="editKs-@keyStage.Id" type="number" class="form-control form-control-sm" name="EditKeyStageForm.DisplayOrder" value="@keyStage.DisplayOrder" /></td>
+                                    <td>
+                                        <form id="editKs-@keyStage.Id" method="post" asp-page-handler="SaveKeyStageEdit" class="d-flex gap-2">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="PhasesSchoolId" value="@Model.PhasesSchoolId" />
+                                            <input type="hidden" name="SelectedPhaseId" value="@Model.SelectedPhaseId" />
+                                            <input type="hidden" name="EditKeyStageForm.Id" value="@keyStage.Id" />
+                                            <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                        </form>
+                                        <a class="btn btn-sm btn-outline-secondary" href="?tab=phases&PhasesSchoolId=@Model.PhasesSchoolId&SelectedPhaseId=@Model.SelectedPhaseId">Cancel</a>
+                                    </td>
+                                }
+                                else
+                                {
+                                    <td>@keyStage.Name</td>
+                                    <td>@keyStage.DisplayOrder</td>
+                                    <td><a class="btn btn-sm btn-outline-primary" href="?tab=phases&PhasesSchoolId=@Model.PhasesSchoolId&SelectedPhaseId=@Model.SelectedPhaseId&EditKeyStageId=@keyStage.Id">Edit</a></td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <form method="post" asp-page-handler="CreateKeyStage" class="row g-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="PhasesSchoolId" value="@Model.PhasesSchoolId" />
+                    <input type="hidden" name="SelectedPhaseId" value="@Model.SelectedPhaseId" />
+                    <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewKeyStage.Code" placeholder="Code" /></div>
+                    <div class="col-12 col-sm-5"><input class="form-control" asp-for="NewKeyStage.Name" placeholder="Name" /></div>
+                    <div class="col-8 col-sm-3"><input type="number" class="form-control" asp-for="NewKeyStage.DisplayOrder" placeholder="Display order" /></div>
+                    <div class="col-4 col-sm-1"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+                </form>
+            }
+        }
+    </div>
+
+    @* ---------------- Key Stage Policies ---------------- *@
+    <div class="@PaneClass("policies")">
+        <div class="alert alert-info">
+            The evaluation-model cascade: set exactly one policy per key stage per academic year. Every grade assigned to that key stage automatically inherits it — this is the single most important configuration screen in the system.
+        </div>
+        <form method="get" class="row g-2 mb-4">
+            <input type="hidden" name="tab" value="policies" />
+            <div class="col-12 col-sm-6">
+                <select class="form-select" name="PoliciesSchoolId" onchange="this.form.submit()">
+                    <option value="">(Select a school)</option>
+                    @foreach (var school in Model.Schools)
+                    {
+                        <option value="@school.Id" selected="@(Model.PoliciesSchoolId == school.Id)">@school.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6">
+                <select class="form-select" name="PolicyKeyStageId" onchange="this.form.submit()" disabled="@(Model.AllKeyStagesForSchool.Count == 0)">
+                    <option value="">(Select a key stage)</option>
+                    @foreach (var keyStage in Model.AllKeyStagesForSchool)
+                    {
+                        <option value="@keyStage.Id" selected="@(Model.PolicyKeyStageId == keyStage.Id)">@keyStage.Name</option>
+                    }
+                </select>
+            </div>
+        </form>
+        @if (Model.Schools.Count == 0)
+        {
+            <div class="alert alert-info">No schools yet — create one on the Schools tab first.</div>
+        }
+
+        @if (Model.PoliciesSchoolId != Guid.Empty)
+        {
+            <form method="post" asp-page-handler="CreateKeyStagePolicy" class="row g-2 mb-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="PoliciesSchoolId" value="@Model.PoliciesSchoolId" />
+                <input type="hidden" name="PolicyKeyStageId" value="@Model.PolicyKeyStageId" />
+                <div class="col-12 col-sm-4">
+                    <select class="form-select" name="PolicyYearId">
+                        <option value="">(Select an academic year)</option>
+                        @foreach (var year in Model.YearsForPoliciesTab)
+                        {
+                            <option value="@year.Id" selected="@(Model.PolicyYearId == year.Id)">@year.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12 col-sm-4">
+                    <select class="form-select" asp-for="NewPolicy.EvaluationModelCode">
+                        <option value="MASTERY">Mastery</option>
+                        <option value="ASSESSMENT">Assessment</option>
+                        <option value="HYBRID">Hybrid</option>
+                    </select>
+                </div>
+                <div class="col-12 col-sm-4">
+                    <button type="submit" class="btn btn-primary w-100" @(Model.PolicyKeyStageId == Guid.Empty ? "disabled" : "")>Create Draft Policy</button>
+                </div>
+            </form>
+
+            @if (Model.KeyStagePolicies.Count > 0)
+            {
+                <table class="table table-hover table-sm align-middle">
+                    <thead><tr><th>Status</th><th>Current</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var policy in Model.KeyStagePolicies)
+                        {
+                            <tr>
+                                <td>@policy.Status</td>
+                                <td>@(policy.IsCurrent ? "Yes" : "No")</td>
+                                <td>
+                                    @if (policy.Status == RecordStatus.Draft)
+                                    {
+                                        <form method="post" asp-page-handler="PublishKeyStagePolicy">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="policyId" value="@policy.Id" />
+                                            <input type="hidden" name="PoliciesSchoolId" value="@Model.PoliciesSchoolId" />
+                                            <input type="hidden" name="PolicyKeyStageId" value="@Model.PolicyKeyStageId" />
+                                            <input type="hidden" name="PolicyYearId" value="@Model.PolicyYearId" />
+                                            <button type="submit" class="btn btn-sm btn-success">Publish</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </div>
+
+    @* ---------------- Grades ---------------- *@
+    <div class="@PaneClass("grades")">
+        <form method="get" class="mb-4">
+            <input type="hidden" name="tab" value="grades" />
+            <select class="form-select" name="GradesSchoolId" onchange="this.form.submit()">
+                <option value="">(Select a school)</option>
+                @foreach (var school in Model.Schools)
+                {
+                    <option value="@school.Id" selected="@(Model.GradesSchoolId == school.Id)">@school.Name</option>
+                }
+            </select>
+        </form>
+        @if (Model.Schools.Count == 0)
+        {
+            <div class="alert alert-info">No schools yet — create one on the Schools tab first.</div>
+        }
+
+        @if (Model.GradesSchoolId != Guid.Empty)
+        {
+            <form method="post" asp-page-handler="CreateGrade" class="row g-2 mb-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="GradesSchoolId" value="@Model.GradesSchoolId" />
+                <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewGrade.Code" placeholder="Code" /></div>
+                <div class="col-12 col-sm-5"><input class="form-control" asp-for="NewGrade.Name" placeholder="Name" /></div>
+                <div class="col-8 col-sm-3"><input type="number" class="form-control" asp-for="NewGrade.DisplayOrder" placeholder="Display order" /></div>
+                <div class="col-4 col-sm-1"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+            </form>
+
+            <table class="table table-hover table-sm align-middle">
+                <thead><tr><th>Code</th><th>Name</th><th>Order</th><th>Next Grade</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var grade in Model.Grades)
+                    {
+                        <tr>
+                            <td>@grade.Code</td>
+                            @if (Model.EditGradeId == grade.Id)
+                            {
+                                <td><input form="editGrade-@grade.Id" class="form-control form-control-sm" name="EditGradeForm.Name" value="@grade.Name" /></td>
+                                <td><input form="editGrade-@grade.Id" type="number" class="form-control form-control-sm" name="EditGradeForm.DisplayOrder" value="@grade.DisplayOrder" /></td>
+                                <td>-</td>
+                                <td>
+                                    <form id="editGrade-@grade.Id" method="post" asp-page-handler="SaveGradeEdit" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="GradesSchoolId" value="@Model.GradesSchoolId" />
+                                        <input type="hidden" name="EditGradeForm.Id" value="@grade.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=grades&GradesSchoolId=@Model.GradesSchoolId">Cancel</a>
+                                </td>
+                            }
+                            else
+                            {
+                                <td>@grade.Name</td>
+                                <td>@grade.DisplayOrder</td>
+                                <td>
+                                    <form method="post" asp-page-handler="SetNextGrade">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="GradesSchoolId" value="@Model.GradesSchoolId" />
+                                        <input type="hidden" name="gradeId" value="@grade.Id" />
+                                        <select class="form-select form-select-sm" name="nextGradeId" onchange="this.form.submit()">
+                                            <option value="">(none)</option>
+                                            @foreach (var other in Model.Grades.Where(g => g.Id != grade.Id))
+                                            {
+                                                <option value="@other.Id" selected="@(grade.NextGradeId == other.Id)">@other.Name</option>
+                                            }
+                                        </select>
+                                    </form>
+                                </td>
+                                <td><a class="btn btn-sm btn-outline-primary" href="?tab=grades&GradesSchoolId=@Model.GradesSchoolId&EditGradeId=@grade.Id">Edit</a></td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    @* ---------------- Classes ---------------- *@
+    <div class="@PaneClass("classes")">
+        <form method="get" class="row g-2 mb-4">
+            <input type="hidden" name="tab" value="classes" />
+            <div class="col-12 col-sm-6">
+                <select class="form-select" name="ClassesSchoolId" onchange="this.form.submit()">
+                    <option value="">(Select a school)</option>
+                    @foreach (var school in Model.Schools)
+                    {
+                        <option value="@school.Id" selected="@(Model.ClassesSchoolId == school.Id)">@school.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-sm-6">
+                <select class="form-select" name="ClassesYearId" onchange="this.form.submit()" disabled="@(Model.YearsForClassesTab.Count == 0)">
+                    <option value="">(Select an academic year)</option>
+                    @foreach (var year in Model.YearsForClassesTab)
+                    {
+                        <option value="@year.Id" selected="@(Model.ClassesYearId == year.Id)">@year.Name</option>
+                    }
+                </select>
+            </div>
+        </form>
+        @if (Model.Schools.Count == 0)
+        {
+            <div class="alert alert-info">No schools yet — create one on the Schools tab first.</div>
+        }
+
+        @if (Model.ClassesYearId != Guid.Empty)
+        {
+            <form method="post" asp-page-handler="CreateClass" class="row g-2 mb-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ClassesSchoolId" value="@Model.ClassesSchoolId" />
+                <input type="hidden" name="ClassesYearId" value="@Model.ClassesYearId" />
+                <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewClass.Code" placeholder="Code" /></div>
+                <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewClass.Name" placeholder="Name" /></div>
+                <div class="col-12 col-sm-5">
+                    <div class="form-text mb-1">Grades (select one or more — more than one means a combined class)</div>
+                    <div class="d-flex flex-wrap gap-3">
+                        @foreach (var grade in Model.GradesForClassesTab)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="NewClass.GradeIds" value="@grade.Id" id="newClassGrade-@grade.Id" />
+                                <label class="form-check-label" for="newClassGrade-@grade.Id">@grade.Name</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="col-12 col-sm-1"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+            </form>
+
+            <table class="table table-hover table-sm align-middle">
+                <thead><tr><th>Code</th><th>Name</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var cls in Model.Classes)
+                    {
+                        <tr>
+                            <td>@cls.Code</td>
+                            @if (Model.EditClassId == cls.Id)
+                            {
+                                <td>
+                                    <input form="editClass-@cls.Id" class="form-control form-control-sm mb-2" name="EditClassForm.Name" value="@cls.Name" />
+                                    <div class="d-flex flex-wrap gap-3">
+                                        @foreach (var grade in Model.GradesForClassesTab)
+                                        {
+                                            <div class="form-check">
+                                                <input form="editClass-@cls.Id" class="form-check-input" type="checkbox" name="EditClassForm.GradeIds" value="@grade.Id" id="editClassGrade-@cls.Id-@grade.Id" checked="@Model.EditClassGradeIds.Contains(grade.Id)" />
+                                                <label class="form-check-label" for="editClassGrade-@cls.Id-@grade.Id">@grade.Name</label>
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <form id="editClass-@cls.Id" method="post" asp-page-handler="SaveClassEdit" class="d-flex gap-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="ClassesSchoolId" value="@Model.ClassesSchoolId" />
+                                        <input type="hidden" name="ClassesYearId" value="@Model.ClassesYearId" />
+                                        <input type="hidden" name="EditClassForm.Id" value="@cls.Id" />
+                                        <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                    </form>
+                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=classes&ClassesSchoolId=@Model.ClassesSchoolId&ClassesYearId=@Model.ClassesYearId">Cancel</a>
+                                </td>
+                            }
+                            else
+                            {
+                                <td>@cls.Name</td>
+                                <td><a class="btn btn-sm btn-outline-primary" href="?tab=classes&ClassesSchoolId=@Model.ClassesSchoolId&ClassesYearId=@Model.ClassesYearId&EditClassId=@cls.Id">Edit</a></td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+</div>

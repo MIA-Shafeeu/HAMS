@@ -1,0 +1,121 @@
+/* Razor Pages shell (navbar + sidebar + content) - the classic-server-rendered replacement for
+   MainLayout.razor + NavMenu.razor. Reuses the --hams-* custom properties from hams.css so the
+   two frontends (Blazor pages not yet migrated, Razor Pages already migrated) still read as one
+   consistent product during the phased rollout. */
+
+html, body {
+    margin: 0;
+    background: var(--hams-bg);
+    color: var(--hams-text);
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.hams-navbar {
+    background: var(--hams-primary);
+    padding: 0.5rem 0;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.hams-navbar .navbar-brand {
+    color: #fff;
+    font-weight: 600;
+    font-size: 1.15rem;
+}
+
+.hams-navbar-subtitle {
+    opacity: 0.85;
+    font-weight: 400;
+    font-size: 0.85rem;
+    margin-left: 0.5rem;
+}
+
+.hams-navbar-toggler {
+    color: #fff;
+    border: none;
+    font-size: 1.25rem;
+}
+
+.hams-navbar-signout {
+    color: #fff;
+    text-decoration: none;
+}
+
+.hams-navbar-signout:hover {
+    color: #fff;
+    opacity: 0.85;
+}
+
+.hams-shell {
+    display: flex;
+    align-items: flex-start;
+    min-height: calc(100vh - 3rem);
+}
+
+.hams-sidebar {
+    width: 280px;
+    flex: 0 0 280px;
+    background: var(--hams-surface);
+    border-right: 1px solid var(--hams-border);
+    min-height: calc(100vh - 3rem);
+    padding: 0.75rem 0;
+}
+
+.hams-sidebar-offcanvas {
+    width: 280px;
+}
+
+.hams-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+}
+
+.hams-nav-group-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--hams-text-muted);
+    padding: 1rem 1rem 0.35rem;
+}
+
+.hams-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.5rem 1rem;
+    color: var(--hams-text);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    font-size: 0.9rem;
+}
+
+.hams-nav-link i {
+    color: var(--hams-primary);
+    font-size: 1rem;
+    width: 1.1rem;
+    text-align: center;
+}
+
+.hams-nav-link:hover {
+    background: rgba(30, 58, 95, 0.06);
+    color: var(--hams-text);
+}
+
+.hams-nav-link.active {
+    background: rgba(30, 58, 95, 0.1);
+    border-left-color: var(--hams-primary);
+    font-weight: 600;
+}
+
+.hams-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.hams-content {
+    padding: 1.5rem 1rem;
+    max-width: 1400px;
+}

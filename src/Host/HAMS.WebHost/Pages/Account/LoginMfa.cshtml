@@ -1,0 +1,44 @@
+@page "/account/login/mfa"
+@model HAMS.WebHost.Pages.Account.LoginMfaModel
+@{
+    ViewData["Title"] = "Verify code";
+}
+
+<div class="account-page">
+    <div class="account-card">
+        <div class="account-brand">
+            <span class="account-brand-mark">HAMS</span>
+            <span class="account-brand-sub">Hirilandhoo Academic Management System</span>
+        </div>
+
+        <h1 class="account-title">Enter your authenticator code</h1>
+        <p class="account-subtitle">Open your authenticator app and enter the 6-digit code.</p>
+
+        @if (Model.Error is not null)
+        {
+            <div class="account-alert" role="alert">@Model.Error</div>
+        }
+
+        @if (string.IsNullOrEmpty(Model.Token))
+        {
+            <div class="account-alert" role="alert">This verification link has expired. Please sign in again.</div>
+            <a class="account-link" href="/account/login">Back to sign in</a>
+        }
+        else
+        {
+            <form method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Token" />
+                <input type="hidden" asp-for="ReturnUrl" />
+
+                <div class="account-field">
+                    <label asp-for="Mfa.Code">Authentication code</label>
+                    <input asp-for="Mfa.Code" autofocus autocomplete="one-time-code" />
+                    <span asp-validation-for="Mfa.Code" class="validation-message"></span>
+                </div>
+
+                <button type="submit" class="account-submit">Verify</button>
+            </form>
+        }
+    </div>
+</div>
