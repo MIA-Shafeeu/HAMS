@@ -1,0 +1,332 @@
+@page "/promotion-report-cards"
+@model HAMS.WebHost.Pages.Staff.PromotionReportCardsModel
+@using HAMS.Platform.Workflow.Domain
+@{
+    ViewData["Title"] = "Promotion & Report Cards";
+    string TabClass(string tab) => Model.Tab == tab ? "nav-link active" : "nav-link";
+    string PaneClass(string tab) => Model.Tab == tab ? "tab-pane fade show active" : "tab-pane fade";
+
+    string StatusBadgeClass(WorkflowStatus status) => status switch
+    {
+        WorkflowStatus.Approved => "badge text-bg-success",
+        WorkflowStatus.Rejected => "badge text-bg-danger",
+        WorkflowStatus.Returned => "badge text-bg-warning",
+        WorkflowStatus.UnderReview => "badge text-bg-info",
+        WorkflowStatus.Submitted => "badge text-bg-primary",
+        _ => "badge text-bg-secondary",
+    };
+}
+
+<h1 class="h4 mb-4">Promotion &amp; Report Card Authoring</h1>
+
+<form method="get" class="row g-2 mb-4">
+    <input type="hidden" name="tab" value="@Model.Tab" />
+    <div class="col-12 col-sm-3">
+        <label class="form-label">School</label>
+        <select class="form-select" name="SchoolId" onchange="this.form.submit()">
+            <option value="">(Select a school)</option>
+            @foreach (var school in Model.Schools)
+            {
+                <option value="@school.Id" selected="@(Model.SchoolId == school.Id)">@school.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-3">
+        <label class="form-label">Academic Year</label>
+        <select class="form-select" name="AcademicYearId" onchange="this.form.submit()" disabled="@(Model.AcademicYears.Count == 0)">
+            <option value="">(Select an academic year)</option>
+            @foreach (var year in Model.AcademicYears)
+            {
+                <option value="@year.Id" selected="@(Model.AcademicYearId == year.Id)">@year.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-3">
+        <label class="form-label">Grade</label>
+        <select class="form-select" name="GradeId" onchange="this.form.submit()" disabled="@(Model.Grades.Count == 0)">
+            <option value="">(Select a grade)</option>
+            @foreach (var grade in Model.Grades)
+            {
+                <option value="@grade.Id" selected="@(Model.GradeId == grade.Id)">@grade.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-12 col-sm-3">
+        <label class="form-label">Evaluation Period</label>
+        <select class="form-select" name="EvaluationPeriodId" onchange="this.form.submit()" disabled="@(Model.EvaluationPeriods.Count == 0)">
+            <option value="">(Select an evaluation period)</option>
+            @foreach (var period in Model.EvaluationPeriods)
+            {
+                <option value="@period.Id" selected="@(Model.EvaluationPeriodId == period.Id)">@period.Name</option>
+            }
+        </select>
+    </div>
+</form>
+
+@if (Model.GradeId == Guid.Empty)
+{
+    <div class="alert alert-info">Select a school, academic year, and grade above to continue.</div>
+}
+else
+{
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item">
+            <a class="@TabClass("decisions")" href="?tab=decisions&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&GradeId=@Model.GradeId&EvaluationPeriodId=@Model.EvaluationPeriodId&DecisionStudentId=@Model.DecisionStudentId">Promotion Decisions</a>
+        </li>
+        <li class="nav-item">
+            <a class="@TabClass("reportcards")" href="?tab=reportcards&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&GradeId=@Model.GradeId&EvaluationPeriodId=@Model.EvaluationPeriodId&ReportCardStudentId=@Model.ReportCardStudentId&ReportCardId=@Model.ReportCardId">Report Cards</a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+
+        @* ---------------- Promotion Decisions ---------------- *@
+        <div class="@PaneClass("decisions")">
+            <h2 class="h6 mb-2">Students Needing a Decision</h2>
+            @if (Model.StudentsNeedingDecision.Count == 0)
+            {
+                <div class="alert alert-info mb-4">No students currently need a promotion decision.</div>
+            }
+            else
+            {
+                <table class="table table-hover table-sm align-middle mb-4">
+                    <thead><tr><th>Name</th><th>Admission No.</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var student in Model.StudentsNeedingDecision)
+                        {
+                            <tr>
+                                <td>@student.NameEn</td>
+                                <td>@student.AdmissionNumber</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary"
+                                       href="?tab=decisions&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&GradeId=@Model.GradeId&EvaluationPeriodId=@Model.EvaluationPeriodId&DecisionStudentId=@student.StudentPersonId">
+                                        Review
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            @if (Model.DecisionStudentId != Guid.Empty)
+            {
+                var decisionStudentName = Model.StudentsNeedingDecision.SingleOrDefault(s => s.StudentPersonId == Model.DecisionStudentId)?.NameEn;
+                <hr class="my-4" />
+                <h2 class="h6 mb-2">Eligibility — @decisionStudentName</h2>
+
+                @if (Model.Eligibility is not null)
+                {
+                    <div class="alert alert-@(Model.Eligibility.MeetsThreshold ? "success" : "warning") mb-2">
+                        @(Model.Eligibility.MeetsThreshold ? "Meets" : "Does not meet") the promotion threshold — cleared @Model.Eligibility.SubjectsCleared of @Model.Eligibility.TotalSubjectsEvaluated evaluated subjects.
+                        @if (Model.Eligibility.SubjectIdsNotCleared.Count > 0)
+                        {
+                            <div>Not cleared: @string.Join(", ", Model.Eligibility.SubjectIdsNotCleared)</div>
+                        }
+                    </div>
+                }
+                else if (Model.EligibilityError is not null)
+                {
+                    <div class="alert alert-danger mb-2">@Model.EligibilityError</div>
+                }
+
+                <form method="post" asp-page-handler="RecordDecision" class="row g-2 mb-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                    <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                    <input type="hidden" name="EvaluationPeriodId" value="@Model.EvaluationPeriodId" />
+                    <input type="hidden" name="DecisionStudentId" value="@Model.DecisionStudentId" />
+                    <div class="col-6 col-sm-2 d-flex align-items-center">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="Decision.Promoted" id="decisionPromoted" />
+                            <label class="form-check-label" for="decisionPromoted">Promoted</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-3">
+                        <label class="form-label">Next Grade (optional)</label>
+                        <select class="form-select" name="Decision.NextGradeId">
+                            <option value="">(No grade change)</option>
+                            @foreach (var grade in Model.Grades)
+                            {
+                                <option value="@grade.Id">@grade.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-3">
+                        <label class="form-label">Decision Date</label>
+                        <input type="date" class="form-control" asp-for="Decision.DecisionDate" />
+                    </div>
+                    <div class="col-12 col-sm-4">
+                        <label class="form-label">Notes (optional)</label>
+                        <input class="form-control" asp-for="Decision.Notes" />
+                    </div>
+                    <div class="col-12"><button type="submit" class="btn btn-primary mt-2">Record Decision</button></div>
+                </form>
+
+                <h2 class="h6 mb-2">Past Decisions</h2>
+                @if (Model.PastDecisions.Count == 0)
+                {
+                    <p class="text-secondary">No past decisions recorded for this student.</p>
+                }
+                else
+                {
+                    <table class="table table-hover table-sm align-middle">
+                        <thead><tr><th>Date</th><th>Promoted</th><th>Notes</th></tr></thead>
+                        <tbody>
+                            @foreach (var decision in Model.PastDecisions)
+                            {
+                                <tr>
+                                    <td>@decision.DecisionDate.ToString("yyyy-MM-dd")</td>
+                                    <td>@(decision.Promoted ? "Yes" : "No")</td>
+                                    <td>@decision.Notes</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            }
+        </div>
+
+        @* ---------------- Report Cards ---------------- *@
+        <div class="@PaneClass("reportcards")">
+            @if (Model.EvaluationPeriodId == Guid.Empty)
+            {
+                <div class="alert alert-info">Select an evaluation period above.</div>
+            }
+            else
+            {
+                <h2 class="h6 mb-2">Students Needing a Report Card</h2>
+                @if (Model.StudentsNeedingReportCard.Count == 0)
+                {
+                    <div class="alert alert-info mb-4">No students currently need a report card for this period.</div>
+                }
+                else
+                {
+                    <table class="table table-hover table-sm align-middle mb-4">
+                        <thead><tr><th>Name</th><th>Admission No.</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var student in Model.StudentsNeedingReportCard)
+                            {
+                                <tr>
+                                    <td>@student.NameEn</td>
+                                    <td>@student.AdmissionNumber</td>
+                                    <td>
+                                        <a class="btn btn-sm btn-outline-primary"
+                                           href="?tab=reportcards&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&GradeId=@Model.GradeId&EvaluationPeriodId=@Model.EvaluationPeriodId&ReportCardStudentId=@student.StudentPersonId">
+                                            Prepare
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+
+                @if (Model.ReportCardStudentId != Guid.Empty && Model.PreparedReportCard is null)
+                {
+                    var reportCardStudentName = Model.StudentsNeedingReportCard.SingleOrDefault(s => s.StudentPersonId == Model.ReportCardStudentId)?.NameEn;
+                    <hr class="my-4" />
+                    <h2 class="h6 mb-2">Prepare Report Card — @reportCardStudentName</h2>
+                    <form method="post" asp-page-handler="PrepareReportCard" class="row g-2 mb-4">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                        <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                        <input type="hidden" name="EvaluationPeriodId" value="@Model.EvaluationPeriodId" />
+                        <input type="hidden" name="ReportCardStudentId" value="@Model.ReportCardStudentId" />
+                        <div class="col-12 col-sm-6">
+                            <label class="form-label">Narrative (English)</label>
+                            <textarea class="form-control" rows="3" asp-for="PrepareForm.NarrativeEn"></textarea>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <label class="form-label">Narrative (Dhivehi)</label>
+                            <textarea class="form-control" rows="3" asp-for="PrepareForm.NarrativeDv"></textarea>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <label class="form-label">Next Steps (English)</label>
+                            <textarea class="form-control" rows="3" asp-for="PrepareForm.NextStepsEn"></textarea>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <label class="form-label">Next Steps (Dhivehi)</label>
+                            <textarea class="form-control" rows="3" asp-for="PrepareForm.NextStepsDv"></textarea>
+                        </div>
+                        <div class="col-12"><button type="submit" class="btn btn-primary mt-2">Prepare</button></div>
+                    </form>
+                }
+
+                @if (Model.PreparedReportCard is { } reportCard)
+                {
+                    <hr class="my-4" />
+                    <h2 class="h6 mb-2">Report Card Workflow — <span class="@StatusBadgeClass(reportCard.ApprovalStatus)">@reportCard.ApprovalStatus</span></h2>
+                    <div class="d-flex flex-wrap gap-2 mb-4">
+                        @if (reportCard.ApprovalStatus is WorkflowStatus.Draft or WorkflowStatus.Returned)
+                        {
+                            <form method="post" asp-page-handler="SubmitReportCard">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                <input type="hidden" name="EvaluationPeriodId" value="@Model.EvaluationPeriodId" />
+                                <input type="hidden" name="ReportCardStudentId" value="@Model.ReportCardStudentId" />
+                                <input type="hidden" name="ReportCardId" value="@reportCard.Id" />
+                                <button type="submit" class="btn btn-primary">Submit</button>
+                            </form>
+                        }
+                        @if (reportCard.ApprovalStatus == WorkflowStatus.Submitted)
+                        {
+                            <form method="post" asp-page-handler="BeginReviewReportCard">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                <input type="hidden" name="EvaluationPeriodId" value="@Model.EvaluationPeriodId" />
+                                <input type="hidden" name="ReportCardStudentId" value="@Model.ReportCardStudentId" />
+                                <input type="hidden" name="ReportCardId" value="@reportCard.Id" />
+                                <button type="submit" class="btn btn-primary">Begin Review</button>
+                            </form>
+                        }
+                        @if (reportCard.ApprovalStatus == WorkflowStatus.UnderReview)
+                        {
+                            <form method="post" asp-page-handler="ApproveReportCard">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                <input type="hidden" name="EvaluationPeriodId" value="@Model.EvaluationPeriodId" />
+                                <input type="hidden" name="ReportCardStudentId" value="@Model.ReportCardStudentId" />
+                                <input type="hidden" name="ReportCardId" value="@reportCard.Id" />
+                                <button type="submit" class="btn btn-success">Approve</button>
+                            </form>
+                            <form method="post" asp-page-handler="RejectReportCard">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                <input type="hidden" name="EvaluationPeriodId" value="@Model.EvaluationPeriodId" />
+                                <input type="hidden" name="ReportCardStudentId" value="@Model.ReportCardStudentId" />
+                                <input type="hidden" name="ReportCardId" value="@reportCard.Id" />
+                                <button type="submit" class="btn btn-outline-danger">Reject</button>
+                            </form>
+                            <form method="post" asp-page-handler="ReturnReportCard">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                                <input type="hidden" name="GradeId" value="@Model.GradeId" />
+                                <input type="hidden" name="EvaluationPeriodId" value="@Model.EvaluationPeriodId" />
+                                <input type="hidden" name="ReportCardStudentId" value="@Model.ReportCardStudentId" />
+                                <input type="hidden" name="ReportCardId" value="@reportCard.Id" />
+                                <button type="submit" class="btn btn-outline-secondary">Return</button>
+                            </form>
+                        }
+                        @if (reportCard.ApprovalStatus == WorkflowStatus.Approved)
+                        {
+                            <div class="alert alert-success mb-0">Published.</div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+
+    </div>
+}
