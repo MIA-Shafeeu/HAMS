@@ -1,0 +1,122 @@
+@page "/admin/reference-data"
+@model HAMS.WebHost.Pages.Admin.ReferenceDataModel
+@{
+    ViewData["Title"] = "Reference Data";
+    string TabClass(string tab) => Model.Tab == tab ? "nav-link active" : "nav-link";
+    string PaneClass(string tab) => Model.Tab == tab ? "tab-pane fade show active" : "tab-pane fade";
+}
+
+<h1 class="h4 mb-4">System Administration — Reference Data</h1>
+<div class="alert alert-info">
+    Every configurable lookup in the system. Deactivating a row keeps its history intact — it just stops appearing as a selectable option elsewhere.
+</div>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    @foreach (var group in Model.Groups)
+    {
+        var key = group.Title.ToLowerInvariant().Replace(" & ", "-").Replace(" ", "-");
+        <li class="nav-item"><a class="@TabClass(key)" href="?tab=@key">@group.Title</a></li>
+    }
+</ul>
+
+<div class="tab-content">
+    @foreach (var group in Model.Groups)
+    {
+        var key = group.Title.ToLowerInvariant().Replace(" & ", "-").Replace(" ", "-");
+        <div class="@PaneClass(key)">
+            @for (var i = 0; i < group.Sections.Count; i++)
+            {
+                var sec = group.Sections[i];
+                <h2 class="h6 mb-2">@sec.Title</h2>
+                <table class="table table-hover table-sm align-middle mb-2">
+                    <thead>
+                        <tr>
+                            <th>Code</th><th>Name</th><th>Order</th>
+                            @if (sec.ExtraField == LookupExtraFieldKind.Rank) { <th>Rank</th> }
+                            @if (sec.ExtraField == LookupExtraFieldKind.IsPositive) { <th>Positive</th> }
+                            <th>Active</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in sec.Items)
+                        {
+                            var isEditing = Model.EditLookupKey == sec.Key && Model.EditLookupId == row.Id;
+                            <tr>
+                                <td>@row.Code</td>
+                                @if (isEditing)
+                                {
+                                    <td><input form="edit-@sec.Key-@row.Id" class="form-control form-control-sm" name="Name" value="@row.Name" /></td>
+                                    <td><input form="edit-@sec.Key-@row.Id" type="number" class="form-control form-control-sm" name="DisplayOrder" value="@row.DisplayOrder" /></td>
+                                    @if (sec.ExtraField == LookupExtraFieldKind.Rank)
+                                    {
+                                        <td>
+                                            @row.Rank
+                                            <input form="edit-@sec.Key-@row.Id" type="hidden" name="Rank" value="@row.Rank" />
+                                        </td>
+                                    }
+                                    @if (sec.ExtraField == LookupExtraFieldKind.IsPositive)
+                                    {
+                                        <td>
+                                            @(row.IsPositive == true ? "Yes" : "No")
+                                            <input form="edit-@sec.Key-@row.Id" type="hidden" name="IsPositive" value="@(row.IsPositive == true)" />
+                                        </td>
+                                    }
+                                    <td>@(row.IsActive ? "Yes" : "No")</td>
+                                    <td>
+                                        <form id="edit-@sec.Key-@row.Id" method="post" asp-page-handler="Update" asp-route-lookup="@sec.Key" asp-route-id="@row.Id" class="d-flex gap-2">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="Tab" value="@Model.Tab" />
+                                            <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
+                                        </form>
+                                        <a class="btn btn-sm btn-outline-secondary" href="?tab=@Model.Tab">Cancel</a>
+                                    </td>
+                                }
+                                else
+                                {
+                                    <td>@row.Name</td>
+                                    <td>@row.DisplayOrder</td>
+                                    @if (sec.ExtraField == LookupExtraFieldKind.Rank) { <td>@row.Rank</td> }
+                                    @if (sec.ExtraField == LookupExtraFieldKind.IsPositive) { <td>@(row.IsPositive == true ? "Yes" : "No")</td> }
+                                    <td>@(row.IsActive ? "Yes" : "No")</td>
+                                    <td>
+                                        <a class="btn btn-sm btn-outline-primary" href="?tab=@Model.Tab&EditLookupKey=@sec.Key&EditLookupId=@row.Id">Edit</a>
+                                        <form method="post" asp-page-handler="ToggleActive" asp-route-lookup="@sec.Key" asp-route-id="@row.Id" asp-route-isActive="@(!row.IsActive)" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="Tab" value="@Model.Tab" />
+                                            <button type="submit" class="btn btn-sm @(row.IsActive ? "btn-outline-danger" : "btn-outline-success")">@(row.IsActive ? "Deactivate" : "Activate")</button>
+                                        </form>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <form method="post" asp-page-handler="Create" asp-route-lookup="@sec.Key" class="row g-2 mb-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Tab" value="@Model.Tab" />
+                    <div class="col-6 col-sm-2"><input class="form-control" name="Code" placeholder="Code" /></div>
+                    <div class="col-6 col-sm-3"><input class="form-control" name="Name" placeholder="Name" /></div>
+                    <div class="col-6 col-sm-2"><input type="number" class="form-control" name="DisplayOrder" placeholder="Order" /></div>
+                    @if (sec.ExtraField == LookupExtraFieldKind.Rank)
+                    {
+                        <div class="col-6 col-sm-2"><input type="number" class="form-control" name="Rank" placeholder="Rank" /></div>
+                    }
+                    @if (sec.ExtraField == LookupExtraFieldKind.IsPositive)
+                    {
+                        <div class="col-6 col-sm-2 d-flex align-items-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="IsPositive" value="true" id="newIsPositive-@sec.Key" />
+                                <label class="form-check-label" for="newIsPositive-@sec.Key">Positive</label>
+                            </div>
+                        </div>
+                    }
+                    <div class="col-6 col-sm-2"><button type="submit" class="btn btn-primary w-100">Create</button></div>
+                </form>
+                @if (i < group.Sections.Count - 1)
+                {
+                    <hr class="my-4" />
+                }
+            }
+        </div>
+    }
+</div>
