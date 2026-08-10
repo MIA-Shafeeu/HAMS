@@ -113,12 +113,23 @@ else
                 else
                 {
                     <table class="table table-hover table-sm align-middle mb-3">
-                        <thead><tr><th>Learning Outcome Id</th><th>Week</th><th></th></tr></thead>
+                        <thead><tr><th>Learning Outcome</th><th>Planned Week</th><th></th></tr></thead>
                         <tbody>
                             @foreach (var item in Model.Items)
                             {
+                                var outcome = Model.LearningOutcomeOptions.SingleOrDefault(o => o.Id == item.LearningOutcomeId);
                                 <tr>
-                                    <td>@item.LearningOutcomeId</td>
+                                    <td>
+                                        @if (outcome is not null)
+                                        {
+                                            <span class="text-body-secondary">@outcome.StrandName &raquo; @outcome.SubStrandName &raquo;</span>
+                                            <span>@outcome.Code: @outcome.Description</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-body-secondary">@item.LearningOutcomeId</span>
+                                        }
+                                    </td>
                                     <td>@item.PlannedWeekNumber</td>
                                     <td>
                                         <a class="btn btn-sm btn-outline-primary"
@@ -140,10 +151,34 @@ else
                     <input type="hidden" name="SelectedSchemeId" value="@schemeId" />
                     <input type="hidden" name="SelectedSchemeItemId" value="@Model.SelectedSchemeItemId" />
                     <input type="hidden" name="SelectedTopicId" value="@Model.SelectedTopicId" />
-                    <div class="col-12 col-sm-4"><input class="form-control" asp-for="NewItem.LearningOutcomeId" placeholder="Learning outcome id (GUID)" /></div>
-                    <div class="col-6 col-sm-3"><input type="number" class="form-control" asp-for="NewItem.PlannedWeekNumber" placeholder="Planned week #" /></div>
-                    <div class="col-6 col-sm-3"><input type="number" class="form-control" asp-for="NewItem.DisplayOrder" placeholder="Display order" /></div>
-                    <div class="col-12 col-sm-2"><button type="submit" class="btn btn-primary w-100">Add Item</button></div>
+                    <div class="col-12 col-sm-4">
+                        <label class="form-label small mb-0" asp-for="NewItem.LearningOutcomeId">Learning outcome</label>
+                        <select class="form-select" asp-for="NewItem.LearningOutcomeId">
+                            <option value="">(Select a learning outcome)</option>
+                            @foreach (var strandGroup in Model.LearningOutcomeOptions.GroupBy(o => o.StrandName))
+                            {
+                                <optgroup label="@strandGroup.Key">
+                                    @foreach (var outcome in strandGroup)
+                                    {
+                                        <option value="@outcome.Id">@outcome.SubStrandName &raquo; @outcome.Code: @outcome.Description</option>
+                                    }
+                                </optgroup>
+                            }
+                        </select>
+                        @if (Model.LearningOutcomeOptions.Count == 0)
+                        {
+                            <div class="form-text text-warning">No published syllabus with learning outcomes was found for this subject and grade.</div>
+                        }
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <label class="form-label small mb-0" asp-for="NewItem.PlannedWeekNumber">Planned week #</label>
+                        <input type="number" min="1" class="form-control" asp-for="NewItem.PlannedWeekNumber" />
+                    </div>
+                    <div class="col-6 col-sm-3">
+                        <label class="form-label small mb-0" asp-for="NewItem.DisplayOrder">Display order</label>
+                        <input type="number" min="1" class="form-control" asp-for="NewItem.DisplayOrder" />
+                    </div>
+                    <div class="col-12 col-sm-2 d-flex align-items-end"><button type="submit" class="btn btn-primary w-100">Add Item</button></div>
                 </form>
             </div>
         </div>

@@ -338,6 +338,7 @@
                 <h2 class="h6 mb-2">CSV Import (Strand/SubStrand/Outcome/Indicator)</h2>
                 <p class="text-body-secondary small">
                     Header: StrandCode,StrandName,SubStrandCode,SubStrandName,OutcomeCode,OutcomeDescription,IndicatorCode,IndicatorDescription. Only valid for a Draft syllabus.
+                    <a asp-page-handler="DownloadSampleCsv" class="ms-1"><i class="bi bi-download"></i> Download sample CSV</a>
                 </p>
                 <form method="post" asp-page-handler="ImportCsv" enctype="multipart/form-data" class="row g-2">
                     @Html.AntiForgeryToken()

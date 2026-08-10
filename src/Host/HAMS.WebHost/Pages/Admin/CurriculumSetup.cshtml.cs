@@ -339,6 +339,20 @@ public sealed class CurriculumSetupModel(
         return BackToSyllabus();
     }
 
+    public FileContentResult OnGetDownloadSampleCsv()
+    {
+        const string csv =
+            "StrandCode,StrandName,SubStrandCode,SubStrandName,OutcomeCode,OutcomeDescription,IndicatorCode,IndicatorDescription\r\n" +
+            "S1,Number,SS1,Fractions,LO1,Add fractions with like and unlike denominators,IND1,Adds two fractions with the same denominator\r\n" +
+            "S1,Number,SS1,Fractions,LO1,Add fractions with like and unlike denominators,IND2,Adds two fractions with different denominators\r\n" +
+            "S1,Number,SS1,Fractions,LO2,Multiply simple fractions,IND3,Multiplies a fraction by a whole number\r\n";
+
+        return new FileContentResult(System.Text.Encoding.UTF8.GetBytes(csv), "text/csv")
+        {
+            FileDownloadName = "syllabus-import-template.csv",
+        };
+    }
+
     // ---- Input models ----
 
     public sealed class NewFrameworkInput

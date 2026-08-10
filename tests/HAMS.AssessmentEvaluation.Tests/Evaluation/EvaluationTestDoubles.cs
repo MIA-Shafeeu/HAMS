@@ -81,6 +81,9 @@ internal sealed class FakeSyllabusResolver(Syllabus? syllabus, IReadOnlyList<Gui
 
     public Task<IReadOnlyList<Guid>> GetLearningOutcomeIdsAsync(Guid syllabusId, CancellationToken cancellationToken = default)
         => Task.FromResult(outcomeIds ?? []);
+
+    public Task<IReadOnlyList<LearningOutcomeOption>> GetLearningOutcomeOptionsAsync(Guid syllabusId, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<LearningOutcomeOption>>([]);
 }
 
 internal sealed class FakeMasteryEvaluationService(IReadOnlyDictionary<Guid, MasteryEvaluation> currentByOutcome) : IMasteryEvaluationService

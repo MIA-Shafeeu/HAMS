@@ -22,7 +22,7 @@ namespace HAMS.WebHost.Pages.Staff;
 /// item's link omits every deeper property from the URL, which resets it by simple absence.
 /// </summary>
 [Authorize(Policy = StaffPolicy.Name)]
-public sealed class LessonPlanningModel(IOrgStructureLookup orgLookup, ILessonPlanningService planningService) : PageModel
+public sealed class LessonPlanningModel(IOrgStructureLookup orgLookup, ILessonPlanningService planningService, ISyllabusResolver syllabusResolver) : PageModel
 {
     // ---- Scope cascade: School, then Academic Year / Grade / Subject (siblings - all three
     // depend only on School, not on each other) ----
@@ -58,6 +58,7 @@ public sealed class LessonPlanningModel(IOrgStructureLookup orgLookup, ILessonPl
 
     public IReadOnlyList<SchemeOfWork> Schemes { get; private set; } = [];
     public IReadOnlyList<SchemeOfWorkItem> Items { get; private set; } = [];
+    public IReadOnlyList<LearningOutcomeOption> LearningOutcomeOptions { get; private set; } = [];
     public IReadOnlyList<TeachingTopic> Topics { get; private set; } = [];
     public IReadOnlyList<LessonPlan> LessonPlans { get; private set; } = [];
     public IReadOnlyList<Resource> Resources { get; private set; } = [];
@@ -119,6 +120,16 @@ public sealed class LessonPlanningModel(IOrgStructureLookup orgLookup, ILessonPl
         if (SelectedSchemeId is { } schemeId)
         {
             Items = await planningService.GetSchemeOfWorkItemsAsync(schemeId);
+
+            // The picker for "which learning outcome does this item cover" needs the Subject's
+            // current published syllabus for this Grade - if none exists yet (syllabus still Draft,
+            // or none written at all), the picker is correctly empty rather than erroring, since
+            // AddItem's whole premise (there's a published curriculum to plan against) doesn't hold.
+            var syllabus = await syllabusResolver.ResolveAsync(SubjectId, GradeId);
+            if (syllabus is not null)
+            {
+                LearningOutcomeOptions = await syllabusResolver.GetLearningOutcomeOptionsAsync(syllabus.Id);
+            }
         }
 
         if (SelectedSchemeItemId is { } itemId)
@@ -156,14 +167,14 @@ public sealed class LessonPlanningModel(IOrgStructureLookup orgLookup, ILessonPl
 
     public async Task<IActionResult> OnPostAddItemAsync()
     {
-        if (SelectedSchemeId is not { } schemeId || !Guid.TryParse(NewItem.LearningOutcomeId, out var outcomeId))
+        if (SelectedSchemeId is not { } schemeId || NewItem.LearningOutcomeId == Guid.Empty)
         {
-            TempData["FlashMessage"] = "Enter a valid learning outcome id.";
+            TempData["FlashMessage"] = "Select a learning outcome.";
             TempData["FlashSeverity"] = "warning";
             return BackToScope();
         }
 
-        await planningService.AddSchemeOfWorkItemAsync(schemeId, outcomeId, NewItem.PlannedWeekNumber, NewItem.DisplayOrder);
+        await planningService.AddSchemeOfWorkItemAsync(schemeId, NewItem.LearningOutcomeId, NewItem.PlannedWeekNumber, NewItem.DisplayOrder);
         TempData["FlashMessage"] = "Item added.";
         TempData["FlashSeverity"] = "success";
         return BackToScope();
@@ -233,7 +244,7 @@ public sealed class LessonPlanningModel(IOrgStructureLookup orgLookup, ILessonPl
 
     public sealed class NewItemInput
     {
-        public string LearningOutcomeId { get; set; } = "";
+        public Guid LearningOutcomeId { get; set; }
         public int PlannedWeekNumber { get; set; } = 1;
         public int DisplayOrder { get; set; } = 1;
     }

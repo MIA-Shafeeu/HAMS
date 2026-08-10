@@ -21,4 +21,13 @@ public interface ISyllabusResolver
     /// <c>SubjectId</c> exists directly on <c>LearningOutcome</c>.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetLearningOutcomeIdsAsync(Guid syllabusId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Same tree as <see cref="GetLearningOutcomeIdsAsync"/>, but with the Strand/SubStrand/Outcome
+    /// display text a human picker (e.g. the Scheme of Work item form) needs instead of a bare id.
+    /// </summary>
+    Task<IReadOnlyList<LearningOutcomeOption>> GetLearningOutcomeOptionsAsync(Guid syllabusId, CancellationToken cancellationToken = default);
 }
+
+/// <summary>A <see cref="LearningOutcome"/>, with its ancestor Strand/SubStrand names, for display in a picker.</summary>
+public sealed record LearningOutcomeOption(Guid Id, string StrandName, string SubStrandName, string Code, string Description);
