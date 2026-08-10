@@ -8,6 +8,7 @@ using HAMS.CommunicationPortals.Infrastructure;
 using HAMS.Fundraising;
 using HAMS.IdentityAccess;
 using HAMS.IdentityAccess.Application.Jwt;
+using HAMS.IdentityAccess.Endpoints;
 using HAMS.IdentityAccess.Infrastructure;
 using HAMS.Intervention;
 using HAMS.Intervention.Infrastructure;
@@ -181,6 +182,14 @@ app.MapAccountEndpoints();
 // trip: it only needs to prove the process is up and Kestrel is accepting requests behind IIS,
 // not that every dependency is healthy.
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
+
+// Dev-only test-data seeder (hands out real, working account passwords over an unauthenticated
+// GET) — the endpoint itself must not exist outside Development, not just be hard to reach, so
+// it's mapped here rather than folded into MapIdentityAccessModuleEndpoints()'s unconditional chain.
+if (app.Environment.IsDevelopment())
+{
+    app.MapDevSeedEndpoints();
+}
 
 // Business module API endpoints (versioned under /api/v1 from Phase 1 onward — see build
 // plan §1.5 API-first decision). Empty minimal-API groups until each module's phase begins.
