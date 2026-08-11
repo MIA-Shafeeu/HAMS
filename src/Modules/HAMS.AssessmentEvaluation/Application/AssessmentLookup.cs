@@ -16,4 +16,7 @@ internal sealed class AssessmentLookup(AssessmentEvaluationDbContext dbContext) 
 
     public async Task<IReadOnlyList<AssessmentResult>> GetResultsForAssessmentAsync(Guid assessmentId, CancellationToken cancellationToken = default) =>
         await dbContext.AssessmentResults.Where(r => r.AssessmentId == assessmentId && r.IsCurrent).ToListAsync(cancellationToken);
+
+    public async Task<Assessment?> GetAssessmentAsync(Guid assessmentId, CancellationToken cancellationToken = default) =>
+        await dbContext.Assessments.FindAsync([assessmentId], cancellationToken);
 }

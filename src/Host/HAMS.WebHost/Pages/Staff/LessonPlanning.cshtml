@@ -57,6 +57,10 @@
 {
     <div class="alert alert-info">Choose a school, academic year, grade and subject to continue.</div>
 }
+else if (!Model.GradeAccessAuthorized)
+{
+    <div class="alert alert-danger">You do not have access to this grade.</div>
+}
 else
 {
     <div class="card mb-4">

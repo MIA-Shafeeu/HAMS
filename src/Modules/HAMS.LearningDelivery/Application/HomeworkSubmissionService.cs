@@ -64,4 +64,7 @@ internal sealed class HomeworkSubmissionService(LearningDeliveryDbContext dbCont
 
     public Task<HomeworkSubmission?> GetForStudentAsync(Guid homeworkId, Guid studentPersonId, CancellationToken cancellationToken = default) =>
         dbContext.HomeworkSubmissions.SingleOrDefaultAsync(s => s.HomeworkId == homeworkId && s.StudentPersonId == studentPersonId, cancellationToken);
+
+    public Task<HomeworkSubmission?> GetAsync(Guid submissionId, CancellationToken cancellationToken = default) =>
+        dbContext.HomeworkSubmissions.SingleOrDefaultAsync(s => s.Id == submissionId, cancellationToken);
 }

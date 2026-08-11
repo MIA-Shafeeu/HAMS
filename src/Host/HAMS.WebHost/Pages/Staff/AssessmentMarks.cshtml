@@ -85,6 +85,10 @@
 {
     <div class="alert alert-info">Choose a school, year, grade, term, subject and assessment to continue.</div>
 }
+else if (!Model.GradeAccessAuthorized)
+{
+    <div class="alert alert-danger">You do not have access to this grade.</div>
+}
 else if (Model.PolicyId is null)
 {
     <div class="alert alert-warning">This grade has no published key-stage policy for this academic year — marks cannot be recorded yet.</div>

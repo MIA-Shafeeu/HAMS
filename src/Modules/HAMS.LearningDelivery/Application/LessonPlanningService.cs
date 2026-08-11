@@ -17,6 +17,9 @@ internal sealed class LessonPlanningService(LearningDeliveryDbContext dbContext)
     public async Task<IReadOnlyList<SchemeOfWork>> GetSchemesOfWorkAsync(Guid subjectId, Guid gradeId, Guid academicYearId, CancellationToken cancellationToken = default) =>
         await dbContext.SchemeOfWorks.Where(s => s.SubjectId == subjectId && s.GradeId == gradeId && s.AcademicYearId == academicYearId).ToListAsync(cancellationToken);
 
+    public async Task<SchemeOfWork?> GetSchemeOfWorkAsync(Guid schemeOfWorkId, CancellationToken cancellationToken = default) =>
+        await dbContext.SchemeOfWorks.FindAsync([schemeOfWorkId], cancellationToken);
+
     public async Task<Guid> AddSchemeOfWorkItemAsync(Guid schemeOfWorkId, Guid learningOutcomeId, int plannedWeekNumber, int displayOrder, CancellationToken cancellationToken = default)
     {
         var item = new SchemeOfWorkItem
@@ -32,6 +35,9 @@ internal sealed class LessonPlanningService(LearningDeliveryDbContext dbContext)
     public async Task<IReadOnlyList<SchemeOfWorkItem>> GetSchemeOfWorkItemsAsync(Guid schemeOfWorkId, CancellationToken cancellationToken = default) =>
         await dbContext.SchemeOfWorkItems.Where(i => i.SchemeOfWorkId == schemeOfWorkId).OrderBy(i => i.DisplayOrder).ToListAsync(cancellationToken);
 
+    public async Task<SchemeOfWorkItem?> GetSchemeOfWorkItemAsync(Guid schemeOfWorkItemId, CancellationToken cancellationToken = default) =>
+        await dbContext.SchemeOfWorkItems.FindAsync([schemeOfWorkItemId], cancellationToken);
+
     public async Task<Guid> CreateTeachingTopicAsync(Guid schemeOfWorkItemId, string nameEn, string nameDv, int displayOrder, CancellationToken cancellationToken = default)
     {
         var topic = new TeachingTopic { Id = Guid.NewGuid(), SchemeOfWorkItemId = schemeOfWorkItemId, NameEn = nameEn, NameDv = nameDv, DisplayOrder = displayOrder };
@@ -42,6 +48,9 @@ internal sealed class LessonPlanningService(LearningDeliveryDbContext dbContext)
 
     public async Task<IReadOnlyList<TeachingTopic>> GetTeachingTopicsAsync(Guid schemeOfWorkItemId, CancellationToken cancellationToken = default) =>
         await dbContext.TeachingTopics.Where(t => t.SchemeOfWorkItemId == schemeOfWorkItemId).OrderBy(t => t.DisplayOrder).ToListAsync(cancellationToken);
+
+    public async Task<TeachingTopic?> GetTeachingTopicAsync(Guid teachingTopicId, CancellationToken cancellationToken = default) =>
+        await dbContext.TeachingTopics.FindAsync([teachingTopicId], cancellationToken);
 
     public async Task<Guid> CreateLessonPlanAsync(Guid teachingTopicId, Guid staffPersonId, DateOnly plannedDate, string objectives, CancellationToken cancellationToken = default)
     {

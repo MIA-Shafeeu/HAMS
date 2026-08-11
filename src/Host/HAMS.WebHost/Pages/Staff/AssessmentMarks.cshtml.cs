@@ -4,6 +4,7 @@ using HAMS.PeopleEnrollment.Application;
 using HAMS.Platform.Access;
 using HAMS.Platform.Common.Contracts;
 using HAMS.Platform.Workflow.Domain;
+using HAMS.TeachingTimetable.Application;
 using HAMS.WebHost.Components.Account;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +20,7 @@ public sealed class AssessmentMarksModel(
     IAssessmentLookup assessmentLookup,
     IAssessmentModerationService moderationService,
     IRoleMembershipQuery roleMembershipQuery,
+    IStaffAccessScopeQuery scopeQuery,
     ICurrentUser currentUser,
     IClock clock) : PageModel
 {
@@ -54,6 +56,12 @@ public sealed class AssessmentMarksModel(
     /// <summary>Null once an assessment is selected but its grade has no published key-stage policy for this academic year yet - marks cannot be recorded in that state.</summary>
     public Guid? PolicyId { get; private set; }
 
+    /// <summary>False when <see cref="GradeId"/> is set but isn't one of the caller's assigned
+    /// grades (e.g. a stale link, or a directly-edited query string) - the mark rows are then not
+    /// loaded at all, and the page shows an access-denied message instead of silently rendering
+    /// nothing. Always true once <see cref="GradeId"/> is empty (nothing selected yet to deny).</summary>
+    public bool GradeAccessAuthorized { get; private set; } = true;
+
     /// <summary>
     /// Live per-request equivalent of the old Blazor page's circuit-lifetime <c>_isAdmin</c> field -
     /// recomputed on every GET/POST rather than cached, since nothing here persists between requests
@@ -65,12 +73,33 @@ public sealed class AssessmentMarksModel(
 
     public async Task OnGetAsync()
     {
-        Schools = await orgLookup.GetSchoolsAsync();
+        var personId = currentUser.PersonId ?? Guid.Empty;
+
+        // Resolved twice, deliberately: once against just the caller's accessible Schools (before
+        // an Academic Year is even chosen - GetScopeAsync's own null-schoolId shortcut skips the
+        // OrgCurriculum/SubjectTeachingAssignment joins entirely for this cheap first pass), then
+        // again scoped to whichever School+Year end up selected, once Grades need filtering too.
+        // Same pattern as Attendance.cshtml.cs, just for Grade instead of Class.
+        var schoolScope = await scopeQuery.GetScopeAsync(personId, clock.TodayUtc, schoolId: null, academicYearId: null);
+
+        var allSchools = await orgLookup.GetSchoolsAsync();
+        Schools = schoolScope.HasUnrestrictedAccess ? allSchools : [.. allSchools.Where(s => schoolScope.CanAccessSchool(s.Id))];
+
+        StaffAccessScope? fullScope = null;
+        if (SchoolId != Guid.Empty && AcademicYearId != Guid.Empty)
+        {
+            fullScope = await scopeQuery.GetScopeAsync(personId, clock.TodayUtc, SchoolId, AcademicYearId);
+        }
 
         if (SchoolId != Guid.Empty)
         {
             AcademicYears = await orgLookup.GetAcademicYearsAsync(SchoolId);
-            Grades = await orgLookup.GetGradesAsync(SchoolId);
+
+            var allGrades = await orgLookup.GetGradesAsync(SchoolId);
+            Grades = fullScope is null || fullScope.HasUnrestrictedAccess
+                ? allGrades
+                : [.. allGrades.Where(g => fullScope.CanAccessGrade(g.Id))];
+
             Subjects = await orgLookup.GetSubjectsAsync(SchoolId);
         }
 
@@ -86,7 +115,17 @@ public sealed class AssessmentMarksModel(
 
         IsAdmin = await roleMembershipQuery.IsSystemOrSchoolAdminAsync(currentUser, clock);
 
+        if (GradeId != Guid.Empty)
+        {
+            GradeAccessAuthorized = fullScope?.CanAccessGrade(GradeId) ?? false;
+        }
+
         if (AssessmentId == Guid.Empty)
+        {
+            return;
+        }
+
+        if (!GradeAccessAuthorized)
         {
             return;
         }
@@ -131,6 +170,18 @@ public sealed class AssessmentMarksModel(
             return BackToMarks();
         }
 
+        // Re-derived from a fresh scope check, never trusted from the posted GradeId alone - a
+        // Razor Page POST handler is a directly-callable HTTP endpoint, so the grade picker only
+        // being filtered client-side (and server-side on the preceding GET) would not be enough on
+        // its own to stop a tampered GradeId. Same pattern as Attendance's OnPostSaveAttendanceAsync.
+        var scope = await scopeQuery.GetScopeAsync(recordedBy, clock.TodayUtc, SchoolId, AcademicYearId);
+        if (!scope.CanAccessGrade(GradeId))
+        {
+            TempData["FlashMessage"] = "You do not have access to this grade.";
+            TempData["FlashSeverity"] = "danger";
+            return BackToMarks();
+        }
+
         if (rawMark is null)
         {
             TempData["FlashMessage"] = "Enter a raw mark before recording.";
@@ -163,22 +214,30 @@ public sealed class AssessmentMarksModel(
 
     public async Task<IActionResult> OnPostSubmitAsync(Guid resultId)
     {
+        if (!await TryAuthorizeResultTransitionAsync(resultId))
+        {
+            return BackToMarks();
+        }
+
         await RunTransitionAsync(() => moderationService.SubmitAsync(resultId));
         return BackToMarks();
     }
 
     public async Task<IActionResult> OnPostBeginReviewAsync(Guid resultId)
     {
+        if (!await TryAuthorizeResultTransitionAsync(resultId))
+        {
+            return BackToMarks();
+        }
+
         await RunTransitionAsync(() => moderationService.BeginReviewAsync(resultId, null));
         return BackToMarks();
     }
 
     public async Task<IActionResult> OnPostApproveAsync(Guid resultId)
     {
-        if (!await CanDecideAsync(resultId))
+        if (!await TryAuthorizeResultTransitionAsync(resultId))
         {
-            TempData["FlashMessage"] = "Only a System/School Administrator may decide an escalated result.";
-            TempData["FlashSeverity"] = "danger";
             return BackToMarks();
         }
 
@@ -188,10 +247,8 @@ public sealed class AssessmentMarksModel(
 
     public async Task<IActionResult> OnPostRejectAsync(Guid resultId)
     {
-        if (!await CanDecideAsync(resultId))
+        if (!await TryAuthorizeResultTransitionAsync(resultId))
         {
-            TempData["FlashMessage"] = "Only a System/School Administrator may decide an escalated result.";
-            TempData["FlashSeverity"] = "danger";
             return BackToMarks();
         }
 
@@ -201,13 +258,18 @@ public sealed class AssessmentMarksModel(
 
     public async Task<IActionResult> OnPostReturnAsync(Guid resultId)
     {
+        if (!await TryAuthorizeResultTransitionAsync(resultId))
+        {
+            return BackToMarks();
+        }
+
         await RunTransitionAsync(() => moderationService.ReturnAsync(resultId));
         return BackToMarks();
     }
 
     public async Task<IActionResult> OnPostEscalateAsync(Guid resultId)
     {
-        if (currentUser.PersonId is not { } escalatedBy)
+        if (currentUser.PersonId is not { } escalatedBy || !await TryAuthorizeResultTransitionAsync(resultId))
         {
             return BackToMarks();
         }
@@ -217,23 +279,62 @@ public sealed class AssessmentMarksModel(
         return BackToMarks();
     }
 
+    private enum ResultTransitionAuthorization { Authorized, NotFound, NoGradeAccess, RequiresAdminForEscalated }
+
     /// <summary>
-    /// Re-derives whether the caller may decide THIS result from a fresh read, never from a
-    /// client-supplied hidden field - the escalation gate only matters at all when the result is
-    /// currently Escalated, and unlike the old Blazor page (whose <c>row.Status</c> lived in
-    /// server-side circuit memory the browser could never tamper with), a Razor Page POST has no
-    /// server-trusted state of its own between requests.
+    /// Re-derives whether the caller may act on THIS result from a fresh read, never from a
+    /// client-supplied hidden field or whatever the page's own currently-selected Grade/Assessment
+    /// happens to be - <paramref name="resultId"/> is an independent POST input a caller could point
+    /// at any result system-wide. Two independent gates, both re-checked here: (1) teaching-scope
+    /// access to the result's own Grade (resolved via its Assessment, since neither
+    /// <see cref="AssessmentResult"/> nor even <see cref="Assessment"/> carry a School directly), and
+    /// (2) the pre-existing "an Escalated result needs a System/School Administrator" rule, now
+    /// applied to every transition action rather than only Approve/Reject.
     /// </summary>
-    private async Task<bool> CanDecideAsync(Guid resultId)
+    private async Task<ResultTransitionAuthorization> AuthorizeResultTransitionAsync(Guid resultId)
     {
-        var results = await assessmentLookup.GetResultsForAssessmentAsync(AssessmentId);
-        var current = results.FirstOrDefault(r => r.Id == resultId);
-        if (current is null || current.ModerationStatus != WorkflowStatus.Escalated)
+        if (currentUser.PersonId is not { } personId)
+        {
+            return ResultTransitionAuthorization.NotFound;
+        }
+
+        var result = await moderationService.GetAsync(resultId);
+        var assessment = result is null ? null : await assessmentLookup.GetAssessmentAsync(result.AssessmentId);
+        if (result is null || assessment is null || await orgLookup.GetGradeSchoolIdAsync(assessment.GradeId) is not { } schoolId)
+        {
+            return ResultTransitionAuthorization.NotFound;
+        }
+
+        var scope = await scopeQuery.GetScopeAsync(personId, clock.TodayUtc, schoolId, assessment.AcademicYearId);
+        if (!scope.CanAccessGrade(assessment.GradeId))
+        {
+            return ResultTransitionAuthorization.NoGradeAccess;
+        }
+
+        if (result.ModerationStatus == WorkflowStatus.Escalated && !await roleMembershipQuery.IsSystemOrSchoolAdminAsync(currentUser, clock))
+        {
+            return ResultTransitionAuthorization.RequiresAdminForEscalated;
+        }
+
+        return ResultTransitionAuthorization.Authorized;
+    }
+
+    private async Task<bool> TryAuthorizeResultTransitionAsync(Guid resultId)
+    {
+        var authorization = await AuthorizeResultTransitionAsync(resultId);
+        if (authorization == ResultTransitionAuthorization.Authorized)
         {
             return true;
         }
 
-        return await roleMembershipQuery.IsSystemOrSchoolAdminAsync(currentUser, clock);
+        TempData["FlashMessage"] = authorization switch
+        {
+            ResultTransitionAuthorization.NoGradeAccess => "You do not have access to this grade.",
+            ResultTransitionAuthorization.RequiresAdminForEscalated => "Only a System/School Administrator may decide an escalated result.",
+            _ => "That result no longer exists.",
+        };
+        TempData["FlashSeverity"] = "danger";
+        return false;
     }
 
     private async Task RunTransitionAsync(Func<Task> action)

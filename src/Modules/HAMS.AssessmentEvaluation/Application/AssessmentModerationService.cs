@@ -41,7 +41,7 @@ internal sealed class AssessmentModerationService(
     public async Task ReviseRawMarkAsync(
         Guid assessmentResultId, decimal? rawMark, Guid? specialResultStateId, CancellationToken cancellationToken = default)
     {
-        var result = await GetAsync(assessmentResultId, cancellationToken);
+        var result = await GetRequiredAsync(assessmentResultId, cancellationToken);
         if (result.ModerationStatus is not (WorkflowStatus.Draft or WorkflowStatus.Returned))
         {
             throw new InvalidOperationException("The raw mark can only be revised while a result is Draft or has been Returned for correction.");
@@ -55,14 +55,14 @@ internal sealed class AssessmentModerationService(
 
     public async Task SubmitAsync(Guid assessmentResultId, CancellationToken cancellationToken = default)
     {
-        var result = await GetAsync(assessmentResultId, cancellationToken);
+        var result = await GetRequiredAsync(assessmentResultId, cancellationToken);
         result.ModerationStatus = workflowEngine.Transition(result.ModerationStatus, WorkflowAction.Submit);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task BeginReviewAsync(Guid assessmentResultId, decimal? adjustedMark, CancellationToken cancellationToken = default)
     {
-        var result = await GetAsync(assessmentResultId, cancellationToken);
+        var result = await GetRequiredAsync(assessmentResultId, cancellationToken);
         result.ModerationStatus = workflowEngine.Transition(result.ModerationStatus, WorkflowAction.Review);
 
         if (adjustedMark is not null)
@@ -80,7 +80,7 @@ internal sealed class AssessmentModerationService(
 
     public async Task ApproveAsync(Guid assessmentResultId, decimal? moderatedMark, CancellationToken cancellationToken = default)
     {
-        var result = await GetAsync(assessmentResultId, cancellationToken);
+        var result = await GetRequiredAsync(assessmentResultId, cancellationToken);
 
         void StageChanges()
         {
@@ -143,21 +143,21 @@ internal sealed class AssessmentModerationService(
 
     public async Task RejectAsync(Guid assessmentResultId, CancellationToken cancellationToken = default)
     {
-        var result = await GetAsync(assessmentResultId, cancellationToken);
+        var result = await GetRequiredAsync(assessmentResultId, cancellationToken);
         result.ModerationStatus = workflowEngine.Transition(result.ModerationStatus, WorkflowAction.Reject);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task ReturnAsync(Guid assessmentResultId, CancellationToken cancellationToken = default)
     {
-        var result = await GetAsync(assessmentResultId, cancellationToken);
+        var result = await GetRequiredAsync(assessmentResultId, cancellationToken);
         result.ModerationStatus = workflowEngine.Transition(result.ModerationStatus, WorkflowAction.Return);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task EscalateAsync(Guid assessmentResultId, Guid escalatedByPersonId, string escalationReason, CancellationToken cancellationToken = default)
     {
-        var result = await GetAsync(assessmentResultId, cancellationToken);
+        var result = await GetRequiredAsync(assessmentResultId, cancellationToken);
         result.ModerationStatus = workflowEngine.Transition(result.ModerationStatus, WorkflowAction.Escalate);
         result.EscalatedByPersonId = escalatedByPersonId;
         result.EscalationReason = escalationReason;
@@ -166,7 +166,7 @@ internal sealed class AssessmentModerationService(
 
     public async Task<Guid> ReviseApprovedResultAsync(Guid assessmentResultId, decimal newFinalMark, CancellationToken cancellationToken = default)
     {
-        var existing = await GetAsync(assessmentResultId, cancellationToken);
+        var existing = await GetRequiredAsync(assessmentResultId, cancellationToken);
         if (existing.Status is not (RecordStatus.Published or RecordStatus.Locked))
         {
             throw new InvalidOperationException("Only an already-Published/Locked result needs this correction path — a Draft result can just be revised directly.");
@@ -204,9 +204,12 @@ internal sealed class AssessmentModerationService(
         return revised.Id;
     }
 
-    private async Task<AssessmentResult> GetAsync(Guid assessmentResultId, CancellationToken cancellationToken)
+    private async Task<AssessmentResult> GetRequiredAsync(Guid assessmentResultId, CancellationToken cancellationToken)
         => await dbContext.AssessmentResults.FindAsync([assessmentResultId], cancellationToken)
             ?? throw new InvalidOperationException("Assessment result not found.");
+
+    public async Task<AssessmentResult?> GetAsync(Guid assessmentResultId, CancellationToken cancellationToken = default) =>
+        await dbContext.AssessmentResults.FindAsync([assessmentResultId], cancellationToken);
 
     private static void ValidateMarkOrSpecialState(decimal? rawMark, Guid? specialResultStateId)
     {

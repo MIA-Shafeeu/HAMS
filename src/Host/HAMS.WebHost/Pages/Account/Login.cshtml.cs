@@ -1,12 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 using HAMS.IdentityAccess.Application.Auth;
+using HAMS.IdentityAccess.Application.Jwt;
+using HAMS.Platform.Access;
+using HAMS.Platform.Common.Contracts;
 using HAMS.WebHost.Components.Account;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace HAMS.WebHost.Pages.Account;
 
-public sealed class LoginModel(IStaffAuthenticationService staffAuth) : PageModel
+public sealed class LoginModel(IStaffAuthenticationService staffAuth, IRoleMembershipQuery roleMembershipQuery, IClock clock) : PageModel
 {
     [BindProperty]
     public CredentialsInput Credentials { get; set; } = new();
@@ -16,11 +19,12 @@ public sealed class LoginModel(IStaffAuthenticationService staffAuth) : PageMode
 
     public string? Error { get; private set; }
 
-    public IActionResult OnGet()
+    public async Task<IActionResult> OnGetAsync()
     {
         if (User.Identity?.IsAuthenticated == true)
         {
-            return Redirect(SafeReturnUrl());
+            var personId = Guid.TryParse(User.FindFirst(HamsClaimTypes.PersonId)?.Value, out var id) ? id : Guid.Empty;
+            return Redirect(await ResolveRedirectTargetAsync(personId));
         }
 
         return Page();
@@ -39,7 +43,10 @@ public sealed class LoginModel(IStaffAuthenticationService staffAuth) : PageMode
 
         if (result.MfaRequired && result.MfaToken is not null)
         {
-            return RedirectToPage("./LoginMfa", new { token = result.MfaToken, returnUrl = SafeReturnUrl() });
+            // MFA isn't verified yet, so there's no signed-in identity to resolve a role-based
+            // default from - just carry the explicit ReturnUrl (if any) through unchanged. LoginMfa
+            // resolves the actual default landing page itself once sign-in actually happens.
+            return RedirectToPage("./LoginMfa", new { token = result.MfaToken, returnUrl = SafeReturnUrlOrNull() });
         }
 
         if (!result.Succeeded)
@@ -48,14 +55,23 @@ public sealed class LoginModel(IStaffAuthenticationService staffAuth) : PageMode
             return Page();
         }
 
-        await StaffCookieSignIn.SignInAsync(HttpContext, result);
-        return Redirect(SafeReturnUrl());
+        var principal = await StaffCookieSignIn.SignInAsync(HttpContext, result);
+        var signedInPersonId = Guid.TryParse(principal.FindFirst(HamsClaimTypes.PersonId)?.Value, out var pid) ? pid : Guid.Empty;
+        return Redirect(await ResolveRedirectTargetAsync(signedInPersonId));
     }
 
-    private string SafeReturnUrl()
+    private string? SafeReturnUrlOrNull()
         => !string.IsNullOrEmpty(ReturnUrl) && ReturnUrl.StartsWith('/') && !ReturnUrl.StartsWith("//")
             ? ReturnUrl
-            : "/dashboard";
+            : null;
+
+    // "/dashboard" is System/School-Administrator-only (SystemOrSchoolAdminPolicy) - defaulting
+    // every login there regardless of role sent every other staff member straight into an access-
+    // denied-then-back-to-login redirect loop. Everyone else's default landing page is "/attendance",
+    // the first link every staff member's nav menu actually shows them (see NavMenuViewComponent).
+    private async Task<string> ResolveRedirectTargetAsync(Guid personId)
+        => SafeReturnUrlOrNull()
+            ?? (await roleMembershipQuery.IsSystemOrSchoolAdminAsync(personId, clock.TodayUtc) ? "/dashboard" : "/attendance");
 
     public sealed class CredentialsInput
     {

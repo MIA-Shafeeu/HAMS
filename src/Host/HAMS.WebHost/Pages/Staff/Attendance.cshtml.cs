@@ -2,6 +2,8 @@ using HAMS.Attendance.Application;
 using HAMS.IdentityAccess.Application.Jwt;
 using HAMS.OrgCurriculum.Application;
 using HAMS.PeopleEnrollment.Application;
+using HAMS.Platform.Common.Contracts;
+using HAMS.TeachingTimetable.Application;
 using HAMS.WebHost.Components.Account;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,7 +24,9 @@ public sealed class AttendanceModel(
     IOrgStructureLookup orgLookup,
     IStudentEnrollmentService enrollmentService,
     IAttendanceQueryService attendanceQuery,
-    IAttendanceService attendanceService) : PageModel
+    IAttendanceService attendanceService,
+    IStaffAccessScopeQuery scopeQuery,
+    IClock clock) : PageModel
 {
     [BindProperty(SupportsGet = true)]
     public Guid SchoolId { get; set; }
@@ -42,6 +46,12 @@ public sealed class AttendanceModel(
     public IReadOnlyList<AttendanceStatusOption> Statuses { get; private set; } = [];
     public IReadOnlyList<RosterRow> Roster { get; private set; } = [];
 
+    /// <summary>False when <see cref="ClassId"/> is set but isn't one of the caller's assigned
+    /// classes (e.g. a stale link, or a directly-edited query string) - the roster is then not
+    /// loaded at all, and the page shows an access-denied message instead of silently rendering
+    /// nothing. Always true once <see cref="ClassId"/> is empty (nothing selected yet to deny).</summary>
+    public bool ClassAccessAuthorized { get; private set; } = true;
+
     // POST body for the single "Save All" form - array-indexed (Rows[0].StudentPersonId, ...) so
     // ASP.NET Core's default model binder reconstructs the whole roster's edits from one submit,
     // matching every row's Status/Notes inputs being live simultaneously (no per-row edit toggle).
@@ -59,7 +69,16 @@ public sealed class AttendanceModel(
     // be clever about stale cross-cascade values" approach OrgStructureModel.LoadAllAsync takes.
     private async Task LoadAsync()
     {
-        Schools = await orgLookup.GetSchoolsAsync();
+        var personId = ResolvePersonId();
+
+        // Resolved twice, deliberately: once against just the caller's accessible Schools (before
+        // an Academic Year is even chosen - GetScopeAsync's own null-schoolId shortcut skips the
+        // OrgCurriculum/SubjectTeachingAssignment joins entirely for this cheap first pass), then
+        // again scoped to whichever School+Year end up selected, once Classes need filtering too.
+        var schoolScope = await scopeQuery.GetScopeAsync(personId, clock.TodayUtc, schoolId: null, academicYearId: null);
+
+        var allSchools = await orgLookup.GetSchoolsAsync();
+        Schools = schoolScope.HasUnrestrictedAccess ? allSchools : [.. allSchools.Where(s => schoolScope.CanAccessSchool(s.Id))];
         if (SchoolId == Guid.Empty && Schools.Count > 0)
         {
             SchoolId = Schools[0].Id;
@@ -74,9 +93,13 @@ public sealed class AttendanceModel(
             }
         }
 
-        if (AcademicYearId != Guid.Empty)
+        StaffAccessScope? fullScope = null;
+        if (SchoolId != Guid.Empty && AcademicYearId != Guid.Empty)
         {
-            Classes = await orgLookup.GetClassesAsync(AcademicYearId);
+            fullScope = await scopeQuery.GetScopeAsync(personId, clock.TodayUtc, SchoolId, AcademicYearId);
+
+            var allClasses = await orgLookup.GetClassesAsync(AcademicYearId);
+            Classes = fullScope.HasUnrestrictedAccess ? allClasses : [.. allClasses.Where(c => fullScope.CanAccessClass(c.Id))];
             if (ClassId == Guid.Empty && Classes.Count > 0)
             {
                 ClassId = Classes[0].Id;
@@ -87,9 +110,16 @@ public sealed class AttendanceModel(
 
         if (ClassId != Guid.Empty)
         {
-            await LoadRosterAsync();
+            ClassAccessAuthorized = fullScope?.CanAccessClass(ClassId) ?? false;
+            if (ClassAccessAuthorized)
+            {
+                await LoadRosterAsync();
+            }
         }
     }
+
+    private Guid ResolvePersonId() =>
+        Guid.TryParse(User.FindFirst(HamsClaimTypes.PersonId)?.Value, out var personId) ? personId : Guid.Empty;
 
     private async Task LoadRosterAsync()
     {
@@ -111,10 +141,22 @@ public sealed class AttendanceModel(
 
     public async Task<IActionResult> OnPostSaveAttendanceAsync()
     {
-        var personIdValue = User.FindFirst(HamsClaimTypes.PersonId)?.Value;
-        if (!Guid.TryParse(personIdValue, out var recordedByPersonId))
+        var recordedByPersonId = ResolvePersonId();
+        if (recordedByPersonId == Guid.Empty)
         {
             TempData["FlashMessage"] = "Could not resolve your staff profile.";
+            TempData["FlashSeverity"] = "danger";
+            return BackToScope();
+        }
+
+        // Re-derived from a fresh scope check, never trusted from the posted ClassId alone - a
+        // Razor Page POST handler is a directly-callable HTTP endpoint, unlike the old Blazor
+        // Server circuit event this page was migrated from, so the class picker only being
+        // filtered client-side would not be enough on its own to stop a tampered ClassId.
+        var scope = await scopeQuery.GetScopeAsync(recordedByPersonId, clock.TodayUtc, SchoolId, AcademicYearId);
+        if (!scope.CanAccessClass(ClassId))
+        {
+            TempData["FlashMessage"] = "You do not have access to this class.";
             TempData["FlashSeverity"] = "danger";
             return BackToScope();
         }

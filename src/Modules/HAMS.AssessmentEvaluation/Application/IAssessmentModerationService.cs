@@ -48,4 +48,7 @@ public interface IAssessmentModerationService
     /// with a new, already-Approved row carrying <paramref name="newFinalMark"/>.
     /// </summary>
     Task<Guid> ReviseApprovedResultAsync(Guid assessmentResultId, decimal newFinalMark, CancellationToken cancellationToken = default);
+
+    /// <summary>Resolves a result by its own id — a Staff page re-authorizing a moderation transition against the caller's teaching scope needs this to find the result's owning <c>AssessmentId</c> (and from there its <c>GradeId</c>) before trusting a caller-posted <c>assessmentResultId</c>.</summary>
+    Task<AssessmentResult?> GetAsync(Guid assessmentResultId, CancellationToken cancellationToken = default);
 }

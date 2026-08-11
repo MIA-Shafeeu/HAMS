@@ -44,6 +44,7 @@ public static class PlatformAccessExtensions
         services.AddScoped<IConfidentialRecordAccessor, ConfidentialRecordAccessor>();
         services.AddScoped<IRoleMembershipQuery, RoleMembershipQuery>();
         services.AddScoped<IScopedAccessGrantProjector, ScopedAccessGrantProjector>();
+        services.AddScoped<IPersonAccessScopeQuery, PersonAccessScopeQuery>();
 
         // Scoped, not singleton: both handlers depend on AccessDbContext (inherently scoped).
         services.AddScoped<IAuthorizationHandler, ScopeAuthorizationHandler>();

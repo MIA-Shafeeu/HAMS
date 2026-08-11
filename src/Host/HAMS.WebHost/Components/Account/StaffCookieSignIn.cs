@@ -17,7 +17,11 @@ namespace HAMS.WebHost.Components.Account;
 /// </summary>
 internal static class StaffCookieSignIn
 {
-    public static async Task SignInAsync(HttpContext httpContext, AuthResult authResult)
+    /// <returns>The signed-in <see cref="ClaimsPrincipal"/> — <c>HttpContext.User</c> itself is NOT
+    /// updated by this call (ASP.NET Core only applies a new principal to <c>HttpContext.User</c> on
+    /// the NEXT request), so a caller that needs to make a same-request decision based on who just
+    /// signed in (e.g. where to redirect them) must read it from this return value instead.</returns>
+    public static async Task<ClaimsPrincipal> SignInAsync(HttpContext httpContext, AuthResult authResult)
     {
         if (!authResult.Succeeded || authResult.AccessToken is null)
         {
@@ -38,5 +42,6 @@ internal static class StaffCookieSignIn
         }
 
         await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, properties);
+        return principal;
     }
 }

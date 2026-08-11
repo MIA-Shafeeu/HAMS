@@ -4,7 +4,9 @@ using HAMS.Intervention.Application;
 using HAMS.OrgCurriculum.Application;
 using HAMS.PeopleEnrollment.Application;
 using HAMS.Platform.Access.Domain;
+using HAMS.Platform.Common.Contracts;
 using HAMS.Platform.Workflow.Domain;
+using HAMS.TeachingTimetable.Application;
 using HAMS.WebHost.Components.Account;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,7 +19,9 @@ public sealed class BehaviourIncidentsModel(
     IOrgStructureLookup orgLookup,
     IStudentEnrollmentService enrollmentService,
     IBehaviourCategoryLookup categoryLookup,
-    IBehaviourIncidentService incidentService) : PageModel
+    IBehaviourIncidentService incidentService,
+    IStaffAccessScopeQuery scopeQuery,
+    IClock clock) : PageModel
 {
     // ---- Cascading scope: School -> Academic Year -> Class -> Student ----
     [BindProperty(SupportsGet = true)]
@@ -38,6 +42,13 @@ public sealed class BehaviourIncidentsModel(
     public IReadOnlyList<ClassRosterEntry> Roster { get; private set; } = [];
     public IReadOnlyList<BehaviourCategoryOption> Categories { get; private set; } = [];
     public List<IncidentRow> Incidents { get; private set; } = [];
+
+    /// <summary>False when <see cref="ClassId"/> is set but isn't one of the caller's assigned
+    /// classes (e.g. a stale link, or a directly-edited query string) - the roster (and everything
+    /// downstream of it: student selection, incident history) is then not loaded at all, and the
+    /// page shows an access-denied message instead of silently rendering nothing. Always true once
+    /// <see cref="ClassId"/> is empty (nothing selected yet to deny). Mirrors Attendance's guard.</summary>
+    public bool ClassAccessAuthorized { get; private set; } = true;
 
     [BindProperty]
     public NewIncidentInput NewIncident { get; set; } = new();
@@ -66,7 +77,15 @@ public sealed class BehaviourIncidentsModel(
     // full-page GET instead of four separate ValueChanged handlers.
     private async Task LoadAsync()
     {
-        Schools = await orgLookup.GetSchoolsAsync();
+        var personId = ResolvePersonId();
+
+        // Resolved twice, deliberately: once against just the caller's accessible Schools (before
+        // an Academic Year is even chosen), then again scoped to whichever School+Year end up
+        // selected, once Classes need filtering too - mirrors Attendance's LoadAsync.
+        var schoolScope = await scopeQuery.GetScopeAsync(personId, clock.TodayUtc, schoolId: null, academicYearId: null);
+
+        var allSchools = await orgLookup.GetSchoolsAsync();
+        Schools = schoolScope.HasUnrestrictedAccess ? allSchools : [.. allSchools.Where(s => schoolScope.CanAccessSchool(s.Id))];
         Categories = await categoryLookup.GetAllAsync();
         if (NewIncident.CategoryId == Guid.Empty && Categories.Count > 0)
         {
@@ -88,9 +107,13 @@ public sealed class BehaviourIncidentsModel(
             AcademicYearId = AcademicYears.Count > 0 ? AcademicYears[0].Id : Guid.Empty;
         }
 
+        StaffAccessScope? fullScope = null;
         if (AcademicYearId != Guid.Empty)
         {
-            Classes = await orgLookup.GetClassesAsync(AcademicYearId);
+            fullScope = await scopeQuery.GetScopeAsync(personId, clock.TodayUtc, SchoolId, AcademicYearId);
+
+            var allClasses = await orgLookup.GetClassesAsync(AcademicYearId);
+            Classes = fullScope.HasUnrestrictedAccess ? allClasses : [.. allClasses.Where(c => fullScope.CanAccessClass(c.Id))];
         }
 
         if (ClassId == Guid.Empty || Classes.All(c => c.Id != ClassId))
@@ -100,7 +123,11 @@ public sealed class BehaviourIncidentsModel(
 
         if (ClassId != Guid.Empty)
         {
-            Roster = await enrollmentService.GetActiveRosterForClassAsync(ClassId, DateOnly.FromDateTime(DateTime.Today));
+            ClassAccessAuthorized = fullScope?.CanAccessClass(ClassId) ?? false;
+            if (ClassAccessAuthorized)
+            {
+                Roster = await enrollmentService.GetActiveRosterForClassAsync(ClassId, DateOnly.FromDateTime(DateTime.Today));
+            }
         }
 
         if (StudentId == Guid.Empty || Roster.All(r => r.StudentPersonId != StudentId))
@@ -113,6 +140,9 @@ public sealed class BehaviourIncidentsModel(
             await LoadIncidentsAsync();
         }
     }
+
+    private Guid ResolvePersonId() =>
+        Guid.TryParse(User.FindFirst(HamsClaimTypes.PersonId)?.Value, out var personId) ? personId : Guid.Empty;
 
     private async Task LoadIncidentsAsync()
     {
@@ -145,6 +175,18 @@ public sealed class BehaviourIncidentsModel(
             return BackToScope();
         }
 
+        // Re-derived from a fresh scope check, never trusted from the posted ClassId alone - a
+        // Razor Page POST handler is a directly-callable HTTP endpoint, so the class picker only
+        // being filtered client-side would not be enough on its own to stop a tampered ClassId.
+        // Mirrors Attendance's OnPostSaveAttendanceAsync.
+        var scope = await scopeQuery.GetScopeAsync(recordedBy, clock.TodayUtc, SchoolId, AcademicYearId);
+        if (!scope.CanAccessClass(ClassId))
+        {
+            TempData["FlashMessage"] = "You do not have access to this class.";
+            TempData["FlashSeverity"] = "danger";
+            return BackToScope();
+        }
+
         if (string.IsNullOrWhiteSpace(NewIncident.Description))
         {
             TempData["FlashMessage"] = "A description is required.";
@@ -161,52 +203,117 @@ public sealed class BehaviourIncidentsModel(
         return BackToScope();
     }
 
-    public Task<IActionResult> OnPostSubmitAsync(Guid id) =>
-        RunTransitionAsync(() => incidentService.SubmitAsync(id), "Incident submitted.");
-
-    public Task<IActionResult> OnPostBeginReviewAsync(Guid id)
+    public async Task<IActionResult> OnPostSubmitAsync(Guid id)
     {
-        if (CurrentPersonId is not { } reviewedBy)
+        if (CurrentPersonId is not { } personId)
         {
-            return NoCurrentUserAsync();
+            return await NoCurrentUserAsync();
         }
 
-        return RunTransitionAsync(() => incidentService.BeginReviewAsync(id, reviewedBy), "Review started.");
+        if (!await IsAuthorizedForIncidentAsync(id, personId))
+        {
+            return await AccessDeniedAsync();
+        }
+
+        return await RunTransitionAsync(() => incidentService.SubmitAsync(id), "Incident submitted.");
     }
 
-    public Task<IActionResult> OnPostApproveAsync(Guid id)
+    public async Task<IActionResult> OnPostBeginReviewAsync(Guid id)
     {
         if (CurrentPersonId is not { } reviewedBy)
         {
-            return NoCurrentUserAsync();
+            return await NoCurrentUserAsync();
         }
 
-        return RunTransitionAsync(() => incidentService.ApproveAsync(id, reviewedBy, null, null), "Incident approved.");
+        if (!await IsAuthorizedForIncidentAsync(id, reviewedBy))
+        {
+            return await AccessDeniedAsync();
+        }
+
+        return await RunTransitionAsync(() => incidentService.BeginReviewAsync(id, reviewedBy), "Review started.");
     }
 
-    public Task<IActionResult> OnPostRejectAsync(Guid id)
+    public async Task<IActionResult> OnPostApproveAsync(Guid id)
     {
         if (CurrentPersonId is not { } reviewedBy)
         {
-            return NoCurrentUserAsync();
+            return await NoCurrentUserAsync();
         }
 
-        return RunTransitionAsync(() => incidentService.RejectAsync(id, reviewedBy, null), "Incident rejected.");
+        if (!await IsAuthorizedForIncidentAsync(id, reviewedBy))
+        {
+            return await AccessDeniedAsync();
+        }
+
+        return await RunTransitionAsync(() => incidentService.ApproveAsync(id, reviewedBy, null, null), "Incident approved.");
     }
 
-    public Task<IActionResult> OnPostReturnAsync(Guid id)
+    public async Task<IActionResult> OnPostRejectAsync(Guid id)
     {
         if (CurrentPersonId is not { } reviewedBy)
         {
-            return NoCurrentUserAsync();
+            return await NoCurrentUserAsync();
         }
 
-        return RunTransitionAsync(() => incidentService.ReturnAsync(id, reviewedBy, null), "Incident returned.");
+        if (!await IsAuthorizedForIncidentAsync(id, reviewedBy))
+        {
+            return await AccessDeniedAsync();
+        }
+
+        return await RunTransitionAsync(() => incidentService.RejectAsync(id, reviewedBy, null), "Incident rejected.");
+    }
+
+    public async Task<IActionResult> OnPostReturnAsync(Guid id)
+    {
+        if (CurrentPersonId is not { } reviewedBy)
+        {
+            return await NoCurrentUserAsync();
+        }
+
+        if (!await IsAuthorizedForIncidentAsync(id, reviewedBy))
+        {
+            return await AccessDeniedAsync();
+        }
+
+        return await RunTransitionAsync(() => incidentService.ReturnAsync(id, reviewedBy, null), "Incident returned.");
+    }
+
+    /// <summary>
+    /// Re-derives the caller's access to an EXISTING incident from scratch - never trusted from
+    /// whatever the page happened to have loaded for a DIFFERENT class/student, since the posted
+    /// <paramref name="incidentId"/> is an independent input a caller could point at any incident
+    /// system-wide. A <see cref="BehaviourIncident"/> carries no ClassId/SchoolId of its own (only
+    /// <c>StudentPersonId</c>+<c>AcademicYearId</c>), so its class is resolved the same way the
+    /// page's own roster is built: the student's active enrolment for that year.
+    /// </summary>
+    private async Task<bool> IsAuthorizedForIncidentAsync(Guid incidentId, Guid personId)
+    {
+        var incident = await incidentService.GetAsync(incidentId);
+        if (incident is null)
+        {
+            return false;
+        }
+
+        var enrollment = await enrollmentService.GetActiveEnrollmentAsync(incident.StudentPersonId, incident.AcademicYearId, clock.TodayUtc);
+        if (enrollment is null || await orgLookup.GetClassSchoolIdAsync(enrollment.ClassId) is not { } schoolId)
+        {
+            return false;
+        }
+
+        var scope = await scopeQuery.GetScopeAsync(personId, clock.TodayUtc, schoolId, incident.AcademicYearId);
+        return scope.CanAccessClass(enrollment.ClassId);
     }
 
     private Task<IActionResult> NoCurrentUserAsync()
     {
         TempData["FlashMessage"] = "Could not resolve the current user.";
+        TempData["FlashSeverity"] = "danger";
+        return Task.FromResult<IActionResult>(BackToScope());
+    }
+
+    private Task<IActionResult> AccessDeniedAsync()
+    {
+        TempData["FlashMessage"] = "You do not have access to this incident.";
         TempData["FlashSeverity"] = "danger";
         return Task.FromResult<IActionResult>(BackToScope());
     }

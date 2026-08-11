@@ -17,13 +17,22 @@ public interface ILessonPlanningService
 
     Task<IReadOnlyList<SchemeOfWork>> GetSchemesOfWorkAsync(Guid subjectId, Guid gradeId, Guid academicYearId, CancellationToken cancellationToken = default);
 
+    /// <summary>Resolves a scheme by its own id — a Staff page re-authorizing a write against an ALREADY-created scheme (adding an item to it) needs this to learn its <c>GradeId</c>/<c>AcademicYearId</c> before trusting a caller-posted <c>schemeOfWorkId</c>.</summary>
+    Task<SchemeOfWork?> GetSchemeOfWorkAsync(Guid schemeOfWorkId, CancellationToken cancellationToken = default);
+
     Task<Guid> AddSchemeOfWorkItemAsync(Guid schemeOfWorkId, Guid learningOutcomeId, int plannedWeekNumber, int displayOrder, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<SchemeOfWorkItem>> GetSchemeOfWorkItemsAsync(Guid schemeOfWorkId, CancellationToken cancellationToken = default);
 
+    /// <summary>Resolves an item by its own id — same re-authorization need as <see cref="GetSchemeOfWorkAsync"/>, one level down (a <see cref="SchemeOfWorkItem"/> only carries its parent <c>SchemeOfWorkId</c>, not a Grade of its own).</summary>
+    Task<SchemeOfWorkItem?> GetSchemeOfWorkItemAsync(Guid schemeOfWorkItemId, CancellationToken cancellationToken = default);
+
     Task<Guid> CreateTeachingTopicAsync(Guid schemeOfWorkItemId, string nameEn, string nameDv, int displayOrder, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<TeachingTopic>> GetTeachingTopicsAsync(Guid schemeOfWorkItemId, CancellationToken cancellationToken = default);
+
+    /// <summary>Resolves a topic by its own id — same re-authorization need, one level further down (a <see cref="TeachingTopic"/> only carries its parent <c>SchemeOfWorkItemId</c>).</summary>
+    Task<TeachingTopic?> GetTeachingTopicAsync(Guid teachingTopicId, CancellationToken cancellationToken = default);
 
     Task<Guid> CreateLessonPlanAsync(Guid teachingTopicId, Guid staffPersonId, DateOnly plannedDate, string objectives, CancellationToken cancellationToken = default);
 

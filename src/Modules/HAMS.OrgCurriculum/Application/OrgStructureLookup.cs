@@ -28,4 +28,16 @@ internal sealed class OrgStructureLookup(OrgDbContext dbContext) : IOrgStructure
     public async Task<IReadOnlyList<TermOption>> GetTermsAsync(Guid academicYearId, CancellationToken cancellationToken = default) =>
         await dbContext.Terms.Where(t => t.AcademicYearId == academicYearId).OrderBy(t => t.DisplayOrder)
             .Select(t => new TermOption(t.Id, t.Code, t.Name)).ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Guid>> GetClassGradeIdsAsync(Guid classId, CancellationToken cancellationToken = default) =>
+        await dbContext.ClassGrades.Where(cg => cg.ClassId == classId).Select(cg => cg.GradeId).ToListAsync(cancellationToken);
+
+    public async Task<Guid?> GetClassSchoolIdAsync(Guid classId, CancellationToken cancellationToken = default) =>
+        await dbContext.Classes.Where(c => c.Id == classId).Select(c => (Guid?)c.SchoolId).SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<Guid?> GetGradeSchoolIdAsync(Guid gradeId, CancellationToken cancellationToken = default) =>
+        await dbContext.Grades.Where(g => g.Id == gradeId).Select(g => (Guid?)g.SchoolId).SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<Guid?> GetClassAcademicYearIdAsync(Guid classId, CancellationToken cancellationToken = default) =>
+        await dbContext.Classes.Where(c => c.Id == classId).Select(c => (Guid?)c.AcademicYearId).SingleOrDefaultAsync(cancellationToken);
 }

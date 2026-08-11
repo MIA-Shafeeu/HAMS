@@ -37,6 +37,7 @@ public static class TeachingTimetableModule
         services.AddScoped<ISubstitutionService, SubstitutionService>();
         services.AddScoped<ITimetableService, TimetableService>();
         services.AddScoped<IPeriodAdminService, PeriodAdminService>();
+        services.AddScoped<IStaffAccessScopeQuery, StaffAccessScopeQuery>();
 
         return services;
     }

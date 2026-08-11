@@ -17,4 +17,7 @@ public interface IAssessmentLookup
 
     /// <summary>Current (non-superseded) result rows for one assessment — the same filter <c>AssessmentResultEndpoints</c>' <c>GET /results</c> already applies inline.</summary>
     Task<IReadOnlyList<AssessmentResult>> GetResultsForAssessmentAsync(Guid assessmentId, CancellationToken cancellationToken = default);
+
+    /// <summary>Resolves an <see cref="Assessment"/> by its own id — a Staff page re-authorizing a moderation transition needs this to learn a result's <c>GradeId</c>/<c>SubjectId</c>, neither of which live on <see cref="AssessmentResult"/> itself.</summary>
+    Task<Assessment?> GetAssessmentAsync(Guid assessmentId, CancellationToken cancellationToken = default);
 }

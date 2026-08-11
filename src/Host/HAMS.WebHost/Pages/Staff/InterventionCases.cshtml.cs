@@ -6,6 +6,8 @@ using HAMS.OrgCurriculum.Application;
 using HAMS.PeopleEnrollment.Application;
 using HAMS.Platform.Access;
 using HAMS.Platform.Access.Domain;
+using HAMS.Platform.Common.Contracts;
+using HAMS.TeachingTimetable.Application;
 using HAMS.WebHost.Components.Account;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +21,9 @@ public sealed class InterventionCasesModel(
     IStudentEnrollmentService enrollmentService,
     ISubjectLookup subjectLookup,
     IInterventionCaseService caseService,
-    IConfidentialRecordAccessor confidentialAccessor) : PageModel
+    IConfidentialRecordAccessor confidentialAccessor,
+    IStaffAccessScopeQuery scopeQuery,
+    IClock clock) : PageModel
 {
     // ---- Scope cascade (School -> Academic Year -> Class -> Student), each level its own tiny GET
     // form so picking a new value at one level naturally drops every level below it from the query
@@ -51,6 +55,15 @@ public sealed class InterventionCasesModel(
 
     public IReadOnlyList<CaseRow> Cases { get; private set; } = [];
 
+    /// <summary>False when <see cref="ClassId"/> is set but isn't one of the caller's assigned
+    /// classes (e.g. a stale link, or a directly-edited query string) - the roster/case-opening UI
+    /// is then not loaded at all, and the page shows an access-denied message instead of silently
+    /// rendering nothing. Distinct from <see cref="SelectedCaseAuthorized"/> below, which is a
+    /// per-case confidentiality-tier grant check, not a teaching-assignment check - the two are
+    /// independent and both must pass where they apply. Always true once <see cref="ClassId"/> is
+    /// empty (nothing selected yet to deny).</summary>
+    public bool ClassAccessAuthorized { get; private set; } = true;
+
     // ---- Selected case detail - populated ONLY when the confidentiality check below passes ----
     public bool SelectedCaseAuthorized { get; private set; }
     public InterventionCaseStatus SelectedCaseStatus { get; private set; }
@@ -69,7 +82,17 @@ public sealed class InterventionCasesModel(
 
     private async Task LoadAllAsync()
     {
-        Schools = await orgLookup.GetSchoolsAsync();
+        TryGetCurrentPersonId(out var personId);
+
+        // Resolved twice, deliberately: once against just the caller's accessible Schools (before
+        // an Academic Year is even chosen - GetScopeAsync's own null-schoolId shortcut skips the
+        // OrgCurriculum/SubjectTeachingAssignment joins entirely for this cheap first pass), then
+        // again scoped to whichever School+Year end up selected, once Classes need filtering too.
+        // Same two-pass approach as AttendanceModel.LoadAsync.
+        var schoolScope = await scopeQuery.GetScopeAsync(personId, clock.TodayUtc, schoolId: null, academicYearId: null);
+
+        var allSchools = await orgLookup.GetSchoolsAsync();
+        Schools = schoolScope.HasUnrestrictedAccess ? allSchools : [.. allSchools.Where(s => schoolScope.CanAccessSchool(s.Id))];
         InterventionTypes = await caseService.GetActiveInterventionTypesAsync();
 
         if (SchoolId != Guid.Empty)
@@ -78,17 +101,30 @@ public sealed class InterventionCasesModel(
             Subjects = await orgLookup.GetSubjectsAsync(SchoolId);
         }
 
-        if (AcademicYearId != Guid.Empty)
+        StaffAccessScope? fullScope = null;
+        if (SchoolId != Guid.Empty && AcademicYearId != Guid.Empty)
         {
-            Classes = await orgLookup.GetClassesAsync(AcademicYearId);
+            fullScope = await scopeQuery.GetScopeAsync(personId, clock.TodayUtc, SchoolId, AcademicYearId);
+
+            var allClasses = await orgLookup.GetClassesAsync(AcademicYearId);
+            Classes = fullScope.HasUnrestrictedAccess ? allClasses : [.. allClasses.Where(c => fullScope.CanAccessClass(c.Id))];
         }
 
         if (ClassId != Guid.Empty)
         {
-            Roster = await enrollmentService.GetActiveRosterForClassAsync(ClassId, DateOnly.FromDateTime(DateTime.Today));
+            ClassAccessAuthorized = fullScope?.CanAccessClass(ClassId) ?? false;
+            if (ClassAccessAuthorized)
+            {
+                Roster = await enrollmentService.GetActiveRosterForClassAsync(ClassId, DateOnly.FromDateTime(DateTime.Today));
+            }
         }
 
-        if (StudentId != Guid.Empty)
+        // Also gated on ClassAccessAuthorized AND the student actually being in the (authorized)
+        // roster - StudentId is caller-suppliable independent of ClassId, so without this check a
+        // tampered StudentId could reveal another class's student's case list even though ClassId
+        // itself is denied (or belongs to some other, unrelated class the caller wasn't shown this
+        // student under).
+        if (StudentId != Guid.Empty && ClassAccessAuthorized && Roster.Any(r => r.StudentPersonId == StudentId))
         {
             await LoadCasesAsync();
         }
@@ -154,6 +190,21 @@ public sealed class InterventionCasesModel(
         {
             TempData["FlashMessage"] = "Select a student before opening a case.";
             TempData["FlashSeverity"] = "warning";
+            return BackToScope();
+        }
+
+        // Re-derived from a fresh scope check, never trusted from the posted ClassId alone - a
+        // Razor Page POST handler is a directly-callable HTTP endpoint, so the class picker only
+        // being filtered server-side on the GET render would not be enough on its own to stop a
+        // tampered ClassId in the POST body. Same reasoning as AttendanceModel.OnPostSaveAttendanceAsync.
+        // This is IN ADDITION TO the confidentiality (IsAuthorizedForCaseAsync) checks elsewhere on
+        // this page, not a replacement for them - a new case has no confidentiality grant to check
+        // yet, only a teaching-assignment scope to check.
+        var scope = await scopeQuery.GetScopeAsync(openedBy, clock.TodayUtc, SchoolId, AcademicYearId);
+        if (!scope.CanAccessClass(ClassId))
+        {
+            TempData["FlashMessage"] = "You do not have access to this class.";
+            TempData["FlashSeverity"] = "danger";
             return BackToScope();
         }
 
