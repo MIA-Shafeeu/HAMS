@@ -3,7 +3,7 @@ namespace HAMS.OrgCurriculum.Application;
 public sealed record SchoolOption(Guid Id, string Code, string Name);
 public sealed record AcademicYearOption(Guid Id, string Code, string Name, DateOnly StartDate, DateOnly EndDate);
 public sealed record GradeOption(Guid Id, string Code, string Name);
-public sealed record ClassOption(Guid Id, string Code, string Name);
+public sealed record ClassOption(Guid Id, string Code, string Name, string ColorHex);
 public sealed record SubjectOption(Guid Id, string Code, string Name);
 public sealed record TermOption(Guid Id, string Code, string Name);
 

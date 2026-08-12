@@ -7,6 +7,11 @@ namespace HAMS.TeachingTimetable.Tests;
 
 public class TimetableServiceTests
 {
+    private static readonly TimeOnly Period1Start = new(8, 0);
+    private static readonly TimeOnly Period1End = new(8, 40);
+    private static readonly TimeOnly Period2Start = new(8, 40);
+    private static readonly TimeOnly Period2End = new(9, 20);
+
     private static TeachingTimetableDbContext CreateContext() => new(
         new DbContextOptionsBuilder<TeachingTimetableDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 
@@ -15,12 +20,6 @@ public class TimetableServiceTests
 
     private static TimetableService CreateService(TeachingTimetableDbContext db, FakeOrgStructureLookup orgStructureLookup)
         => new(db, new FakeSchoolCalendarService(), orgStructureLookup);
-
-    private static async Task SeedPeriodAsync(TeachingTimetableDbContext db, Guid periodId, string name, TimeOnly start, TimeOnly end)
-    {
-        db.Periods.Add(new Period { Id = periodId, SchoolId = Guid.NewGuid(), Code = name, Name = name, StartTime = start, EndTime = end });
-        await db.SaveChangesAsync();
-    }
 
     private static async Task<Guid> SeedAssignmentAsync(TeachingTimetableDbContext db, Guid staffPersonId, Guid subjectId, Guid classId, Guid academicYearId)
     {
@@ -46,7 +45,7 @@ public class TimetableServiceTests
         var assignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), subjectId, classId, academicYearId);
         var service = CreateService(db);
 
-        var entryId = await service.ScheduleAsync(Guid.NewGuid(), classId, subjectId, assignmentId, academicYearId, DayOfWeek.Monday, Guid.NewGuid());
+        var entryId = await service.ScheduleAsync(Guid.NewGuid(), classId, subjectId, assignmentId, academicYearId, DayOfWeek.Monday, Period1Start, Period1End);
 
         Assert.NotEqual(Guid.Empty, entryId);
     }
@@ -64,25 +63,48 @@ public class TimetableServiceTests
         var service = CreateService(db, DayOfWeek.Friday, DayOfWeek.Saturday);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.ScheduleAsync(Guid.NewGuid(), classId, subjectId, assignmentId, academicYearId, DayOfWeek.Friday, Guid.NewGuid()));
+            service.ScheduleAsync(Guid.NewGuid(), classId, subjectId, assignmentId, academicYearId, DayOfWeek.Friday, Period1Start, Period1End));
     }
 
     [Fact]
-    public async Task ScheduleAsync_rejects_a_class_double_booked_in_the_same_slot()
+    public async Task ScheduleAsync_rejects_a_class_double_booked_in_an_identical_period()
     {
         await using var db = CreateContext();
         var academicYearId = Guid.NewGuid();
         var classId = Guid.NewGuid();
-        var periodId = Guid.NewGuid();
+        var schoolId = Guid.NewGuid();
 
         var mathsAssignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), classId, academicYearId);
         var englishAssignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), classId, academicYearId);
         var service = CreateService(db);
 
-        await service.ScheduleAsync(Guid.NewGuid(), classId, Guid.NewGuid(), mathsAssignmentId, academicYearId, DayOfWeek.Monday, periodId);
+        await service.ScheduleAsync(schoolId, classId, Guid.NewGuid(), mathsAssignmentId, academicYearId, DayOfWeek.Monday, Period1Start, Period1End);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.ScheduleAsync(Guid.NewGuid(), classId, Guid.NewGuid(), englishAssignmentId, academicYearId, DayOfWeek.Monday, periodId));
+            service.ScheduleAsync(schoolId, classId, Guid.NewGuid(), englishAssignmentId, academicYearId, DayOfWeek.Monday, Period1Start, Period1End));
+    }
+
+    [Fact]
+    public async Task ScheduleAsync_rejects_a_class_double_booked_in_an_overlapping_but_different_period()
+    {
+        // The core correctness fix this service exists for: two different (auto-created) Periods
+        // that merely overlap in wall-clock time must still be rejected, not just exact-PeriodId
+        // matches — the old implementation only ever compared PeriodId equality.
+        await using var db = CreateContext();
+        var academicYearId = Guid.NewGuid();
+        var classId = Guid.NewGuid();
+        var schoolId = Guid.NewGuid();
+
+        var firstAssignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), classId, academicYearId);
+        var secondAssignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), classId, academicYearId);
+        var service = CreateService(db);
+
+        await service.ScheduleAsync(schoolId, classId, Guid.NewGuid(), firstAssignmentId, academicYearId, DayOfWeek.Monday, new TimeOnly(8, 0), new TimeOnly(8, 40));
+
+        // 08:30-09:10 overlaps the first slot (08:00-08:40) by 10 minutes despite being a distinct
+        // time range that would find-or-create its own new Period row.
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.ScheduleAsync(schoolId, classId, Guid.NewGuid(), secondAssignmentId, academicYearId, DayOfWeek.Monday, new TimeOnly(8, 30), new TimeOnly(9, 10)));
     }
 
     [Fact]
@@ -91,33 +113,51 @@ public class TimetableServiceTests
         await using var db = CreateContext();
         var academicYearId = Guid.NewGuid();
         var teacherId = Guid.NewGuid();
-        var periodId = Guid.NewGuid();
+        var schoolId = Guid.NewGuid();
 
         var classAAssignmentId = await SeedAssignmentAsync(db, teacherId, Guid.NewGuid(), Guid.NewGuid(), academicYearId);
         var classBAssignmentId = await SeedAssignmentAsync(db, teacherId, Guid.NewGuid(), Guid.NewGuid(), academicYearId);
         var service = CreateService(db);
 
-        await service.ScheduleAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), classAAssignmentId, academicYearId, DayOfWeek.Tuesday, periodId);
+        await service.ScheduleAsync(schoolId, Guid.NewGuid(), Guid.NewGuid(), classAAssignmentId, academicYearId, DayOfWeek.Tuesday, Period1Start, Period1End);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.ScheduleAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), classBAssignmentId, academicYearId, DayOfWeek.Tuesday, periodId));
+            service.ScheduleAsync(schoolId, Guid.NewGuid(), Guid.NewGuid(), classBAssignmentId, academicYearId, DayOfWeek.Tuesday, Period1Start, Period1End));
     }
 
     [Fact]
-    public async Task ScheduleAsync_allows_the_same_class_in_a_different_period_the_same_day()
+    public async Task ScheduleAsync_allows_the_same_class_in_a_different_non_overlapping_period_the_same_day()
     {
         await using var db = CreateContext();
         var academicYearId = Guid.NewGuid();
         var classId = Guid.NewGuid();
+        var schoolId = Guid.NewGuid();
 
         var mathsAssignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), classId, academicYearId);
         var englishAssignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), classId, academicYearId);
         var service = CreateService(db);
 
-        await service.ScheduleAsync(Guid.NewGuid(), classId, Guid.NewGuid(), mathsAssignmentId, academicYearId, DayOfWeek.Monday, Guid.NewGuid());
-        var secondEntryId = await service.ScheduleAsync(Guid.NewGuid(), classId, Guid.NewGuid(), englishAssignmentId, academicYearId, DayOfWeek.Monday, Guid.NewGuid());
+        await service.ScheduleAsync(schoolId, classId, Guid.NewGuid(), mathsAssignmentId, academicYearId, DayOfWeek.Monday, Period1Start, Period1End);
+        var secondEntryId = await service.ScheduleAsync(schoolId, classId, Guid.NewGuid(), englishAssignmentId, academicYearId, DayOfWeek.Monday, Period2Start, Period2End);
 
         Assert.NotEqual(Guid.Empty, secondEntryId);
+    }
+
+    [Fact]
+    public async Task ScheduleAsync_reuses_the_same_Period_row_for_an_identical_time_span_at_the_same_school()
+    {
+        await using var db = CreateContext();
+        var academicYearId = Guid.NewGuid();
+        var schoolId = Guid.NewGuid();
+        var firstAssignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), academicYearId);
+        var secondAssignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), academicYearId);
+        var service = CreateService(db);
+
+        await service.ScheduleAsync(schoolId, Guid.NewGuid(), Guid.NewGuid(), firstAssignmentId, academicYearId, DayOfWeek.Monday, Period1Start, Period1End);
+        await service.ScheduleAsync(schoolId, Guid.NewGuid(), Guid.NewGuid(), secondAssignmentId, academicYearId, DayOfWeek.Tuesday, Period1Start, Period1End);
+
+        var periods = await db.Periods.Where(p => p.SchoolId == schoolId).ToListAsync();
+        Assert.Single(periods);
     }
 
     [Fact]
@@ -126,16 +166,16 @@ public class TimetableServiceTests
         await using var db = CreateContext();
         var academicYearId = Guid.NewGuid();
         var classId = Guid.NewGuid();
-        var periodId = Guid.NewGuid();
+        var schoolId = Guid.NewGuid();
 
         var assignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), classId, academicYearId);
         var service = CreateService(db);
-        var entryId = await service.ScheduleAsync(Guid.NewGuid(), classId, Guid.NewGuid(), assignmentId, academicYearId, DayOfWeek.Wednesday, periodId);
+        var entryId = await service.ScheduleAsync(schoolId, classId, Guid.NewGuid(), assignmentId, academicYearId, DayOfWeek.Wednesday, Period1Start, Period1End);
 
         await service.RemoveAsync(entryId);
 
         var replacementAssignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), classId, academicYearId);
-        var newEntryId = await service.ScheduleAsync(Guid.NewGuid(), classId, Guid.NewGuid(), replacementAssignmentId, academicYearId, DayOfWeek.Wednesday, periodId);
+        var newEntryId = await service.ScheduleAsync(schoolId, classId, Guid.NewGuid(), replacementAssignmentId, academicYearId, DayOfWeek.Wednesday, Period1Start, Period1End);
 
         Assert.NotEqual(Guid.Empty, newEntryId);
     }
@@ -146,12 +186,14 @@ public class TimetableServiceTests
         await using var db = CreateContext();
         var academicYearId = Guid.NewGuid();
         var classId = Guid.NewGuid();
+        var schoolId = Guid.NewGuid();
         var assignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), classId, academicYearId);
         var service = CreateService(db);
 
-        var wednesdayEntryId = await service.ScheduleAsync(Guid.NewGuid(), classId, Guid.NewGuid(), assignmentId, academicYearId, DayOfWeek.Wednesday, Guid.NewGuid());
-        var mondayEntryId = await service.ScheduleAsync(Guid.NewGuid(), classId, Guid.NewGuid(), assignmentId, academicYearId, DayOfWeek.Monday, Guid.NewGuid());
-        await service.ScheduleAsync(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), academicYearId), academicYearId, DayOfWeek.Monday, Guid.NewGuid()); // different class
+        var wednesdayEntryId = await service.ScheduleAsync(schoolId, classId, Guid.NewGuid(), assignmentId, academicYearId, DayOfWeek.Wednesday, Period1Start, Period1End);
+        var mondayEntryId = await service.ScheduleAsync(schoolId, classId, Guid.NewGuid(), assignmentId, academicYearId, DayOfWeek.Monday, Period1Start, Period1End);
+        var otherClassAssignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), academicYearId);
+        await service.ScheduleAsync(schoolId, Guid.NewGuid(), Guid.NewGuid(), otherClassAssignmentId, academicYearId, DayOfWeek.Monday, Period1Start, Period1End); // different class
 
         var entries = await service.GetEntriesForClassAsync(classId, academicYearId);
 
@@ -169,10 +211,6 @@ public class TimetableServiceTests
         var englishSubjectId = Guid.NewGuid();
         var classAId = Guid.NewGuid();
         var classBId = Guid.NewGuid();
-        var period1Id = Guid.NewGuid();
-        var period2Id = Guid.NewGuid();
-        await SeedPeriodAsync(db, period1Id, "Period 1", new TimeOnly(8, 0), new TimeOnly(8, 40));
-        await SeedPeriodAsync(db, period2Id, "Period 2", new TimeOnly(8, 40), new TimeOnly(9, 20));
 
         var orgLookup = new FakeOrgStructureLookup()
             .WithSubject(mathsSubjectId, "Mathematics")
@@ -185,16 +223,16 @@ public class TimetableServiceTests
         var englishAssignmentId = await SeedAssignmentAsync(db, teacherId, englishSubjectId, classBId, academicYearId);
         var otherTeacherAssignmentId = await SeedAssignmentAsync(db, Guid.NewGuid(), mathsSubjectId, classAId, academicYearId);
 
-        await service.ScheduleAsync(schoolId, classBId, englishSubjectId, englishAssignmentId, academicYearId, DayOfWeek.Monday, period2Id);
-        await service.ScheduleAsync(schoolId, classAId, mathsSubjectId, mathsAssignmentId, academicYearId, DayOfWeek.Monday, period1Id);
-        await service.ScheduleAsync(schoolId, classAId, mathsSubjectId, otherTeacherAssignmentId, academicYearId, DayOfWeek.Tuesday, period1Id); // different teacher, not returned
+        await service.ScheduleAsync(schoolId, classBId, englishSubjectId, englishAssignmentId, academicYearId, DayOfWeek.Monday, Period2Start, Period2End);
+        await service.ScheduleAsync(schoolId, classAId, mathsSubjectId, mathsAssignmentId, academicYearId, DayOfWeek.Monday, Period1Start, Period1End);
+        await service.ScheduleAsync(schoolId, classAId, mathsSubjectId, otherTeacherAssignmentId, academicYearId, DayOfWeek.Tuesday, Period1Start, Period1End); // different teacher, not returned
 
         var entries = await service.GetEntriesForStaffAsync(teacherId, schoolId, academicYearId, new DateOnly(2026, 8, 10));
 
         Assert.Equal(2, entries.Count);
         Assert.Equal("Mathematics", entries[0].SubjectName);
         Assert.Equal("Grade 5A", entries[0].ClassName);
-        Assert.Equal("Period 1", entries[0].PeriodName);
+        Assert.Equal("08:00–08:40", entries[0].PeriodName);
         Assert.Equal("English", entries[1].SubjectName);
         Assert.Equal("Grade 6B", entries[1].ClassName);
     }
@@ -208,12 +246,10 @@ public class TimetableServiceTests
         var teacherId = Guid.NewGuid();
         var subjectId = Guid.NewGuid();
         var classId = Guid.NewGuid();
-        var periodId = Guid.NewGuid();
-        await SeedPeriodAsync(db, periodId, "Period 1", new TimeOnly(8, 0), new TimeOnly(8, 40));
         var service = CreateService(db, new FakeOrgStructureLookup());
 
         var assignmentId = await SeedAssignmentAsync(db, teacherId, subjectId, classId, academicYearId);
-        await service.ScheduleAsync(schoolId, classId, subjectId, assignmentId, academicYearId, DayOfWeek.Monday, periodId);
+        await service.ScheduleAsync(schoolId, classId, subjectId, assignmentId, academicYearId, DayOfWeek.Monday, Period1Start, Period1End);
 
         var assignment = await db.SubjectTeachingAssignments.FindAsync(assignmentId);
         assignment!.EffectiveTo = new DateOnly(2026, 1, 31); // ended before the asOf date below
@@ -222,5 +258,42 @@ public class TimetableServiceTests
         var entries = await service.GetEntriesForStaffAsync(teacherId, schoolId, academicYearId, new DateOnly(2026, 8, 10));
 
         Assert.Empty(entries);
+    }
+
+    [Fact]
+    public async Task GetEntriesForSchoolAsync_returns_every_classs_entries_with_resolved_names_and_colors_ordered_by_day_then_time()
+    {
+        await using var db = CreateContext();
+        var schoolId = Guid.NewGuid();
+        var academicYearId = Guid.NewGuid();
+        var mathsSubjectId = Guid.NewGuid();
+        var englishSubjectId = Guid.NewGuid();
+        var classAId = Guid.NewGuid();
+        var classBId = Guid.NewGuid();
+        var teacherAId = Guid.NewGuid();
+        var teacherBId = Guid.NewGuid();
+
+        var orgLookup = new FakeOrgStructureLookup()
+            .WithSubject(mathsSubjectId, "Mathematics")
+            .WithSubject(englishSubjectId, "English")
+            .WithClass(classAId, "Grade 5A", "#EF4444")
+            .WithClass(classBId, "Grade 6B", "#10B981");
+        var service = CreateService(db, orgLookup);
+
+        var mathsAssignmentId = await SeedAssignmentAsync(db, teacherAId, mathsSubjectId, classAId, academicYearId);
+        var englishAssignmentId = await SeedAssignmentAsync(db, teacherBId, englishSubjectId, classBId, academicYearId);
+
+        await service.ScheduleAsync(schoolId, classBId, englishSubjectId, englishAssignmentId, academicYearId, DayOfWeek.Monday, Period2Start, Period2End);
+        await service.ScheduleAsync(schoolId, classAId, mathsSubjectId, mathsAssignmentId, academicYearId, DayOfWeek.Monday, Period1Start, Period1End);
+
+        var entries = await service.GetEntriesForSchoolAsync(schoolId, academicYearId);
+
+        Assert.Equal(2, entries.Count);
+        Assert.Equal("Grade 5A", entries[0].ClassName);
+        Assert.Equal("#EF4444", entries[0].ColorHex);
+        Assert.Equal("Mathematics", entries[0].SubjectName);
+        Assert.Equal(teacherAId, entries[0].StaffPersonId);
+        Assert.Equal("Grade 6B", entries[1].ClassName);
+        Assert.Equal("#10B981", entries[1].ColorHex);
     }
 }

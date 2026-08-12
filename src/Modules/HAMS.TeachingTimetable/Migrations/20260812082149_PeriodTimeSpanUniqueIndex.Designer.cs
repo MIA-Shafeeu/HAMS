@@ -4,6 +4,7 @@ using HAMS.TeachingTimetable.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HAMS.TeachingTimetable.Migrations
 {
     [DbContext(typeof(TeachingTimetableDbContext))]
-    partial class TeachingTimetableDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260812082149_PeriodTimeSpanUniqueIndex")]
+    partial class PeriodTimeSpanUniqueIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

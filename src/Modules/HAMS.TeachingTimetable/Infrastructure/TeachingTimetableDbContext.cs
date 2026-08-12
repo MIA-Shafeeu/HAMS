@@ -71,6 +71,10 @@ public sealed class TeachingTimetableDbContext(DbContextOptions<TeachingTimetabl
             entity.Property(e => e.Code).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
             entity.HasIndex(e => new { e.SchoolId, e.Code }).IsUnique();
+            // Backstop for the find-or-create-Period logic in ITimetableService.ScheduleAsync —
+            // two auto-created periods for the same school and exact time span would otherwise be
+            // indistinguishable duplicates.
+            entity.HasIndex(e => new { e.SchoolId, e.StartTime, e.EndTime }).IsUnique();
         });
 
         modelBuilder.Entity<TimetableEntry>(entity =>
@@ -80,7 +84,10 @@ public sealed class TeachingTimetableDbContext(DbContextOptions<TeachingTimetabl
             // Backstop for "a class can't have two subjects in the same slot" — the staff
             // double-booking check can't be expressed as a plain DB constraint (it needs a join
             // through TeachingAssignmentId to resolve StaffPersonId) so ITimetableService enforces
-            // that half of the rule at the application layer instead.
+            // that half of the rule at the application layer instead. Note this only catches EXACT
+            // same-Period double-booking — the real, interval-overlap-aware version of this rule
+            // (two different but overlapping auto-created Periods) is enforced by wrapping
+            // ScheduleAsync in a Serializable transaction, not by a DB constraint.
             entity.HasIndex(e => new { e.ClassId, e.AcademicYearId, e.DayOfWeek, e.PeriodId }).IsUnique();
             entity.HasOne<Period>().WithMany().HasForeignKey(e => e.PeriodId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<SubjectTeachingAssignment>().WithMany().HasForeignKey(e => e.TeachingAssignmentId).OnDelete(DeleteBehavior.Restrict);

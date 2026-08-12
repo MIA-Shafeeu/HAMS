@@ -21,5 +21,8 @@ public sealed class Class
 
     public required string Name { get; set; }
 
+    /// <summary>"#RRGGBB" swatch this class renders as on the whole-school timetable calendar — an admin-set display attribute, not a business/scoping rule.</summary>
+    public required string ColorHex { get; set; }
+
     public bool IsActive { get; set; } = true;
 }

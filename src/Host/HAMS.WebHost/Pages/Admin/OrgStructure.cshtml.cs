@@ -428,7 +428,7 @@ public sealed class OrgStructureModel(IOrgAdminService orgAdmin) : PageModel
             return BackToTab("classes", new { ClassesSchoolId, ClassesYearId });
         }
 
-        await orgAdmin.CreateClassAsync(ClassesSchoolId, null, ClassesYearId, NewClass.Code, NewClass.Name, gradeIds);
+        await orgAdmin.CreateClassAsync(ClassesSchoolId, null, ClassesYearId, NewClass.Code, NewClass.Name, NewClass.ColorHex, gradeIds);
         TempData["FlashMessage"] = "Class created.";
         TempData["FlashSeverity"] = "success";
         return BackToTab("classes", new { ClassesSchoolId, ClassesYearId });
@@ -444,7 +444,7 @@ public sealed class OrgStructureModel(IOrgAdminService orgAdmin) : PageModel
             return BackToTab("classes", new { ClassesSchoolId, ClassesYearId, EditClassId = EditClassForm.Id });
         }
 
-        await orgAdmin.UpdateClassAsync(EditClassForm.Id, EditClassForm.Name, gradeIds);
+        await orgAdmin.UpdateClassAsync(EditClassForm.Id, EditClassForm.Name, EditClassForm.ColorHex, gradeIds);
         TempData["FlashMessage"] = "Class updated.";
         TempData["FlashSeverity"] = "success";
         return BackToTab("classes", new { ClassesSchoolId, ClassesYearId });
@@ -561,6 +561,7 @@ public sealed class OrgStructureModel(IOrgAdminService orgAdmin) : PageModel
     {
         [Required] public string Code { get; set; } = "";
         public string Name { get; set; } = "";
+        public string ColorHex { get; set; } = "#3B82F6";
         public List<Guid>? GradeIds { get; set; }
     }
 
@@ -568,6 +569,7 @@ public sealed class OrgStructureModel(IOrgAdminService orgAdmin) : PageModel
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = "";
+        public string ColorHex { get; set; } = "#3B82F6";
         public List<Guid>? GradeIds { get; set; }
     }
 }

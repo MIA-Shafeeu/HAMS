@@ -6,26 +6,6 @@ namespace HAMS.TeachingTimetable.Application;
 
 internal sealed class PeriodAdminService(TeachingTimetableDbContext dbContext) : IPeriodAdminService
 {
-    public async Task<Guid> CreatePeriodAsync(Guid schoolId, string code, string name, TimeOnly startTime, TimeOnly endTime, int displayOrder, CancellationToken cancellationToken = default)
-    {
-        var period = new Period { Id = Guid.NewGuid(), SchoolId = schoolId, Code = code, Name = name, StartTime = startTime, EndTime = endTime, DisplayOrder = displayOrder };
-        dbContext.Periods.Add(period);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return period.Id;
-    }
-
     public async Task<IReadOnlyList<Period>> GetPeriodsAsync(Guid schoolId, CancellationToken cancellationToken = default) =>
         await dbContext.Periods.Where(p => p.SchoolId == schoolId).OrderBy(p => p.DisplayOrder).ToListAsync(cancellationToken);
-
-    public async Task UpdatePeriodAsync(Guid id, string name, TimeOnly startTime, TimeOnly endTime, int displayOrder, CancellationToken cancellationToken = default)
-    {
-        var period = await dbContext.Periods.FindAsync([id], cancellationToken)
-            ?? throw new InvalidOperationException("Period not found.");
-
-        period.Name = name;
-        period.StartTime = startTime;
-        period.EndTime = endTime;
-        period.DisplayOrder = displayOrder;
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
 }

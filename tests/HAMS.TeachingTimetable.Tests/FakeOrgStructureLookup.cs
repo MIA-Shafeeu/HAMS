@@ -7,6 +7,7 @@ internal sealed class FakeOrgStructureLookup : IOrgStructureLookup
 {
     private readonly Dictionary<Guid, string> _subjectNames = [];
     private readonly Dictionary<Guid, string> _classNames = [];
+    private readonly Dictionary<Guid, string> _classColors = [];
     private readonly Dictionary<Guid, List<Guid>> _classGradeIds = [];
     private readonly List<GradeOption> _grades = [];
 
@@ -16,9 +17,10 @@ internal sealed class FakeOrgStructureLookup : IOrgStructureLookup
         return this;
     }
 
-    public FakeOrgStructureLookup WithClass(Guid id, string name)
+    public FakeOrgStructureLookup WithClass(Guid id, string name, string colorHex = "#3B82F6")
     {
         _classNames[id] = name;
+        _classColors[id] = colorHex;
         return this;
     }
 
@@ -44,7 +46,7 @@ internal sealed class FakeOrgStructureLookup : IOrgStructureLookup
         Task.FromResult<IReadOnlyList<GradeOption>>(_grades);
 
     public Task<IReadOnlyList<ClassOption>> GetClassesAsync(Guid academicYearId, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<ClassOption>>([.. _classNames.Select(kv => new ClassOption(kv.Key, kv.Key.ToString(), kv.Value))]);
+        Task.FromResult<IReadOnlyList<ClassOption>>([.. _classNames.Select(kv => new ClassOption(kv.Key, kv.Key.ToString(), kv.Value, _classColors.GetValueOrDefault(kv.Key, "#3B82F6")))]);
 
     public Task<IReadOnlyList<SubjectOption>> GetSubjectsAsync(Guid schoolId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<SubjectOption>>([.. _subjectNames.Select(kv => new SubjectOption(kv.Key, kv.Key.ToString(), kv.Value))]);

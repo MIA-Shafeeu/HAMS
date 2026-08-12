@@ -202,9 +202,9 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<Guid> CreateClassAsync(Guid schoolId, Guid? campusId, Guid academicYearId, string code, string name, IReadOnlyList<Guid> gradeIds, CancellationToken cancellationToken = default)
+    public async Task<Guid> CreateClassAsync(Guid schoolId, Guid? campusId, Guid academicYearId, string code, string name, string colorHex, IReadOnlyList<Guid> gradeIds, CancellationToken cancellationToken = default)
     {
-        var @class = new Class { Id = Guid.NewGuid(), SchoolId = schoolId, CampusId = campusId, AcademicYearId = academicYearId, Code = code, Name = name };
+        var @class = new Class { Id = Guid.NewGuid(), SchoolId = schoolId, CampusId = campusId, AcademicYearId = academicYearId, Code = code, Name = name, ColorHex = colorHex };
         dbContext.Classes.Add(@class);
 
         // Required for combined classes (ORG-FR-018) — a class always joins at least one grade.
@@ -220,7 +220,7 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
     public async Task<IReadOnlyList<Class>> GetClassesAsync(Guid academicYearId, CancellationToken cancellationToken = default) =>
         await dbContext.Classes.Where(c => c.AcademicYearId == academicYearId).OrderBy(c => c.Name).ToListAsync(cancellationToken);
 
-    public async Task UpdateClassAsync(Guid id, string name, IReadOnlyList<Guid> gradeIds, CancellationToken cancellationToken = default)
+    public async Task UpdateClassAsync(Guid id, string name, string colorHex, IReadOnlyList<Guid> gradeIds, CancellationToken cancellationToken = default)
     {
         if (gradeIds.Count == 0)
         {
@@ -231,6 +231,7 @@ internal sealed class OrgAdminService(OrgDbContext dbContext) : IOrgAdminService
             ?? throw new InvalidOperationException("Class not found.");
 
         @class.Name = name;
+        @class.ColorHex = colorHex;
 
         var existingGrades = await dbContext.ClassGrades.Where(cg => cg.ClassId == id).ToListAsync(cancellationToken);
         dbContext.ClassGrades.RemoveRange(existingGrades);

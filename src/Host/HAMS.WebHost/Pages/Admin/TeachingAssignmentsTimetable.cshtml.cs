@@ -19,14 +19,13 @@ public sealed class TeachingAssignmentsTimetableModel(
     IClassTeacherAssignmentService classTeacherAssignments,
     ILeadingTeacherAssignmentService leadingTeacherAssignments,
     ISubstitutionService substitutions,
-    IPeriodAdminService periodAdmin,
     ITimetableService timetableService) : PageModel
 {
     // ---- Tab selection (which tab shows as active after a full-page reload) ----
     [BindProperty(SupportsGet = true)]
     public string Tab { get; set; } = "subject";
 
-    // ---- Page-level School -> Academic Year cascade (shared by all 5 tabs) ----
+    // ---- Page-level School -> Academic Year cascade (shared by all 4 tabs) ----
     [BindProperty(SupportsGet = true)]
     public Guid SchoolId { get; set; }
 
@@ -38,13 +37,12 @@ public sealed class TeachingAssignmentsTimetableModel(
     public IReadOnlyList<Class> Classes { get; private set; } = [];
     public IReadOnlyList<Subject> Subjects { get; private set; } = [];
     public IReadOnlyList<StaffProfileSummary> Staff { get; private set; } = [];
-    public IReadOnlyList<Period> Periods { get; private set; } = [];
 
     // ---- Subject Teaching tab ----
-    // Deliberately separate from ClassTeacherClassId/TimetableClassId below - Subject Teaching,
-    // Class Teacher and Timetable each have their OWN Class dropdown. Sharing one property was a
-    // repeatedly-hit bug in the original Blazor page: switching tabs made a class look already
-    // "selected" while that tab's own dependent table/list was never (re)loaded for it.
+    // Deliberately separate from ClassTeacherClassId below - Subject Teaching and Class Teacher
+    // each have their OWN Class dropdown. Sharing one property was a repeatedly-hit bug in the
+    // original Blazor page: switching tabs made a class look already "selected" while that tab's
+    // own dependent table/list was never (re)loaded for it.
     [BindProperty(SupportsGet = true)]
     public Guid SubjectTeachingClassId { get; set; }
 
@@ -72,25 +70,9 @@ public sealed class TeachingAssignmentsTimetableModel(
 
     [BindProperty] public NewLeadingTeacherInput NewLeadingTeacher { get; set; } = new();
 
-    // ---- Periods tab ----
-    [BindProperty(SupportsGet = true)]
-    public Guid? EditPeriodId { get; set; }
-
-    [BindProperty] public NewPeriodInput NewPeriod { get; set; } = new();
-    [BindProperty] public EditPeriodInput EditPeriodForm { get; set; } = new();
-
-    // ---- Timetable tab ----
-    [BindProperty(SupportsGet = true)]
-    public Guid TimetableClassId { get; set; }
-
-    public IReadOnlyList<TimetableEntry> TimetableEntries { get; private set; } = [];
-
-    // Separate from SubjectTeachingAssignments (the Subject Teaching tab's own list) above - both
-    // tabs can have a DIFFERENT class selected at once; sharing one list meant loading the
-    // Timetable tab's class silently overwrote the data the Subject Teaching tab's table was
-    // showing (same class of bug as the Class dropdowns, see comment above).
-    public IReadOnlyList<SubjectTeachingAssignment> TimetableSubjectTeachingAssignments { get; private set; } = [];
-
+    // ---- Timetable tab (whole-school calendar — replaced the old per-class Timetable tab and the
+    // standalone Periods tab; Periods are now an internal detail ITimetableService.ScheduleAsync
+    // finds-or-creates itself from whatever start/end time is scheduled) ----
     [BindProperty] public NewTimetableEntryInput NewTimetableEntry { get; set; } = new();
 
     public async Task OnGetAsync()
@@ -100,7 +82,9 @@ public sealed class TeachingAssignmentsTimetableModel(
 
     // Every tab's data is loaded unconditionally on every request (not just the active tab) since
     // Bootstrap's tabs are just CSS show/hide - all tab content lives in one server-rendered
-    // response, unlike MudTabs' lazy per-panel rendering.
+    // response, unlike MudTabs' lazy per-panel rendering. The JSON handlers below call this too, so
+    // the same School/AcademicYear-scoped Staff/Subjects lists are always available for name
+    // resolution without duplicating that loading logic.
     private async Task LoadAllAsync()
     {
         Schools = await orgAdmin.GetSchoolsAsync();
@@ -110,7 +94,6 @@ public sealed class TeachingAssignmentsTimetableModel(
         {
             AcademicYears = await orgAdmin.GetAcademicYearsAsync(SchoolId);
             Subjects = await curriculumAdmin.GetSubjectsAsync(SchoolId);
-            Periods = await periodAdmin.GetPeriodsAsync(SchoolId);
         }
 
         if (AcademicYearId != Guid.Empty)
@@ -132,17 +115,10 @@ public sealed class TeachingAssignmentsTimetableModel(
         {
             LeadingTeacherAssignments = await leadingTeacherAssignments.GetAssignmentsForSubjectAsync(LeadingTeacherSubjectId, AcademicYearId);
         }
-
-        if (AcademicYearId != Guid.Empty && TimetableClassId != Guid.Empty)
-        {
-            TimetableEntries = await timetableService.GetEntriesForClassAsync(TimetableClassId, AcademicYearId);
-            TimetableSubjectTeachingAssignments = await subjectTeachingAssignments.GetAssignmentsForClassAsync(TimetableClassId, AcademicYearId);
-        }
     }
 
     public string StaffName(Guid personId) => Staff.SingleOrDefault(s => s.PersonId == personId)?.NameEn ?? personId.ToString();
     public string SubjectName(Guid subjectId) => Subjects.SingleOrDefault(s => s.Id == subjectId)?.Name ?? subjectId.ToString();
-    public string PeriodName(Guid periodId) => Periods.SingleOrDefault(p => p.Id == periodId)?.Name ?? periodId.ToString();
 
     private RedirectToPageResult BackToTab(string tab, object? extraRouteValues = null)
     {
@@ -260,56 +236,102 @@ public sealed class TeachingAssignmentsTimetableModel(
         return BackToTab("leadingTeacher", new { LeadingTeacherSubjectId });
     }
 
-    // ---- Periods ----
+    // ---- Timetable (whole-school calendar) ----
 
-    public async Task<IActionResult> OnPostCreatePeriodAsync()
+    // JSON handler behind FullCalendar's event feed — every class at once, colored per class.
+    // Recurring day-of-week events (no start/end date) since a TimetableEntry has no calendar-date
+    // dimension: BCL DayOfWeek (Sunday=0..Saturday=6) is numerically identical to FullCalendar's own
+    // daysOfWeek convention, so (int)dayOfWeek needs no translation.
+    public async Task<JsonResult> OnGetWeekEventsAsync()
     {
-        if (SchoolId == Guid.Empty || string.IsNullOrWhiteSpace(NewPeriod.Code))
+        await LoadAllAsync();
+
+        if (SchoolId == Guid.Empty || AcademicYearId == Guid.Empty)
         {
-            TempData["FlashMessage"] = "Select a school and provide a code.";
-            TempData["FlashSeverity"] = "warning";
-            return BackToTab("periods");
+            return new JsonResult(Array.Empty<object>());
         }
 
-        await periodAdmin.CreatePeriodAsync(SchoolId, NewPeriod.Code, NewPeriod.Name, NewPeriod.StartTime, NewPeriod.EndTime, NewPeriod.DisplayOrder);
-        TempData["FlashMessage"] = "Period created.";
-        TempData["FlashSeverity"] = "success";
-        return BackToTab("periods");
-    }
-
-    public async Task<IActionResult> OnPostSavePeriodEditAsync()
-    {
-        await periodAdmin.UpdatePeriodAsync(EditPeriodForm.Id, EditPeriodForm.Name, EditPeriodForm.StartTime, EditPeriodForm.EndTime, EditPeriodForm.DisplayOrder);
-        TempData["FlashMessage"] = "Period updated.";
-        TempData["FlashSeverity"] = "success";
-        return BackToTab("periods");
-    }
-
-    // ---- Timetable ----
-
-    public async Task<IActionResult> OnPostScheduleTimetableEntryAsync()
-    {
-        if (TimetableClassId == Guid.Empty || NewTimetableEntry.PeriodId == Guid.Empty || NewTimetableEntry.TeachingAssignmentId == Guid.Empty)
+        var entries = await timetableService.GetEntriesForSchoolAsync(SchoolId, AcademicYearId);
+        var events = entries.Select(e => new
         {
-            TempData["FlashMessage"] = "Select a period and a subject teaching assignment.";
-            TempData["FlashSeverity"] = "warning";
-            return BackToTab("timetable", new { TimetableClassId });
+            id = e.Id,
+            title = $"{e.ClassName} — {e.SubjectName}",
+            daysOfWeek = new[] { (int)e.DayOfWeek },
+            startTime = e.StartTime.ToString("HH:mm:ss"),
+            endTime = e.EndTime.ToString("HH:mm:ss"),
+            backgroundColor = e.ColorHex,
+            borderColor = e.ColorHex,
+            extendedProps = new
+            {
+                timetableEntryId = e.Id,
+                classId = e.ClassId,
+                className = e.ClassName,
+                colorHex = e.ColorHex,
+                subjectName = e.SubjectName,
+                teacherName = StaffName(e.StaffPersonId),
+                dayOfWeek = (int)e.DayOfWeek,
+                startTime = e.StartTime.ToString("HH:mm"),
+                endTime = e.EndTime.ToString("HH:mm"),
+            },
+        });
+        return new JsonResult(events);
+    }
+
+    // JSON handler behind the create-modal's Class -> Subject/Teacher cascade (hams-site.js's
+    // data-hams-cascade-* helper) — mirrors the existing "Subject — Staff" display convention every
+    // other tab's teaching-assignment dropdown already uses.
+    public async Task<JsonResult> OnGetClassAssignmentsAsync(Guid classId)
+    {
+        await LoadAllAsync();
+
+        if (classId == Guid.Empty || AcademicYearId == Guid.Empty)
+        {
+            return new JsonResult(Array.Empty<object>());
         }
 
-        var candidateAssignments = await subjectTeachingAssignments.GetAssignmentsForClassAsync(TimetableClassId, AcademicYearId);
+        var assignments = await subjectTeachingAssignments.GetAssignmentsForClassAsync(classId, AcademicYearId);
+        var options = assignments
+            .Where(a => a.EffectiveTo is null)
+            .Select(a => new { value = a.Id, text = $"{SubjectName(a.SubjectId)} — {StaffName(a.StaffPersonId)}" });
+        return new JsonResult(options);
+    }
+
+    // JSON handler for the create-modal's working-day gate (client-side hint only — ScheduleAsync
+    // itself is the actual enforcement).
+    public async Task<JsonResult> OnGetWorkingDaysAsync()
+    {
+        if (SchoolId == Guid.Empty)
+        {
+            return new JsonResult(Array.Empty<int>());
+        }
+
+        var workingDays = await orgAdmin.GetWorkingDaysAsync(SchoolId);
+        return new JsonResult(workingDays.Select(d => (int)d));
+    }
+
+    public async Task<IActionResult> OnPostScheduleEntryAsync()
+    {
+        if (NewTimetableEntry.ClassId == Guid.Empty || NewTimetableEntry.TeachingAssignmentId == Guid.Empty)
+        {
+            TempData["FlashMessage"] = "Select a class and a subject.";
+            TempData["FlashSeverity"] = "warning";
+            return BackToTab("timetable");
+        }
+
+        var candidateAssignments = await subjectTeachingAssignments.GetAssignmentsForClassAsync(NewTimetableEntry.ClassId, AcademicYearId);
         var assignment = candidateAssignments.SingleOrDefault(a => a.Id == NewTimetableEntry.TeachingAssignmentId);
         if (assignment is null)
         {
             TempData["FlashMessage"] = "That teaching assignment could not be found for this class.";
             TempData["FlashSeverity"] = "danger";
-            return BackToTab("timetable", new { TimetableClassId });
+            return BackToTab("timetable");
         }
 
         try
         {
             await timetableService.ScheduleAsync(
-                SchoolId, TimetableClassId, assignment.SubjectId, NewTimetableEntry.TeachingAssignmentId, AcademicYearId,
-                NewTimetableEntry.DayOfWeek, NewTimetableEntry.PeriodId);
+                SchoolId, NewTimetableEntry.ClassId, assignment.SubjectId, NewTimetableEntry.TeachingAssignmentId, AcademicYearId,
+                NewTimetableEntry.DayOfWeek, NewTimetableEntry.StartTime, NewTimetableEntry.EndTime);
             TempData["FlashMessage"] = "Timetable entry scheduled.";
             TempData["FlashSeverity"] = "success";
         }
@@ -319,15 +341,15 @@ public sealed class TeachingAssignmentsTimetableModel(
             TempData["FlashSeverity"] = "danger";
         }
 
-        return BackToTab("timetable", new { TimetableClassId });
+        return BackToTab("timetable");
     }
 
-    public async Task<IActionResult> OnPostRemoveTimetableEntryAsync(Guid timetableEntryId)
+    public async Task<IActionResult> OnPostRemoveEntryAsync(Guid timetableEntryId)
     {
         await timetableService.RemoveAsync(timetableEntryId);
         TempData["FlashMessage"] = "Timetable entry removed.";
         TempData["FlashSeverity"] = "success";
-        return BackToTab("timetable", new { TimetableClassId });
+        return BackToTab("timetable");
     }
 
     // ---- Input models ----
@@ -358,28 +380,12 @@ public sealed class TeachingAssignmentsTimetableModel(
         public DateOnly? EffectiveFrom { get; set; }
     }
 
-    public sealed class NewPeriodInput
-    {
-        public string Code { get; set; } = "";
-        public string Name { get; set; } = "";
-        public TimeOnly StartTime { get; set; }
-        public TimeOnly EndTime { get; set; }
-        public int DisplayOrder { get; set; }
-    }
-
-    public sealed class EditPeriodInput
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = "";
-        public TimeOnly StartTime { get; set; }
-        public TimeOnly EndTime { get; set; }
-        public int DisplayOrder { get; set; }
-    }
-
     public sealed class NewTimetableEntryInput
     {
-        public DayOfWeek DayOfWeek { get; set; } = DayOfWeek.Sunday;
-        public Guid PeriodId { get; set; }
+        public Guid ClassId { get; set; }
         public Guid TeachingAssignmentId { get; set; }
+        public DayOfWeek DayOfWeek { get; set; } = DayOfWeek.Sunday;
+        public TimeOnly StartTime { get; set; }
+        public TimeOnly EndTime { get; set; }
     }
 }

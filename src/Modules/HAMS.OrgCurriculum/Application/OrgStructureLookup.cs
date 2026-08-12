@@ -19,7 +19,7 @@ internal sealed class OrgStructureLookup(OrgDbContext dbContext) : IOrgStructure
 
     public async Task<IReadOnlyList<ClassOption>> GetClassesAsync(Guid academicYearId, CancellationToken cancellationToken = default) =>
         await dbContext.Classes.Where(c => c.AcademicYearId == academicYearId && c.IsActive).OrderBy(c => c.Name)
-            .Select(c => new ClassOption(c.Id, c.Code, c.Name)).ToListAsync(cancellationToken);
+            .Select(c => new ClassOption(c.Id, c.Code, c.Name, c.ColorHex)).ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<SubjectOption>> GetSubjectsAsync(Guid schoolId, CancellationToken cancellationToken = default) =>
         await dbContext.Subjects.Where(s => s.SchoolId == schoolId && s.IsActive).OrderBy(s => s.DisplayOrder)

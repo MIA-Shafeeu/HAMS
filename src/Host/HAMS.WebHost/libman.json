@@ -18,6 +18,13 @@
         "font/bootstrap-icons.min.css",
         "font/fonts/bootstrap-icons.woff2"
       ]
+    },
+    {
+      "library": "fullcalendar@6.1.21",
+      "destination": "wwwroot/lib/fullcalendar",
+      "files": [
+        "index.global.min.js"
+      ]
     }
   ]
 }

@@ -41,8 +41,7 @@
         <li class="nav-item"><a class="@TabClass("subject")" href="?tab=subject&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&SubjectTeachingClassId=@Model.SubjectTeachingClassId">Subject Teaching</a></li>
         <li class="nav-item"><a class="@TabClass("classTeacher")" href="?tab=classTeacher&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&ClassTeacherClassId=@Model.ClassTeacherClassId">Class Teacher</a></li>
         <li class="nav-item"><a class="@TabClass("leadingTeacher")" href="?tab=leadingTeacher&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&LeadingTeacherSubjectId=@Model.LeadingTeacherSubjectId">Leading Teacher</a></li>
-        <li class="nav-item"><a class="@TabClass("periods")" href="?tab=periods&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId">Periods</a></li>
-        <li class="nav-item"><a class="@TabClass("timetable")" href="?tab=timetable&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&TimetableClassId=@Model.TimetableClassId">Timetable</a></li>
+        <li class="nav-item"><a class="@TabClass("timetable")" href="?tab=timetable&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId">Timetable</a></li>
     </ul>
 
     <div class="tab-content">
@@ -277,139 +276,115 @@
             }
         </div>
 
-        @* ---------------- Periods ---------------- *@
-        <div class="@PaneClass("periods")">
-            <table class="table table-hover table-sm align-middle mb-4">
-                <thead><tr><th>Code</th><th>Name</th><th>Start</th><th>End</th><th>Order</th><th></th></tr></thead>
-                <tbody>
-                    @foreach (var period in Model.Periods)
-                    {
-                        <tr>
-                            <td>@period.Code</td>
-                            @if (Model.EditPeriodId == period.Id)
-                            {
-                                <td><input form="editPeriod-@period.Id" class="form-control form-control-sm" name="EditPeriodForm.Name" value="@period.Name" /></td>
-                                <td><input form="editPeriod-@period.Id" type="time" class="form-control form-control-sm" name="EditPeriodForm.StartTime" value="@period.StartTime.ToString("HH:mm")" /></td>
-                                <td><input form="editPeriod-@period.Id" type="time" class="form-control form-control-sm" name="EditPeriodForm.EndTime" value="@period.EndTime.ToString("HH:mm")" /></td>
-                                <td><input form="editPeriod-@period.Id" type="number" class="form-control form-control-sm" name="EditPeriodForm.DisplayOrder" value="@period.DisplayOrder" /></td>
-                                <td>
-                                    <form id="editPeriod-@period.Id" method="post" asp-page-handler="SavePeriodEdit" class="d-flex gap-2">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
-                                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
-                                        <input type="hidden" name="EditPeriodForm.Id" value="@period.Id" />
-                                        <button type="submit" class="btn btn-sm btn-success text-nowrap">Save</button>
-                                    </form>
-                                    <a class="btn btn-sm btn-outline-secondary" href="?tab=periods&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId">Cancel</a>
-                                </td>
-                            }
-                            else
-                            {
-                                <td>@period.Name</td>
-                                <td>@period.StartTime.ToString("HH:mm")</td>
-                                <td>@period.EndTime.ToString("HH:mm")</td>
-                                <td>@period.DisplayOrder</td>
-                                <td><a class="btn btn-sm btn-outline-primary" href="?tab=periods&SchoolId=@Model.SchoolId&AcademicYearId=@Model.AcademicYearId&EditPeriodId=@period.Id">Edit</a></td>
-                            }
-                        </tr>
-                    }
-                </tbody>
-            </table>
-
-            @if (Model.SchoolId != Guid.Empty)
-            {
-                <form method="post" asp-page-handler="CreatePeriod" class="row g-2">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
-                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
-                    <div class="col-6 col-sm-2"><input class="form-control" asp-for="NewPeriod.Code" placeholder="Code" /></div>
-                    <div class="col-6 col-sm-3"><input class="form-control" asp-for="NewPeriod.Name" placeholder="Name" /></div>
-                    <div class="col-6 col-sm-2"><input type="time" class="form-control" asp-for="NewPeriod.StartTime" /></div>
-                    <div class="col-6 col-sm-2"><input type="time" class="form-control" asp-for="NewPeriod.EndTime" /></div>
-                    <div class="col-6 col-sm-1"><input type="number" class="form-control" asp-for="NewPeriod.DisplayOrder" placeholder="Order" /></div>
-                    <div class="col-6 col-sm-2"><button type="submit" class="btn btn-primary w-100">Create</button></div>
-                </form>
-            }
-        </div>
-
-        @* ---------------- Timetable ---------------- *@
+        @* ---------------- Timetable (whole-school calendar) ---------------- *@
         <div class="@PaneClass("timetable")">
-            <form method="get" class="mb-4">
-                <input type="hidden" name="tab" value="timetable" />
-                <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
-                <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
-                <select class="form-select" name="TimetableClassId" onchange="this.form.submit()">
-                    <option value="">(Select a class)</option>
+            <p class="form-text">Double-click an empty slot to schedule a class. Click an existing entry to view or remove it.</p>
+
+            @if (Model.Classes.Count == 0)
+            {
+                <div class="alert alert-info">No classes yet for this academic year — create one on the Org &amp; Academic Structure page first.</div>
+            }
+            else
+            {
+                <div class="d-flex flex-wrap gap-3 mb-3" id="timetableClassFilter">
                     @foreach (var cls in Model.Classes)
                     {
-                        <option value="@cls.Id" selected="@(Model.TimetableClassId == cls.Id)">@cls.Name</option>
+                        <div class="form-check">
+                            <input class="form-check-input hams-timetable-class-filter" type="checkbox" value="@cls.Id" id="timetableClassFilter-@cls.Id" checked />
+                            <label class="form-check-label" for="timetableClassFilter-@cls.Id">
+                                <span class="d-inline-block rounded" style="width:0.9rem;height:0.9rem;background-color:@cls.ColorHex;"></span>
+                                @cls.Name
+                            </label>
+                        </div>
                     }
-                </select>
-            </form>
+                </div>
 
-            @if (Model.TimetableClassId != Guid.Empty)
-            {
-                <table class="table table-hover table-sm align-middle mb-4">
-                    <thead><tr><th>Day</th><th>Period</th><th>Subject</th><th>Staff</th><th></th></tr></thead>
-                    <tbody>
-                        @foreach (var entry in Model.TimetableEntries)
-                        {
-                            var teacherAssignment = Model.TimetableSubjectTeachingAssignments.SingleOrDefault(a => a.Id == entry.TeachingAssignmentId);
-                            <tr>
-                                <td>@entry.DayOfWeek</td>
-                                <td>@Model.PeriodName(entry.PeriodId)</td>
-                                <td>@Model.SubjectName(entry.SubjectId)</td>
-                                <td>@(teacherAssignment is not null ? Model.StaffName(teacherAssignment.StaffPersonId) : "—")</td>
-                                <td>
-                                    <form method="post" asp-page-handler="RemoveTimetableEntry" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
-                                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
-                                        <input type="hidden" name="TimetableClassId" value="@Model.TimetableClassId" />
-                                        <input type="hidden" name="timetableEntryId" value="@entry.Id" />
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-
-                <form method="post" asp-page-handler="ScheduleTimetableEntry" class="row g-2">
-                    @Html.AntiForgeryToken()
-                    <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
-                    <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
-                    <input type="hidden" name="TimetableClassId" value="@Model.TimetableClassId" />
-                    <div class="col-12 col-sm-2">
-                        <select class="form-select" asp-for="NewTimetableEntry.DayOfWeek">
-                            @foreach (var day in Enum.GetValues<DayOfWeek>())
-                            {
-                                <option value="@day">@day</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-12 col-sm-2">
-                        <select class="form-select" asp-for="NewTimetableEntry.PeriodId">
-                            <option value="">(Select a period)</option>
-                            @foreach (var period in Model.Periods)
-                            {
-                                <option value="@period.Id">@period.Name</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-12 col-sm-4">
-                        <select class="form-select" asp-for="NewTimetableEntry.TeachingAssignmentId">
-                            <option value="">(Select a teaching assignment)</option>
-                            @foreach (var a in Model.TimetableSubjectTeachingAssignments.Where(a => a.EffectiveTo is null))
-                            {
-                                <option value="@a.Id">@Model.SubjectName(a.SubjectId) — @Model.StaffName(a.StaffPersonId)</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-12 col-sm-4"><button type="submit" class="btn btn-primary w-100">Schedule</button></div>
-                </form>
+                <div id="timetableCalendar"
+                     data-events-url="@Url.Page(null, "WeekEvents", new { SchoolId = Model.SchoolId, AcademicYearId = Model.AcademicYearId })"
+                     data-working-days-url="@Url.Page(null, "WorkingDays", new { SchoolId = Model.SchoolId })"></div>
             }
         </div>
 
     </div>
+
+    @* ---------------- Timetable entry modal (create / manage a single slot) ---------------- *@
+    <div class="modal fade" id="timetableEntryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="timetableEntryModalTitle">Schedule a class</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createEntryForm" method="post" asp-page-handler="ScheduleEntry">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                        <div class="mb-2">
+                            <label class="form-label">Day</label>
+                            <select class="form-select" id="createEntryDayOfWeek" name="NewTimetableEntry.DayOfWeek">
+                                @foreach (var day in Enum.GetValues<DayOfWeek>())
+                                {
+                                    <option value="@day">@day</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label">Start time</label>
+                                <input type="time" class="form-control" id="createEntryStartTime" name="NewTimetableEntry.StartTime" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">End time</label>
+                                <input type="time" class="form-control" id="createEntryEndTime" name="NewTimetableEntry.EndTime" />
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Class</label>
+                            <select class="form-select" id="createEntryClassId" name="NewTimetableEntry.ClassId"
+                                    data-hams-cascade-target="createEntryAssignmentId"
+                                    data-hams-cascade-url="@Url.Page(null, "ClassAssignments", new { Model.SchoolId, Model.AcademicYearId })"
+                                    data-hams-cascade-param="classId"
+                                    data-hams-placeholder="(Select a class first)">
+                                <option value="">(Select a class)</option>
+                                @foreach (var cls in Model.Classes)
+                                {
+                                    <option value="@cls.Id">@cls.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Subject</label>
+                            <select class="form-select" id="createEntryAssignmentId" name="NewTimetableEntry.TeachingAssignmentId" data-hams-placeholder="(Select a class first)">
+                                <option value="">(Select a class first)</option>
+                            </select>
+                        </div>
+                    </form>
+
+                    <form id="manageEntryForm" method="post" asp-page-handler="RemoveEntry" class="d-none">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="SchoolId" value="@Model.SchoolId" />
+                        <input type="hidden" name="AcademicYearId" value="@Model.AcademicYearId" />
+                        <input type="hidden" name="timetableEntryId" id="manageEntryId" />
+                        <dl class="row mb-0">
+                            <dt class="col-4">Class</dt><dd class="col-8" id="manageEntryClass"></dd>
+                            <dt class="col-4">Subject</dt><dd class="col-8" id="manageEntrySubject"></dd>
+                            <dt class="col-4">Teacher</dt><dd class="col-8" id="manageEntryTeacher"></dd>
+                            <dt class="col-4">When</dt><dd class="col-8" id="manageEntryWhen"></dd>
+                        </dl>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" form="createEntryForm" class="btn btn-primary" id="createEntrySubmit">Schedule</button>
+                    <button type="submit" form="manageEntryForm" class="btn btn-outline-danger" id="manageEntrySubmit">Remove</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/lib/fullcalendar/index.global.min.js"></script>
+    <script src="~/js/hams-timetable-calendar.js"></script>
 }

@@ -540,8 +540,11 @@
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="ClassesSchoolId" value="@Model.ClassesSchoolId" />
                 <input type="hidden" name="ClassesYearId" value="@Model.ClassesYearId" />
-                <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewClass.Code" placeholder="Code" /></div>
+                <div class="col-12 col-sm-2"><input class="form-control" asp-for="NewClass.Code" placeholder="Code" /></div>
                 <div class="col-12 col-sm-3"><input class="form-control" asp-for="NewClass.Name" placeholder="Name" /></div>
+                <div class="col-6 col-sm-1">
+                    <input type="color" class="form-control form-control-color w-100" asp-for="NewClass.ColorHex" title="Calendar color" />
+                </div>
                 <div class="col-12 col-sm-5">
                     <div class="form-text mb-1">Grades (select one or more — more than one means a combined class)</div>
                     <div class="d-flex flex-wrap gap-3">
@@ -554,11 +557,11 @@
                         }
                     </div>
                 </div>
-                <div class="col-12 col-sm-1"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+                <div class="col-6 col-sm-1"><button type="submit" class="btn btn-primary w-100">Add</button></div>
             </form>
 
             <table class="table table-hover table-sm align-middle">
-                <thead><tr><th>Code</th><th>Name</th><th></th></tr></thead>
+                <thead><tr><th>Code</th><th>Color</th><th>Name</th><th></th></tr></thead>
                 <tbody>
                     @foreach (var cls in Model.Classes)
                     {
@@ -566,6 +569,7 @@
                             <td>@cls.Code</td>
                             @if (Model.EditClassId == cls.Id)
                             {
+                                <td><input form="editClass-@cls.Id" type="color" class="form-control form-control-color" name="EditClassForm.ColorHex" value="@cls.ColorHex" title="Calendar color" /></td>
                                 <td>
                                     <input form="editClass-@cls.Id" class="form-control form-control-sm mb-2" name="EditClassForm.Name" value="@cls.Name" />
                                     <div class="d-flex flex-wrap gap-3">
@@ -591,6 +595,7 @@
                             }
                             else
                             {
+                                <td><span class="d-inline-block rounded" style="width:1.5rem;height:1.5rem;background-color:@cls.ColorHex;border:1px solid var(--hams-border, #E2E5E9);"></span></td>
                                 <td>@cls.Name</td>
                                 <td><a class="btn btn-sm btn-outline-primary" href="?tab=classes&ClassesSchoolId=@Model.ClassesSchoolId&ClassesYearId=@Model.ClassesYearId&EditClassId=@cls.Id">Edit</a></td>
                             }

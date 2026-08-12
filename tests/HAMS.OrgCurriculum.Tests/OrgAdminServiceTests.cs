@@ -72,7 +72,7 @@ public class OrgAdminServiceTests
         var grade5Id = await service.CreateGradeAsync(schoolId, "G5", "Grade 5", 5);
         var grade6Id = await service.CreateGradeAsync(schoolId, "G6", "Grade 6", 6);
 
-        var classId = await service.CreateClassAsync(schoolId, null, academicYearId, "5-6C", "Grade 5/6 Combined", [grade5Id, grade6Id]);
+        var classId = await service.CreateClassAsync(schoolId, null, academicYearId, "5-6C", "Grade 5/6 Combined", "#3B82F6", [grade5Id, grade6Id]);
 
         var classGrades = await db.ClassGrades.Where(cg => cg.ClassId == classId).ToListAsync();
         Assert.Equal(2, classGrades.Count);

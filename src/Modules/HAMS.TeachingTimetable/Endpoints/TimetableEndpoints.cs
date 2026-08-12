@@ -10,27 +10,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HAMS.TeachingTimetable.Endpoints;
 
-public sealed record CreatePeriodRequest(Guid SchoolId, string Code, string Name, TimeOnly StartTime, TimeOnly EndTime, int DisplayOrder);
-public sealed record ScheduleTimetableEntryRequest(Guid SchoolId, Guid ClassId, Guid SubjectId, Guid TeachingAssignmentId, Guid AcademicYearId, DayOfWeek DayOfWeek, Guid PeriodId);
+public sealed record ScheduleTimetableEntryRequest(
+    Guid SchoolId, Guid ClassId, Guid SubjectId, Guid TeachingAssignmentId, Guid AcademicYearId, DayOfWeek DayOfWeek,
+    TimeOnly StartTime, TimeOnly EndTime);
 
-/// <summary>Period/Timetable admin surface (build plan Phase 4 scope). Mutations require a live School/System Administrator check.</summary>
+/// <summary>
+/// Timetable admin surface (build plan Phase 4 scope; Period creation retired from here once the
+/// admin UI moved to a whole-school calendar — Periods are now an internal detail ScheduleAsync
+/// finds-or-creates itself). Mutations require a live School/System Administrator check.
+/// </summary>
 internal static class TimetableEndpoints
 {
     public static IEndpointRouteBuilder MapTimetableEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/v1/teaching").WithTags("Timetable").RequireAuthorization();
 
+        // Read-only, kept for inspection/debugging — no client creates Periods directly anymore.
         group.MapGet("/periods", async (Guid schoolId, IPeriodAdminService service, CancellationToken ct) =>
             Results.Ok(await service.GetPeriodsAsync(schoolId, ct)));
-
-        group.MapPost("/periods", async (
-            CreatePeriodRequest request, IPeriodAdminService service, IRoleMembershipQuery roles, ICurrentUser user, IClock clock, CancellationToken ct) =>
-        {
-            if (!await roles.IsSystemOrSchoolAdminAsync(user, clock, ct)) return Results.Forbid();
-
-            var id = await service.CreatePeriodAsync(request.SchoolId, request.Code, request.Name, request.StartTime, request.EndTime, request.DisplayOrder, ct);
-            return Results.Created($"/api/v1/teaching/periods/{id}", new { id });
-        });
 
         group.MapGet("/timetable", async (Guid classId, Guid academicYearId, ITimetableService service, CancellationToken ct) =>
             Results.Ok(await service.GetEntriesForClassAsync(classId, academicYearId, ct)));
@@ -56,7 +53,7 @@ internal static class TimetableEndpoints
             {
                 var id = await service.ScheduleAsync(
                     request.SchoolId, request.ClassId, request.SubjectId, request.TeachingAssignmentId, request.AcademicYearId,
-                    request.DayOfWeek, request.PeriodId, ct);
+                    request.DayOfWeek, request.StartTime, request.EndTime, ct);
                 return Results.Created($"/api/v1/teaching/timetable/{id}", new { id });
             }
             catch (InvalidOperationException ex)

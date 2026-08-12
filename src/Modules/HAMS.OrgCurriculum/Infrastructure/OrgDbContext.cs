@@ -155,6 +155,7 @@ public sealed class OrgDbContext(DbContextOptions<OrgDbContext> options) : DbCon
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Code).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.ColorHex).HasMaxLength(7).IsRequired();
             entity.HasIndex(e => new { e.AcademicYearId, e.Code }).IsUnique();
             entity.HasOne<School>().WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<Campus>().WithMany().HasForeignKey(e => e.CampusId).OnDelete(DeleteBehavior.Restrict);

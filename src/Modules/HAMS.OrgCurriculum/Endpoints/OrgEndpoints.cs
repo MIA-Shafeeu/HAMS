@@ -15,7 +15,7 @@ public sealed record CreatePhaseRequest(Guid SchoolId, string Code, string Name,
 public sealed record CreateKeyStageRequest(Guid SchoolId, Guid PhaseId, string Code, string Name, int DisplayOrder);
 public sealed record CreateGradeRequest(Guid SchoolId, string Code, string Name, int DisplayOrder);
 public sealed record SetNextGradeRequest(Guid? NextGradeId);
-public sealed record CreateClassRequest(Guid SchoolId, Guid? CampusId, Guid AcademicYearId, string Code, string Name, IReadOnlyList<Guid> GradeIds);
+public sealed record CreateClassRequest(Guid SchoolId, Guid? CampusId, Guid AcademicYearId, string Code, string Name, string ColorHex, IReadOnlyList<Guid> GradeIds);
 public sealed record CreateGradeKeyStageAssignmentRequest(Guid GradeId, Guid KeyStageId, Guid AcademicYearId, DateOnly EffectiveFrom, DateOnly? EffectiveTo);
 public sealed record CreateKeyStagePolicyRequest(
     Guid KeyStageId, Guid AcademicYearId, string EvaluationModelCode,
@@ -145,7 +145,7 @@ internal static class OrgEndpoints
         {
             if (!await roles.IsSystemOrSchoolAdminAsync(user, clock, ct)) return Results.Forbid();
 
-            var id = await service.CreateClassAsync(request.SchoolId, request.CampusId, request.AcademicYearId, request.Code, request.Name, request.GradeIds, ct);
+            var id = await service.CreateClassAsync(request.SchoolId, request.CampusId, request.AcademicYearId, request.Code, request.Name, request.ColorHex, request.GradeIds, ct);
             return Results.Created($"/api/v1/org/classes/{id}", new { id });
         });
 

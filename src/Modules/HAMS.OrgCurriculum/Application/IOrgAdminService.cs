@@ -74,12 +74,12 @@ public interface IOrgAdminService
     /// <summary>Renames/reorders a <c>EvaluationModel</c>. Throws <see cref="InvalidOperationException"/> if not found.</summary>
     Task UpdateEvaluationModelAsync(Guid id, string name, int displayOrder, CancellationToken cancellationToken = default);
 
-    Task<Guid> CreateClassAsync(Guid schoolId, Guid? campusId, Guid academicYearId, string code, string name, IReadOnlyList<Guid> gradeIds, CancellationToken cancellationToken = default);
+    Task<Guid> CreateClassAsync(Guid schoolId, Guid? campusId, Guid academicYearId, string code, string name, string colorHex, IReadOnlyList<Guid> gradeIds, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Class>> GetClassesAsync(Guid academicYearId, CancellationToken cancellationToken = default);
 
-    /// <summary>Renames a <c>Class</c> and replaces its grade membership (required for combined classes, ORG-FR-018 - at least one grade). Code stays fixed. Throws <see cref="InvalidOperationException"/> if not found or if <paramref name="gradeIds"/> is empty.</summary>
-    Task UpdateClassAsync(Guid id, string name, IReadOnlyList<Guid> gradeIds, CancellationToken cancellationToken = default);
+    /// <summary>Renames a <c>Class</c>, recolors it, and replaces its grade membership (required for combined classes, ORG-FR-018 - at least one grade). Code stays fixed. Throws <see cref="InvalidOperationException"/> if not found or if <paramref name="gradeIds"/> is empty.</summary>
+    Task UpdateClassAsync(Guid id, string name, string colorHex, IReadOnlyList<Guid> gradeIds, CancellationToken cancellationToken = default);
 
     /// <summary>The grade(s) a <c>Class</c> is currently linked to via <c>ClassGrade</c> - needed to pre-populate an edit form, since <see cref="Class"/> itself doesn't carry its grade membership directly.</summary>
     Task<IReadOnlyList<Guid>> GetClassGradeIdsAsync(Guid classId, CancellationToken cancellationToken = default);
